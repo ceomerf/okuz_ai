@@ -86,7 +86,8 @@ class LearningHabitsResultScreen extends StatelessWidget {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -127,7 +128,7 @@ class LearningHabitsResultScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withAlpha(26),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -174,38 +175,47 @@ class LearningHabitsResultScreen extends StatelessWidget {
     // Odaklanma süresi
     final int focusDuration = learningHabits['focusDuration'] ?? 0;
     if (focusDuration >= 45) {
-      strengths.add('Uzun süre odaklanabilme yeteneğiniz var (${focusDuration} dakika).');
+      strengths.add(
+          'Uzun süre odaklanabilme yeteneğiniz var (${focusDuration} dakika).');
     }
 
     // Erteleme eğilimi
-    final int procrastinationLevel = learningHabits['procrastinationLevel'] ?? 10;
+    final int procrastinationLevel =
+        learningHabits['procrastinationLevel'] ?? 10;
     if (procrastinationLevel <= 4) {
-      strengths.add('Erteleme eğiliminiz düşük, bu disiplinli çalışmanızı destekler.');
+      strengths.add(
+          'Erteleme eğiliminiz düşük, bu disiplinli çalışmanızı destekler.');
     }
 
     // Öğrenme yöntemi
-    final String learningMethod = learningHabits['preferredLearningMethod'] ?? '';
+    final String learningMethod =
+        learningHabits['preferredLearningMethod'] ?? '';
     if (learningMethod == 'practice') {
-      strengths.add('Uygulayarak öğrenmeyi tercih ediyorsunuz, bu kalıcı öğrenmeyi destekler.');
+      strengths.add(
+          'Uygulayarak öğrenmeyi tercih ediyorsunuz, bu kalıcı öğrenmeyi destekler.');
     } else if (learningMethod == 'visual') {
-      strengths.add('Görsel öğrenme stiliniz karmaşık konuları anlamanızı kolaylaştırır.');
+      strengths.add(
+          'Görsel öğrenme stiliniz karmaşık konuları anlamanızı kolaylaştırır.');
     }
 
     // Çalışma ortamı tercihi
     final String environment = learningHabits['preferredEnvironment'] ?? '';
     if (environment == 'quiet') {
-      strengths.add('Sessiz ortamlarda çalışmayı tercih etmeniz odaklanmanızı artırır.');
+      strengths.add(
+          'Sessiz ortamlarda çalışmayı tercih etmeniz odaklanmanızı artırır.');
     }
 
     // Hatırlama süresi
     final int retentionDuration = learningHabits['retentionDuration'] ?? 0;
     if (retentionDuration >= 14) {
-      strengths.add('Öğrendiğiniz bilgileri uzun süre (${retentionDuration} gün) hatırlayabiliyorsunuz.');
+      strengths.add(
+          'Öğrendiğiniz bilgileri uzun süre (${retentionDuration} gün) hatırlayabiliyorsunuz.');
     }
 
     // Eğer hiç güçlü yön bulunamadıysa
     if (strengths.isEmpty) {
-      strengths.add('Öğrenme alışkanlıklarınızı geliştirmek için fırsatlarınız var.');
+      strengths.add(
+          'Öğrenme alışkanlıklarınızı geliştirmek için fırsatlarınız var.');
     }
 
     return strengths;
@@ -217,37 +227,45 @@ class LearningHabitsResultScreen extends StatelessWidget {
     // Odaklanma süresi
     final int focusDuration = learningHabits['focusDuration'] ?? 0;
     if (focusDuration < 25) {
-      challenges.add('Kısa odaklanma süreniz (${focusDuration} dakika) verimli çalışmanızı etkileyebilir.');
+      challenges.add(
+          'Kısa odaklanma süreniz (${focusDuration} dakika) verimli çalışmanızı etkileyebilir.');
     }
 
     // Erteleme eğilimi
-    final int procrastinationLevel = learningHabits['procrastinationLevel'] ?? 0;
+    final int procrastinationLevel =
+        learningHabits['procrastinationLevel'] ?? 0;
     if (procrastinationLevel >= 7) {
-      challenges.add('Yüksek erteleme eğiliminiz düzenli çalışmanızı zorlaştırabilir.');
+      challenges.add(
+          'Yüksek erteleme eğiliminiz düzenli çalışmanızı zorlaştırabilir.');
     }
 
     // Mola sıklığı ve süresi
     final int breakFrequency = learningHabits['breakFrequency'] ?? 0;
     final int breakDuration = learningHabits['breakDuration'] ?? 0;
     if (breakFrequency < 30 && breakDuration > 15) {
-      challenges.add('Sık ve uzun molalar vermeniz çalışma akışınızı bölüyor olabilir.');
+      challenges.add(
+          'Sık ve uzun molalar vermeniz çalışma akışınızı bölüyor olabilir.');
     }
 
     // Dikkat dağıtıcılar
-    final List<String> distractions = List<String>.from(learningHabits['distractions'] ?? []);
+    final List<String> distractions =
+        List<String>.from(learningHabits['distractions'] ?? []);
     if (distractions.length >= 3) {
-      challenges.add('Birçok dikkat dağıtıcı faktör (${distractions.join(", ")}) çalışmanızı etkiliyor.');
+      challenges.add(
+          'Birçok dikkat dağıtıcı faktör (${distractions.join(", ")}) çalışmanızı etkiliyor.');
     }
 
     // Hatırlama süresi
     final int retentionDuration = learningHabits['retentionDuration'] ?? 0;
     if (retentionDuration < 7) {
-      challenges.add('Öğrendiğiniz bilgileri kısa sürede (${retentionDuration} gün) unutabiliyorsunuz.');
+      challenges.add(
+          'Öğrendiğiniz bilgileri kısa sürede (${retentionDuration} gün) unutabiliyorsunuz.');
     }
 
     // Eğer hiç zorluk bulunamadıysa
     if (challenges.isEmpty) {
-      challenges.add('Öğrenme alışkanlıklarınızda önemli bir zorluk görünmüyor.');
+      challenges
+          .add('Öğrenme alışkanlıklarınızda önemli bir zorluk görünmüyor.');
     }
 
     return challenges;
@@ -259,37 +277,50 @@ class LearningHabitsResultScreen extends StatelessWidget {
     // Odaklanma süresi
     final int focusDuration = learningHabits['focusDuration'] ?? 0;
     if (focusDuration < 25) {
-      recommendations.add('Pomodoro tekniği kullanarak odaklanma sürenizi kademeli olarak artırın (25-5-25 dakika çalışma-mola döngüsü).');
+      recommendations.add(
+          'Pomodoro tekniği kullanarak odaklanma sürenizi kademeli olarak artırın (25-5-25 dakika çalışma-mola döngüsü).');
     } else if (focusDuration >= 45) {
-      recommendations.add('Uzun odaklanma sürenizi avantaja çevirmek için derin çalışma seansları planlayın (45-90 dakika).');
+      recommendations.add(
+          'Uzun odaklanma sürenizi avantaja çevirmek için derin çalışma seansları planlayın (45-90 dakika).');
     }
 
     // Erteleme eğilimi
-    final int procrastinationLevel = learningHabits['procrastinationLevel'] ?? 0;
+    final int procrastinationLevel =
+        learningHabits['procrastinationLevel'] ?? 0;
     if (procrastinationLevel >= 7) {
-      recommendations.add('Görevleri küçük parçalara bölerek ve "5 dakika kuralı" uygulayarak erteleme eğiliminizi azaltın.');
+      recommendations.add(
+          'Görevleri küçük parçalara bölerek ve "5 dakika kuralı" uygulayarak erteleme eğiliminizi azaltın.');
     }
 
     // Öğrenme yöntemi
-    final String learningMethod = learningHabits['preferredLearningMethod'] ?? '';
+    final String learningMethod =
+        learningHabits['preferredLearningMethod'] ?? '';
     if (learningMethod == 'visual') {
-      recommendations.add('Görsel öğrenme stilinizi desteklemek için zihin haritaları, infografikler ve video dersler kullanın.');
+      recommendations.add(
+          'Görsel öğrenme stilinizi desteklemek için zihin haritaları, infografikler ve video dersler kullanın.');
     } else if (learningMethod == 'auditory') {
-      recommendations.add('İşitsel öğrenme stilinizi desteklemek için sesli kitaplar, podcast\'ler ve kendi kendinize anlatma tekniğini kullanın.');
+      recommendations.add(
+          'İşitsel öğrenme stilinizi desteklemek için sesli kitaplar, podcast\'ler ve kendi kendinize anlatma tekniğini kullanın.');
     } else if (learningMethod == 'reading') {
-      recommendations.add('Okuyarak öğrenme stilinizi desteklemek için aktif okuma teknikleri ve not alma stratejileri geliştirin.');
+      recommendations.add(
+          'Okuyarak öğrenme stilinizi desteklemek için aktif okuma teknikleri ve not alma stratejileri geliştirin.');
     } else if (learningMethod == 'practice') {
-      recommendations.add('Uygulayarak öğrenme stilinizi desteklemek için bol pratik yapın ve simülasyonlar kullanın.');
+      recommendations.add(
+          'Uygulayarak öğrenme stilinizi desteklemek için bol pratik yapın ve simülasyonlar kullanın.');
     }
 
     // Çalışma zamanı tercihi
     final String studyTime = learningHabits['preferredStudyTime'] ?? '';
-    recommendations.add('En verimli çalışma zamanınız olan ${_getStudyTimeName(studyTime)} saatlerinde zor konulara odaklanın.');
+    recommendations.add(
+        'En verimli çalışma zamanınız olan ${_getStudyTimeName(studyTime)} saatlerinde zor konulara odaklanın.');
 
     // Dikkat dağıtıcılar
-    final List<String> distractions = List<String>.from(learningHabits['distractions'] ?? []);
-    if (distractions.contains('Telefon bildirimleri') || distractions.contains('Sosyal medya')) {
-      recommendations.add('Çalışırken telefonu uçak moduna alın veya "rahatsız etmeyin" özelliğini kullanın.');
+    final List<String> distractions =
+        List<String>.from(learningHabits['distractions'] ?? []);
+    if (distractions.contains('Telefon bildirimleri') ||
+        distractions.contains('Sosyal medya')) {
+      recommendations.add(
+          'Çalışırken telefonu uçak moduna alın veya "rahatsız etmeyin" özelliğini kullanın.');
     }
 
     return recommendations;
@@ -309,4 +340,4 @@ class LearningHabitsResultScreen extends StatelessWidget {
         return 'tercih ettiğiniz';
     }
   }
-} 
+}

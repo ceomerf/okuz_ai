@@ -6,7 +6,7 @@ class Gamification {
   final int xp; // Deneyim puanı
   final int level; // Seviye
   final int streak; // Seri (aralıksız çalışma günü)
-  final List<Badge> badges; // Kazanılan rozetler
+  final List<GameBadge> badges; // Kazanılan rozetler
   final DateTime? lastCompletedDate; // Son görev tamamlama tarihi
   final Map<String, int> subjectXP; // Ders bazında XP
   final List<Achievement> achievements; // Başarımlar
@@ -29,7 +29,7 @@ class Gamification {
       level: json['level'] ?? 1,
       streak: json['streak'] ?? 0,
       badges: (json['badges'] as List?)
-              ?.map((e) => Badge.fromJson(e))
+              ?.map((e) => GameBadge.fromJson(e))
               .toList() ??
           [],
       lastCompletedDate: json['lastCompletedDate'] != null
@@ -68,7 +68,7 @@ class Gamification {
 }
 
 /// Rozet sınıfı
-class Badge {
+class GameBadge {
   final String id;
   final String name;
   final String description;
@@ -77,7 +77,7 @@ class Badge {
   final DateTime awardedAt;
   final int rarity; // 1-5 arası (5 en nadir)
 
-  Badge({
+  GameBadge({
     required this.id,
     required this.name,
     required this.description,
@@ -87,8 +87,8 @@ class Badge {
     this.rarity = 1,
   });
 
-  factory Badge.fromJson(Map<String, dynamic> json) {
-    return Badge(
+  factory GameBadge.fromJson(Map<String, dynamic> json) {
+    return GameBadge(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
@@ -174,4 +174,4 @@ class Achievement {
 
   /// İlerleme yüzdesini hesaplar (0-1 arası)
   double get progressPercentage => progress / target;
-} 
+}

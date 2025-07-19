@@ -5,8 +5,15 @@ rules_version = '2';
 //    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    // SOS Questions için yükleme izni
+    match /sos_questions/{imageId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Genel dosyalar için okuma izni (gelecekte kullanım için)
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }

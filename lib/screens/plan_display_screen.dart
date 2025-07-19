@@ -4,8 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:okuz_ai/models/long_term_plan.dart';
 import 'package:okuz_ai/services/plan_service.dart';
+import 'package:okuz_ai/services/premium_service.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
 import 'package:okuz_ai/screens/feynman_cycle_screen.dart';
+import 'package:okuz_ai/screens/calendar_view_screen.dart';
+import 'package:okuz_ai/widgets/locked_day_card.dart';
 
 class PlanDisplayScreen extends StatefulWidget {
   const PlanDisplayScreen({Key? key}) : super(key: key);
@@ -17,13 +20,25 @@ class PlanDisplayScreen extends StatefulWidget {
 class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
   late Future<LongTermPlan?> _planFuture;
   final PlanService _planService = PlanService();
+  final PremiumService _premiumService = PremiumService();
   LongTermPlan? _currentPlan;
   bool _isLoading = false;
+  bool _isPremium = false;
 
   @override
   void initState() {
     super.initState();
     _planFuture = _fetchPlan();
+    _checkPremiumStatus();
+  }
+
+  Future<void> _checkPremiumStatus() async {
+    final isPremium = await _premiumService.isPremiumUser();
+    if (mounted) {
+      setState(() {
+        _isPremium = isPremium;
+      });
+    }
   }
 
   Future<LongTermPlan?> _fetchPlan() async {
@@ -36,9 +51,11 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
       return null;
     } catch (e) {
       // Hata durumunu ele al
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Plan yüklenemedi: ${e.toString()}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Plan yüklenemedi: ${e.toString()}')),
+        );
+      }
       return null;
     }
   }
@@ -96,6 +113,7 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
           _isLoading = false;
         });
 
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text(
@@ -105,6 +123,7 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
         setState(() {
           _isLoading = false;
         });
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Hata: ${e.toString()}')),
         );
@@ -115,12 +134,28 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: const Text('Aylık Çalışma Planın'),
-        backgroundColor: AppTheme.backgroundColor,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         centerTitle: true,
+        actions: [
+          // Takvim görünümü butonu
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CalendarViewScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.calendar_today_outlined),
+            tooltip: 'Takvim Görünümü',
+            color: AppTheme.primaryColor,
+          ),
+        ],
       ),
       body: FutureBuilder<LongTermPlan?>(
         future: _planFuture,
@@ -161,7 +196,7 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
               _buildPlanView(plan),
               if (_isLoading)
                 Container(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withAlpha(128),
                   child: const Center(
                     child: CircularProgressIndicator(),
                   ),
@@ -177,20 +212,148 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
     // Tüm günleri tek bir listeye topla
     final allDays = plan.weeks.expand((week) => week.days).toList();
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      itemCount: allDays.length,
-      itemBuilder: (context, index) {
-        final day = allDays[index];
-        return _buildDayCard(day, context)
-            .animate()
-            .fadeIn(duration: 500.ms)
-            .slideY(begin: 0.5);
-      },
+    return Column(
+      children: [
+        // Premium durumu banner (sadece premium değilse göster)
+        if (!_isPremium) _buildPremiumBanner(),
+
+        Expanded(
+          child: ListView.builder(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            itemCount: allDays.length,
+            itemBuilder: (context, index) {
+              final day = allDays[index];
+
+              // KİLİTLEME MANTIĞI: Premium değilse ve 3. günden sonrasıysa kilitli göster
+              final bool isLocked =
+                  _premiumService.isDayLocked(index, _isPremium);
+
+              if (isLocked) {
+                // Kilitli gün kartını göster
+                return LockedDayCard(
+                  dayNumber: index + 1,
+                  dayName: day.day,
+                  date: day.date,
+                  onUpgradePressed: _handleUpgrade,
+                ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.5);
+              } else {
+                // Normal gün kartını göster
+                return _buildDayCard(day, context, index)
+                    .animate()
+                    .fadeIn(duration: 500.ms)
+                    .slideY(begin: 0.5);
+              }
+            },
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildDayCard(Day day, BuildContext context) {
+  Widget _buildPremiumBanner() {
+    final remainingDays = _premiumService.getRemainingFreeDays(0, false);
+
+    return Container(
+      margin: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.primaryColor.withOpacity(0.1),
+            AppTheme.primaryColor.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppTheme.primaryColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.star_border,
+            color: AppTheme.primaryColor,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ücretsiz Deneme',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  remainingDays > 0
+                      ? '$remainingDays gün kaldı'
+                      : 'Premium\'a geçerek tüm plana erişin',
+                  style: GoogleFonts.lato(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: _handleUpgrade,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              elevation: 2,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'Premium',
+              style: GoogleFonts.montserrat(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleUpgrade() {
+    // Test amaçlı premium upgrade
+    _premiumService.upgradeToPremium().then((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('🎉 Premium üyeliğiniz aktif edildi!'),
+          backgroundColor: AppTheme.primaryColor,
+          action: SnackBarAction(
+            label: 'Harika!',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
+        ),
+      );
+
+      // Premium durumunu güncelle
+      _checkPremiumStatus();
+    }).catchError((error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hata: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    });
+  }
+
+  Widget _buildDayCard(Day day, BuildContext context, int dayIndex) {
     DateTime parsedDate;
     try {
       parsedDate = DateFormat('yyyy-MM-dd').parse(day.date);
@@ -204,22 +367,52 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),
       elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.1),
+      shadowColor: Colors.black.withAlpha(26),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: day.isRestDay ? AppTheme.restDayCardColor : AppTheme.cardColor,
+      color: day.isRestDay
+          ? AppTheme.getRestDayCardColor(context)
+          : Theme.of(context).cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              formattedDate,
-              style: GoogleFonts.montserrat(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color:
-                    day.isRestDay ? Colors.white70 : AppTheme.textPrimaryColor,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    formattedDate,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: day.isRestDay
+                          ? Colors.white70
+                          : AppTheme.textPrimaryColor,
+                    ),
+                  ),
+                ),
+                // Premium olmayan kullanıcılar için gün sayacı göster
+                if (!_isPremium && dayIndex < 3)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppTheme.primaryColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      'Ücretsiz ${dayIndex + 1}/3',
+                      style: GoogleFonts.lato(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
             if (day.isRestDay)

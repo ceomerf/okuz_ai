@@ -18,7 +18,8 @@ class TopicConnectionScreen extends StatefulWidget {
 }
 
 class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
-  final PerformanceAnalysisService _analysisService = PerformanceAnalysisService();
+  final PerformanceAnalysisService _analysisService =
+      PerformanceAnalysisService();
   bool _isLoading = true;
   TopicConnection? _topicConnection;
   TopicMap? _topicMap;
@@ -42,10 +43,10 @@ class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
         widget.subject,
         widget.topic,
       );
-      
+
       // Sonra konu haritasını yükle
       final map = await _analysisService.getTopicMap(widget.subject);
-      
+
       setState(() {
         _topicConnection = connection;
         _topicMap = map;
@@ -143,15 +144,15 @@ class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
     // Grafik için gerekli verileri hazırla
     final Graph graph = Graph()..isTree = false;
     final Algorithm algorithm = FruchtermanReingoldAlgorithm();
-    
+
     // Düğümleri oluştur
     final Map<String, Node> nodes = {};
-    
+
     // Ana konu düğümünü oluştur
     final mainNode = Node.Id(_topicConnection!.topic);
     nodes[_topicConnection!.topic] = mainNode;
     graph.addNode(mainNode);
-    
+
     // Öncül konular için düğümler oluştur
     for (final prerequisite in _topicConnection!.prerequisites) {
       if (!nodes.containsKey(prerequisite)) {
@@ -159,11 +160,14 @@ class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
         nodes[prerequisite] = node;
         graph.addNode(node);
       }
-      
+
       // Ana konuya kenar ekle
-      graph.addEdge(nodes[prerequisite]!, mainNode, paint: Paint()..color = Colors.blue..strokeWidth = 2);
+      graph.addEdge(nodes[prerequisite]!, mainNode,
+          paint: Paint()
+            ..color = Colors.blue
+            ..strokeWidth = 2);
     }
-    
+
     // Ardıl konular için düğümler oluştur
     for (final followup in _topicConnection!.followups) {
       if (!nodes.containsKey(followup)) {
@@ -171,11 +175,14 @@ class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
         nodes[followup] = node;
         graph.addNode(node);
       }
-      
+
       // Ana konudan kenar ekle
-      graph.addEdge(mainNode, nodes[followup]!, paint: Paint()..color = Colors.green..strokeWidth = 2);
+      graph.addEdge(mainNode, nodes[followup]!,
+          paint: Paint()
+            ..color = Colors.green
+            ..strokeWidth = 2);
     }
-    
+
     // İlişkili konular için düğümler oluştur
     for (final related in _topicConnection!.relatedTopics) {
       if (!nodes.containsKey(related)) {
@@ -183,10 +190,16 @@ class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
         nodes[related] = node;
         graph.addNode(node);
       }
-      
+
       // İlişkili konular arasında çift yönlü kenar ekle
-      graph.addEdge(mainNode, nodes[related]!, paint: Paint()..color = Colors.orange..strokeWidth = 1);
-      graph.addEdge(nodes[related]!, mainNode, paint: Paint()..color = Colors.orange..strokeWidth = 1);
+      graph.addEdge(mainNode, nodes[related]!,
+          paint: Paint()
+            ..color = Colors.orange
+            ..strokeWidth = 1);
+      graph.addEdge(nodes[related]!, mainNode,
+          paint: Paint()
+            ..color = Colors.orange
+            ..strokeWidth = 1);
     }
 
     return Card(
@@ -225,9 +238,11 @@ class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
                   builder: (Node node) {
                     final nodeId = node.key?.value as String;
                     final isMainNode = nodeId == _topicConnection!.topic;
-                    final isPrerequisite = _topicConnection!.prerequisites.contains(nodeId);
-                    final isFollowup = _topicConnection!.followups.contains(nodeId);
-                    
+                    final isPrerequisite =
+                        _topicConnection!.prerequisites.contains(nodeId);
+                    final isFollowup =
+                        _topicConnection!.followups.contains(nodeId);
+
                     Color nodeColor;
                     if (isMainNode) {
                       nodeColor = Colors.amber;
@@ -238,7 +253,7 @@ class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
                     } else {
                       nodeColor = Colors.orange.shade100;
                     }
-                    
+
                     return Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -247,7 +262,7 @@ class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.5),
+                            color: Colors.grey.withAlpha(128),
                             spreadRadius: 1,
                             blurRadius: 2,
                             offset: const Offset(0, 1),
@@ -258,7 +273,8 @@ class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
                         nodeId,
                         style: TextStyle(
                           fontSize: isMainNode ? 16 : 14,
-                          fontWeight: isMainNode ? FontWeight.bold : FontWeight.normal,
+                          fontWeight:
+                              isMainNode ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                     );
@@ -311,7 +327,8 @@ class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
                 ? const Text('Bu konunun öncül konusu bulunmamaktadır.')
                 : Column(
                     children: _topicConnection!.prerequisites.map((topic) {
-                      final importance = _topicConnection!.topicImportance[topic] ?? 0.5;
+                      final importance =
+                          _topicConnection!.topicImportance[topic] ?? 0.5;
                       return ListTile(
                         leading: const Icon(Icons.school, color: Colors.blue),
                         title: Text(topic),
@@ -375,7 +392,8 @@ class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
                 ? const Text('Bu konunun ardıl konusu bulunmamaktadır.')
                 : Column(
                     children: _topicConnection!.followups.map((topic) {
-                      final importance = _topicConnection!.topicImportance[topic] ?? 0.5;
+                      final importance =
+                          _topicConnection!.topicImportance[topic] ?? 0.5;
                       return ListTile(
                         leading: const Icon(Icons.school, color: Colors.green),
                         title: Text(topic),
@@ -439,7 +457,8 @@ class _TopicConnectionScreenState extends State<TopicConnectionScreen> {
                 ? const Text('Bu konunun ilişkili konusu bulunmamaktadır.')
                 : Column(
                     children: _topicConnection!.relatedTopics.map((topic) {
-                      final importance = _topicConnection!.topicImportance[topic] ?? 0.5;
+                      final importance =
+                          _topicConnection!.topicImportance[topic] ?? 0.5;
                       return ListTile(
                         leading: const Icon(Icons.school, color: Colors.orange),
                         title: Text(topic),
@@ -513,4 +532,4 @@ class _LegendItem extends StatelessWidget {
       ],
     );
   }
-} 
+}

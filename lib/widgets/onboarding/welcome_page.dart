@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:lottie/lottie.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
 
 class WelcomePage extends StatelessWidget {
   final VoidCallback onNext;
-  const WelcomePage({Key? key, required this.onNext}) : super(key: key);
+  final bool isStudentAccount;
+
+  const WelcomePage(
+      {Key? key, required this.onNext, this.isStudentAccount = false})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = AppTheme.themeNotifier.value == ThemeMode.dark;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      color: AppTheme.backgroundColor,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -33,7 +36,7 @@ class WelcomePage extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isDarkMode
-                    ? AppTheme.primaryColor.withOpacity(0.2)
+                    ? AppTheme.primaryColor.withAlpha(51)
                     : AppTheme.primaryLightColor,
               ),
               child: Center(
@@ -53,10 +56,10 @@ class WelcomePage extends StatelessWidget {
             delay: const Duration(milliseconds: 300),
             effects: const [FadeEffect(duration: Duration(milliseconds: 600))],
             child: Text(
-              'Öküz AI\'a Hoş Geldin!',
+              isStudentAccount ? 'Merhaba! 👋' : 'Öküz AI\'a Hoş Geldin!',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimaryColor,
+                    color: AppTheme.getPrimaryTextColor(context),
                   ),
               textAlign: TextAlign.center,
             ),
@@ -69,9 +72,11 @@ class WelcomePage extends StatelessWidget {
             delay: const Duration(milliseconds: 400),
             effects: const [FadeEffect(duration: Duration(milliseconds: 600))],
             child: Text(
-              'Kişiselleştirilmiş öğrenme yolculuğun burada başlıyor.',
+              isStudentAccount
+                  ? 'Senin için hazırladığımız kişiselleştirilmiş öğrenme planını oluşturalım!'
+                  : 'Kişiselleştirilmiş öğrenme yolculuğun burada başlıyor.',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textSecondaryColor,
+                    color: AppTheme.getSecondaryTextColor(context),
                   ),
               textAlign: TextAlign.center,
             ),

@@ -1,713 +1,755 @@
 import 'package:flutter/material.dart';
-import 'package:okuz_ai/models/mock_trial_exam.dart';
-import 'package:okuz_ai/services/performance_analysis_service.dart';
+import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-import 'dart:math' as math;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../providers/study_data_provider.dart';
+import '../providers/subscription_provider.dart';
+import '../theme/app_theme.dart';
+import 'dart:async';
 
 class PerformanceDashboardScreen extends StatefulWidget {
-  const PerformanceDashboardScreen({Key? key}) : super(key: key);
+  const PerformanceDashboardScreen({super.key});
 
   @override
-  _PerformanceDashboardScreenState createState() => _PerformanceDashboardScreenState();
+  State<PerformanceDashboardScreen> createState() =>
+      _PerformanceDashboardScreenState();
 }
 
-class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen> {
-  final PerformanceAnalysisService _analysisService = PerformanceAnalysisService();
+class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
+    with TickerProviderStateMixin {
+  String _selectedTimeRange = 'Bu Hafta';
   bool _isLoading = true;
-  Map<String, dynamic> _dashboardData = {};
-  String _errorMessage = '';
+  Map<String, dynamic> _performanceData = {};
+  List<Map<String, dynamic>> _activityLogs = [];
+
+  // Animasyon kontrolcüleri
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
-    _loadDashboardData();
+
+    // Animasyon kontrolcülerini başlat
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _loadPerformanceData();
   }
 
-  Future<void> _loadDashboardData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _slideController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPerformanceData() async {
+    setState(() => _isLoading = true);
 
     try {
-      final data = await _analysisService.getPerformanceDashboardData();
-      setState(() {
-        _dashboardData = data;
-        _isLoading = false;
-      });
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await _loadAnalyticsData(user.uid);
+        await _loadActivityLogs(user.uid);
+      }
     } catch (e) {
+      debugPrint('Performans verisi yükleme hatası: $e');
+    } finally {
+      setState(() => _isLoading = false);
+      _fadeController.forward();
+      _slideController.forward();
+    }
+  }
+
+  Future<void> _loadAnalyticsData(String userId) async {
+    final docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('analytics')
+        .doc('performance');
+
+    final snapshot = await docRef.get();
+    if (snapshot.exists) {
       setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
+        _performanceData = snapshot.data() ?? {};
       });
     }
+  }
+
+  Future<void> _loadActivityLogs(String userId) async {
+    final query = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('analytics')
+        .doc('daily_logs')
+        .collection('logs')
+        .orderBy('timestamp', descending: true)
+        .limit(20);
+
+    final snapshot = await query.get();
+    setState(() {
+      _activityLogs =
+          snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Performans Gösterge Paneli'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadDashboardData,
+      backgroundColor: Theme.of(context).colorScheme.background,
+      body: _isLoading
+          ? _buildLoadingScreen()
+          : CustomScrollView(
+              slivers: [
+                // SliverAppBar
+                _buildSliverAppBar(),
+
+                // Genel Bakış Kartları
+                _buildOverviewCards(),
+
+                // Haftalık Çalışma Dağılımı
+                _buildWeeklyWorkDistribution(),
+
+                // Derslere Göre Zaman Dağılımı
+                _buildSubjectTimeDistribution(),
+
+                // Detaylı Aktivite Geçmişi
+                _buildActivityHistory(),
+
+                // Alt boşluk
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 32),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildLoadingScreen() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            color: AppTheme.primaryColor,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Performans verilerin yükleniyor...',
+            style: GoogleFonts.figtree(
+              fontSize: 16,
+              color: Colors.grey[600],
+            ),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-              ? Center(child: Text('Hata: $_errorMessage'))
-              : _buildDashboard(),
     );
   }
 
-  Widget _buildDashboard() {
-    final exams = _dashboardData['exams'] as List<MockTrialExam>;
-    final weakAreas = _dashboardData['weakAreas'] as List<dynamic>;
-    final strongAreas = _dashboardData['strongAreas'] as List<dynamic>;
-    final recommendations = _dashboardData['recommendations'] as List<dynamic>;
-    final performanceTrend = _dashboardData['performanceTrend'] as Map<String, dynamic>;
-
-    return RefreshIndicator(
-      onRefresh: _loadDashboardData,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildPerformanceTrendCard(performanceTrend),
-            const SizedBox(height: 16),
-            _buildScoreChart(exams),
-            const SizedBox(height: 16),
-            _buildWeakAreasCard(weakAreas),
-            const SizedBox(height: 16),
-            _buildStrongAreasCard(strongAreas),
-            const SizedBox(height: 16),
-            _buildRecommendationsCard(recommendations),
-            const SizedBox(height: 16),
-            _buildRecentExamsCard(exams),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPerformanceTrendCard(Map<String, dynamic> trend) {
-    final trendType = trend['trend'] as String;
-    final changePercentage = trend['changePercentage'] as double;
-    
-    IconData iconData;
-    Color iconColor;
-    String trendText;
-    
-    if (trendType == 'increasing') {
-      iconData = Icons.trending_up;
-      iconColor = Colors.green;
-      trendText = 'Yükseliyor';
-    } else if (trendType == 'decreasing') {
-      iconData = Icons.trending_down;
-      iconColor = Colors.red;
-      trendText = 'Düşüyor';
-    } else {
-      iconData = Icons.trending_flat;
-      iconColor = Colors.orange;
-      trendText = 'Stabil';
-    }
-    
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Icon(iconData, size: 48, color: iconColor),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Performans Trendi',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Son denemeye göre performansınız $trendText',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${changePercentage.toStringAsFixed(1)}% değişim',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: iconColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildScoreChart(List<MockTrialExam> exams) {
-    // Sadece son 5 denemeyi göster
-    final displayExams = exams.length > 5 ? exams.sublist(0, 5) : exams;
-    
-    // Tarihleri tersine çevir (en eski solda, en yeni sağda)
-    final reversedExams = displayExams.reversed.toList();
-    
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Deneme Puanları',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: reversedExams.isEmpty
-                  ? const Center(child: Text('Henüz deneme sonucu yok'))
-                  : LineChart(
-                      LineChartData(
-                        gridData: FlGridData(show: true),
-                        titlesData: FlTitlesData(
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (value, meta) {
-                                if (value < 0 || value >= reversedExams.length) {
-                                  return const SizedBox.shrink();
-                                }
-                                final exam = reversedExams[value.toInt()];
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    DateFormat('dd/MM').format(exam.examDate),
-                                    style: const TextStyle(fontSize: 10),
-                                  ),
-                                );
-                              },
-                              reservedSize: 30,
-                            ),
-                          ),
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (value, meta) {
-                                return Text(
-                                  value.toInt().toString(),
-                                  style: const TextStyle(fontSize: 10),
-                                );
-                              },
-                              reservedSize: 30,
-                            ),
-                          ),
-                          topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                        ),
-                        borderData: FlBorderData(show: true),
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: List.generate(
-                              reversedExams.length,
-                              (index) => FlSpot(
-                                index.toDouble(),
-                                reversedExams[index].score,
-                              ),
-                            ),
-                            isCurved: true,
-                            color: Theme.of(context).primaryColor,
-                            barWidth: 3,
-                            isStrokeCapRound: true,
-                            dotData: FlDotData(show: true),
-                            belowBarData: BarAreaData(
-                              show: true,
-                              color: Theme.of(context).primaryColor.withOpacity(0.2),
-                            ),
-                          ),
-                        ],
-                        minY: _getMinScore(reversedExams) - 5,
-                        maxY: _getMaxScore(reversedExams) + 5,
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  double _getMinScore(List<MockTrialExam> exams) {
-    if (exams.isEmpty) return 0;
-    return exams.map((e) => e.score).reduce(math.min);
-  }
-
-  double _getMaxScore(List<MockTrialExam> exams) {
-    if (exams.isEmpty) return 100;
-    return exams.map((e) => e.score).reduce(math.max);
-  }
-
-  Widget _buildWeakAreasCard(List<dynamic> weakAreas) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                SizedBox(width: 8),
-                Text(
-                  'Geliştirilmesi Gereken Alanlar',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            weakAreas.isEmpty
-                ? const Text('Yeterli veri yok')
-                : Column(
-                    children: weakAreas.map((area) {
-                      final areaMap = area as Map<String, dynamic>;
-                      return ListTile(
-                        leading: const Icon(Icons.assignment_late, color: Colors.red),
-                        title: Text(areaMap['topic']),
-                        subtitle: Text(areaMap['subject']),
-                        trailing: Text(
-                          '${areaMap['successRate'].toStringAsFixed(1)}%',
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStrongAreasCard(List<dynamic> strongAreas) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.star, color: Colors.amber),
-                SizedBox(width: 8),
-                Text(
-                  'Güçlü Alanlar',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            strongAreas.isEmpty
-                ? const Text('Yeterli veri yok')
-                : Column(
-                    children: strongAreas.map((area) {
-                      final areaMap = area as Map<String, dynamic>;
-                      return ListTile(
-                        leading: const Icon(Icons.check_circle, color: Colors.green),
-                        title: Text(areaMap['topic']),
-                        subtitle: Text(areaMap['subject']),
-                        trailing: Text(
-                          '${areaMap['successRate'].toStringAsFixed(1)}%',
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecommendationsCard(List<dynamic> recommendations) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.lightbulb, color: Colors.amber),
-                SizedBox(width: 8),
-                Text(
-                  'Öneriler',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            recommendations.isEmpty
-                ? const Text('Yeterli veri yok')
-                : Column(
-                    children: recommendations.map((recommendation) {
-                      final recMap = recommendation as Map<String, dynamic>;
-                      return ListTile(
-                        leading: const Icon(Icons.tips_and_updates, color: Colors.blue),
-                        title: Text(recMap['title']),
-                        subtitle: Text(recMap['description']),
-                        isThreeLine: true,
-                      );
-                    }).toList(),
-                  ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecentExamsCard(List<MockTrialExam> exams) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Son Denemeler',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            exams.isEmpty
-                ? const Text('Henüz deneme sonucu yok')
-                : Column(
-                    children: exams.take(5).map((exam) {
-                      return ListTile(
-                        title: Text(exam.title),
-                        subtitle: Text(
-                          '${DateFormat('dd/MM/yyyy').format(exam.examDate)} - ${exam.publisher}',
-                        ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              exam.score.toStringAsFixed(2),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Text(
-                              '${exam.correctCount} D / ${exam.incorrectCount} Y / ${exam.emptyCount} B',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ),
-                        onTap: () {
-                          // Deneme detaylarına git
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => ExamDetailScreen(examId: exam.id),
-                            ),
-                          );
-                        },
-                      );
-                    }).toList(),
-                  ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ExamDetailScreen extends StatelessWidget {
-  final String examId;
-  final PerformanceAnalysisService _analysisService = PerformanceAnalysisService();
-
-  ExamDetailScreen({Key? key, required this.examId}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Deneme Detayları'),
-      ),
-      body: FutureBuilder<MockTrialExam>(
-        future: _analysisService.getExamById(examId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          
-          if (snapshot.hasError) {
-            return Center(child: Text('Hata: ${snapshot.error}'));
-          }
-          
-          if (!snapshot.hasData) {
-            return const Center(child: Text('Deneme bulunamadı'));
-          }
-          
-          final exam = snapshot.data!;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildExamHeader(exam),
-                const SizedBox(height: 16),
-                _buildExamStats(exam),
-                const SizedBox(height: 16),
-                _buildSubjectResults(exam),
-                const SizedBox(height: 16),
-                _buildWrongQuestions(exam),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildExamHeader(MockTrialExam exam) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              exam.title,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tarih: ${DateFormat('dd/MM/yyyy').format(exam.examDate)}',
-              style: const TextStyle(fontSize: 16),
-            ),
-            Text(
-              'Yayınevi: ${exam.publisher}',
-              style: const TextStyle(fontSize: 16),
-            ),
-            Text(
-              'Sınav Türü: ${exam.examType}',
-              style: const TextStyle(fontSize: 16),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExamStats(MockTrialExam exam) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Genel Sonuçlar',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem('Puan', exam.score.toStringAsFixed(2), Colors.blue),
-                _buildStatItem('Doğru', exam.correctCount.toString(), Colors.green),
-                _buildStatItem('Yanlış', exam.incorrectCount.toString(), Colors.red),
-                _buildStatItem('Boş', exam.emptyCount.toString(), Colors.grey),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 24,
+  Widget _buildSliverAppBar() {
+    return SliverAppBar(
+      expandedHeight: 120,
+      floating: false,
+      pinned: true,
+      backgroundColor: AppTheme.primaryColor,
+      elevation: 0,
+      flexibleSpace: FlexibleSpaceBar(
+        title: Text(
+          'Performans Merkezi',
+          style: GoogleFonts.figtree(
+            fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: color,
+            color: Colors.white,
           ),
         ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 14),
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppTheme.primaryColor,
+                AppTheme.primaryColor.withOpacity(0.8),
+              ],
+            ),
+          ),
         ),
+      ),
+      actions: [
+        // Zaman aralığı filtresi
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.filter_list, color: Colors.white),
+          onSelected: (value) {
+            setState(() {
+              _selectedTimeRange = value;
+            });
+            _loadPerformanceData();
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'Bu Hafta',
+              child: Text('Bu Hafta'),
+            ),
+            const PopupMenuItem(
+              value: 'Bu Ay',
+              child: Text('Bu Ay'),
+            ),
+            const PopupMenuItem(
+              value: 'Tüm Zamanlar',
+              child: Text('Tüm Zamanlar'),
+            ),
+          ],
+        ),
+        const SizedBox(width: 8),
       ],
     );
   }
 
-  Widget _buildSubjectResults(MockTrialExam exam) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Ders Sonuçları',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ...exam.subjectResults.entries.map((entry) {
-              final subject = entry.key;
-              final result = entry.value;
-              return ExpansionTile(
-                title: Text(subject),
-                subtitle: Text(
-                  'Net: ${result.netScore.toStringAsFixed(2)} (${result.correctCount} D / ${result.incorrectCount} Y / ${result.emptyCount} B)',
-                ),
-                children: result.topicResults.entries.map((topicEntry) {
-                  final topic = topicEntry.key;
-                  final topicResult = topicEntry.value;
-                  return ListTile(
-                    title: Text(topic),
-                    subtitle: Text(
-                      'Net: ${topicResult.netScore.toStringAsFixed(2)} (${topicResult.correctCount} D / ${topicResult.incorrectCount} Y / ${topicResult.emptyCount} B)',
-                    ),
-                    dense: true,
-                  );
-                }).toList(),
-              );
-            }).toList(),
-          ],
+  Widget _buildOverviewCards() {
+    return SliverPadding(
+      padding: const EdgeInsets.all(16),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 1.2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
         ),
+        delegate: SliverChildListDelegate([
+          _buildMetricCard(
+            'Toplam Çalışma',
+            '${_performanceData['totalStudyHours']?.toStringAsFixed(1) ?? '0'}',
+            'Saat Çalıştın',
+            Icons.timer,
+            AppTheme.primaryColor,
+          ),
+          _buildMetricCard(
+            'Kazanılan XP',
+            '${_performanceData['totalXP']?.toString() ?? '0'}',
+            'XP Kazandın',
+            Icons.star,
+            AppTheme.accentColor,
+          ),
+          _buildMetricCard(
+            'Çalışma Serisi',
+            '${_performanceData['currentStreak']?.toString() ?? '0'}',
+            'Günlük Seri',
+            Icons.local_fire_department,
+            AppTheme.warningColor,
+          ),
+          _buildMetricCard(
+            'En Uzun Odaklanma',
+            '${_performanceData['longestFocusSession']?.toString() ?? '0'}',
+            'Dakika',
+            Icons.psychology,
+            AppTheme.successColor,
+          ),
+        ]),
       ),
     );
   }
 
-  Widget _buildWrongQuestions(MockTrialExam exam) {
-    return Card(
-      elevation: 4,
+  Widget _buildMetricCard(
+      String title, String value, String subtitle, IconData icon, Color color) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withOpacity(0.1),
+            color.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Yanlış Yapılan Sorular',
-              style: TextStyle(
-                fontSize: 18,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const Spacer(),
+                Text(
+                  title,
+                  style: GoogleFonts.figtree(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Text(
+              value,
+              style: GoogleFonts.figtree(
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
               ),
             ),
-            const SizedBox(height: 16),
-            exam.wrongQuestions.isEmpty
-                ? const Text('Yanlış yapılan soru yok')
-                : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: exam.wrongQuestions.length,
-                    itemBuilder: (context, index) {
-                      final question = exam.wrongQuestions[index];
-                      return ExpansionTile(
-                        title: Text('Soru ${question.questionNumber}'),
-                        subtitle: Text('${question.subject} - ${question.topic}'),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (question.imageUrl.isNotEmpty)
-                                  Image.network(
-                                    question.imageUrl,
-                                    height: 200,
-                                    fit: BoxFit.contain,
-                                  ),
-                                const SizedBox(height: 8),
-                                Text(question.questionText),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Seçilen Cevap: ${question.selectedOption}',
-                                  style: const TextStyle(color: Colors.red),
-                                ),
-                                Text(
-                                  'Doğru Cevap: ${question.correctOption}',
-                                  style: const TextStyle(color: Colors.green),
-                                ),
-                                if (question.explanation.isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    'Açıklama:',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  Text(question.explanation),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+            Text(
+              subtitle,
+              style: GoogleFonts.figtree(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
           ],
         ),
       ),
+    ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.3, duration: 600.ms);
+  }
+
+  Widget _buildWeeklyWorkDistribution() {
+    return SliverToBoxAdapter(
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Haftalık Çalışma Ritmin',
+              style: GoogleFonts.figtree(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 200,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: 100,
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchTooltipData: BarTouchTooltipData(
+                      tooltipRoundedRadius: 8,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        return BarTooltipItem(
+                          '${rod.toY.toInt()} dakika',
+                          const TextStyle(color: Colors.white),
+                        );
+                      },
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          const days = [
+                            'Pzt',
+                            'Sal',
+                            'Çar',
+                            'Per',
+                            'Cum',
+                            'Cmt',
+                            'Paz'
+                          ];
+                          return Text(
+                            days[value.toInt()],
+                            style: GoogleFonts.figtree(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 40,
+                        getTitlesWidget: (value, meta) {
+                          return Text(
+                            '${value.toInt()}',
+                            style: GoogleFonts.figtree(
+                              fontSize: 10,
+                              color: Colors.grey[600],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  barGroups: _getWeeklyBarGroups(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      )
+          .animate()
+          .fadeIn(delay: 200.ms, duration: 600.ms)
+          .slideX(begin: 0.3, duration: 600.ms),
     );
   }
-} 
+
+  List<BarChartGroupData> _getWeeklyBarGroups() {
+    final weeklyData = _performanceData['weeklyStudyData'] ?? List.filled(7, 0);
+    return List.generate(7, (index) {
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            toY: (weeklyData[index] ?? 0).toDouble(),
+            color: AppTheme.primaryColor,
+            width: 20,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(4),
+              topRight: Radius.circular(4),
+            ),
+          ),
+        ],
+      );
+    });
+  }
+
+  Widget _buildSubjectTimeDistribution() {
+    return SliverToBoxAdapter(
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Zamanını Neye Harcadın?',
+              style: GoogleFonts.figtree(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 200,
+                    child: PieChart(
+                      PieChartData(
+                        sectionsSpace: 2,
+                        centerSpaceRadius: 40,
+                        sections: _getSubjectPieSections(),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  flex: 1,
+                  child: _buildSubjectLegend(),
+                ),
+              ],
+            ),
+          ],
+        ),
+      )
+          .animate()
+          .fadeIn(delay: 400.ms, duration: 600.ms)
+          .slideX(begin: 0.3, duration: 600.ms),
+    );
+  }
+
+  List<PieChartSectionData> _getSubjectPieSections() {
+    final subjectData = _performanceData['subjectTimeDistribution'] ?? {};
+    final colors = [
+      AppTheme.primaryColor,
+      AppTheme.accentColor,
+      AppTheme.successColor,
+      AppTheme.warningColor,
+      Colors.purple,
+      Colors.orange,
+    ];
+    if (subjectData.isEmpty) return <PieChartSectionData>[];
+    final entries = subjectData.entries.toList();
+    return List<PieChartSectionData>.generate(entries.length, (i) {
+      final entry = entries[i];
+      return PieChartSectionData(
+        color: colors[i % colors.length],
+        value: (entry.value is num) ? (entry.value as num).toDouble() : 0.0,
+        title: '${entry.value}',
+        radius: 60,
+        titleStyle: GoogleFonts.figtree(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      );
+    });
+  }
+
+  Widget _buildSubjectLegend() {
+    final subjectData = _performanceData['subjectTimeDistribution'] ?? {};
+    final colors = [
+      AppTheme.primaryColor,
+      AppTheme.accentColor,
+      AppTheme.successColor,
+      AppTheme.warningColor,
+      Colors.purple,
+      Colors.orange,
+    ];
+
+    if (subjectData.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final keys = subjectData.keys.toList();
+    return Column(
+      children: List<Widget>.generate(keys.length, (i) {
+        final entry = MapEntry(keys[i], subjectData[keys[i]]);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: colors[i % colors.length],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  entry.key,
+                  style: GoogleFonts.figtree(
+                    fontSize: 12,
+                    color: Colors.grey[700],
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildActivityHistory() {
+    return SliverToBoxAdapter(
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Son Aktivitelerin',
+              style: GoogleFonts.figtree(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ..._activityLogs.map((log) => _buildActivityLogTile(log)).toList(),
+          ],
+        ),
+      )
+          .animate()
+          .fadeIn(delay: 600.ms, duration: 600.ms)
+          .slideX(begin: 0.3, duration: 600.ms),
+    );
+  }
+
+  Widget _buildActivityLogTile(Map<String, dynamic> log) {
+    final timestamp = log['timestamp'] as Timestamp?;
+    final date = timestamp?.toDate() ?? DateTime.now();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.grey.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              _getSubjectIcon(log['subject'] ?? ''),
+              color: AppTheme.primaryColor,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  log['subject'] ?? 'Bilinmeyen Ders',
+                  style: GoogleFonts.figtree(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
+                ),
+                Text(
+                  log['topic'] ?? 'Konu belirtilmemiş',
+                  style: GoogleFonts.figtree(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                Text(
+                  DateFormat('dd MMM, HH:mm').format(date),
+                  style: GoogleFonts.figtree(
+                    fontSize: 10,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${log['duration'] ?? 0} dk',
+                style: GoogleFonts.figtree(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+              Text(
+                '+${log['xp'] ?? 0} XP',
+                style: GoogleFonts.figtree(
+                  fontSize: 12,
+                  color: AppTheme.accentColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getSubjectIcon(String subject) {
+    switch (subject.toLowerCase()) {
+      case 'matematik':
+        return Icons.functions;
+      case 'fizik':
+        return Icons.science;
+      case 'kimya':
+        return Icons.science_outlined;
+      case 'biyoloji':
+        return Icons.biotech;
+      case 'türkçe':
+        return Icons.language;
+      case 'tarih':
+        return Icons.history;
+      case 'coğrafya':
+        return Icons.public;
+      case 'felsefe':
+        return Icons.psychology;
+      default:
+        return Icons.book;
+    }
+  }
+}

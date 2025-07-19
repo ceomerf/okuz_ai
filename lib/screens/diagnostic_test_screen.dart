@@ -23,10 +23,10 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
   int? _selectedOptionIndex;
   bool _showExplanation = false;
   bool _isSubmitting = false;
-  
+
   // Her soru için harcanan süreyi takip etmek için
   DateTime? _questionStartTime;
-  
+
   // Test sonuçları
   final List<QuestionResult> _results = [];
   int _totalTimeSpent = 0;
@@ -47,13 +47,15 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
   }
 
   DiagnosticTest get currentTest => widget.tests[_currentTestIndex];
-  DiagnosticQuestion get currentQuestion => currentTest.questions[_currentQuestionIndex];
-  bool get isLastQuestion => _currentQuestionIndex == currentTest.questions.length - 1;
+  DiagnosticQuestion get currentQuestion =>
+      currentTest.questions[_currentQuestionIndex];
+  bool get isLastQuestion =>
+      _currentQuestionIndex == currentTest.questions.length - 1;
   bool get isLastTest => _currentTestIndex == widget.tests.length - 1;
 
   void _selectOption(int index) {
     if (_showExplanation) return; // Açıklama gösteriliyorsa seçim yapılamaz
-    
+
     setState(() {
       _selectedOptionIndex = index;
     });
@@ -61,10 +63,11 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
 
   void _checkAnswer() {
     if (_selectedOptionIndex == null) return;
-    
+
     final timeSpent = _getTimeSpentOnQuestion();
-    final isCorrect = _selectedOptionIndex == currentQuestion.correctOptionIndex;
-    
+    final isCorrect =
+        _selectedOptionIndex == currentQuestion.correctOptionIndex;
+
     // Sonucu kaydet
     _results.add(QuestionResult(
       questionId: currentQuestion.id,
@@ -74,9 +77,9 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
       selectedOptionIndex: _selectedOptionIndex!,
       timeSpent: timeSpent,
     ));
-    
+
     _totalTimeSpent += timeSpent;
-    
+
     setState(() {
       _showExplanation = true;
     });
@@ -109,13 +112,13 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
     setState(() {
       _isSubmitting = true;
     });
-    
+
     try {
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) {
         throw Exception('Kullanıcı oturum açmamış');
       }
-      
+
       final testResult = TestResult(
         testId: 'diagnostic_test_${DateTime.now().millisecondsSinceEpoch}',
         userId: userId,
@@ -123,9 +126,10 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
         questions: _results,
         totalTimeSpent: _totalTimeSpent,
       );
-      
+
       // Cloud Functions'a gönder
-      final callable = FirebaseFunctions.instance.httpsCallable('createAdvancedProfile');
+      final callable =
+          FirebaseFunctions.instance.httpsCallable('createAdvancedProfile');
       await callable.call({
         'diagnosticTestResults': {
           'testId': testResult.testId,
@@ -134,7 +138,7 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
           'totalTimeSpent': testResult.totalTimeSpent,
         },
       });
-      
+
       // Sonuç ekranına git
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -171,9 +175,11 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
                 children: [
                   // İlerleme göstergesi
                   LinearProgressIndicator(
-                    value: (_currentQuestionIndex + 1) / currentTest.questions.length,
+                    value: (_currentQuestionIndex + 1) /
+                        currentTest.questions.length,
                     backgroundColor: Colors.grey[300],
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -184,7 +190,7 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Soru
                   Text(
                     currentQuestion.questionText,
@@ -194,7 +200,7 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  
+
                   // Seçenekler
                   Expanded(
                     child: ListView.builder(
@@ -202,18 +208,19 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
                       itemBuilder: (context, index) {
                         final option = currentQuestion.options[index];
                         final isSelected = _selectedOptionIndex == index;
-                        final isCorrect = index == currentQuestion.correctOptionIndex;
-                        
+                        final isCorrect =
+                            index == currentQuestion.correctOptionIndex;
+
                         // Renk belirleme
                         Color backgroundColor;
                         Color borderColor;
-                        
+
                         if (_showExplanation) {
                           if (isCorrect) {
-                            backgroundColor = Colors.green.withOpacity(0.1);
+                            backgroundColor = Colors.green.withAlpha(26);
                             borderColor = Colors.green;
                           } else if (isSelected) {
-                            backgroundColor = Colors.red.withOpacity(0.1);
+                            backgroundColor = Colors.red.withAlpha(26);
                             borderColor = Colors.red;
                           } else {
                             backgroundColor = Colors.white;
@@ -221,14 +228,15 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
                           }
                         } else {
                           if (isSelected) {
-                            backgroundColor = AppTheme.primaryColor.withOpacity(0.1);
+                            backgroundColor =
+                                AppTheme.primaryColor.withAlpha(26);
                             borderColor = AppTheme.primaryColor;
                           } else {
                             backgroundColor = Colors.white;
                             borderColor = Colors.grey;
                           }
                         }
-                        
+
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12.0),
                           child: InkWell(
@@ -249,10 +257,13 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       border: Border.all(color: borderColor),
-                                      color: isSelected ? borderColor : Colors.transparent,
+                                      color: isSelected
+                                          ? borderColor
+                                          : Colors.transparent,
                                     ),
                                     child: isSelected
-                                        ? const Icon(Icons.check, size: 18, color: Colors.white)
+                                        ? const Icon(Icons.check,
+                                            size: 18, color: Colors.white)
                                         : null,
                                   ),
                                   const SizedBox(width: 16),
@@ -261,7 +272,9 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
                                       option,
                                       style: TextStyle(
                                         fontSize: 16,
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                       ),
                                     ),
                                   ),
@@ -273,13 +286,13 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
                       },
                     ),
                   ),
-                  
+
                   // Açıklama (doğru cevap seçildikten sonra gösterilir)
                   if (_showExplanation)
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
+                        color: Colors.blue.withAlpha(26),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.blue),
                       ),
@@ -298,19 +311,22 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
                         ],
                       ),
                     ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Alt butonlar
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       if (!_showExplanation)
                         ElevatedButton(
-                          onPressed: _selectedOptionIndex != null ? _checkAnswer : null,
+                          onPressed: _selectedOptionIndex != null
+                              ? _checkAnswer
+                              : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.primaryColor,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -322,14 +338,16 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
                           onPressed: _nextQuestion,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.primaryColor,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          child: Text(isLastQuestion && isLastTest ? 'Testi Bitir' : 'Sonraki Soru'),
+                          child: Text(isLastQuestion && isLastTest
+                              ? 'Testi Bitir'
+                              : 'Sonraki Soru'),
                         ),
-                      
                       TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
@@ -343,4 +361,4 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
             ),
     );
   }
-} 
+}

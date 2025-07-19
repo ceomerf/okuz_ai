@@ -20,30 +20,60 @@ class StartingPointPage extends StatefulWidget {
 class _StartingPointPageState extends State<StartingPointPage> {
   final List<Map<String, dynamic>> _startingPoints = [
     {
-      'id': 'school',
-      'title': 'Okulla Birlikte İlerle',
-      'subtitle': 'Ders programını okulunla senkronize edelim.',
-      'icon': Icons.school_outlined,
-      'isRecommended': true,
+      'id': 'behind',
+      'title': 'Geride Kaldım',
+      'subtitle': 'Eksik konularımı tamamlamak istiyorum',
+      'description':
+          'Önceki dönemlerin eksik kalan konularından başlayarak temeli güçlendiririm',
+      'icon': '🔄',
+      'color': Colors.orange,
+      'features': [
+        'Temel konulardan başlama',
+        'Eksik konuları kapatma',
+        'Sağlam temel oluşturma',
+        'Adım adım ilerleme'
+      ]
     },
     {
-      'id': 'beginner',
-      'title': 'En Baştan Başla',
-      'subtitle': 'Tüm konuları temelden alarak eksiksiz bir başlangıç yap.',
-      'icon': Icons.refresh_rounded,
-      'isRecommended': false,
+      'id': 'current',
+      'title': 'Seviyemde',
+      'subtitle': 'Mevcut sınıf seviyemden devam etmek istiyorum',
+      'description': 'Sınıf seviyeme uygun konularla normal tempoda ilerlerim',
+      'icon': '⚖️',
+      'color': Colors.blue,
+      'features': [
+        'Sınıf seviyesi konular',
+        'Normal tempo ilerleme',
+        'Dengeli program',
+        'Müfredata uygun çalışma'
+      ]
+    },
+    {
+      'id': 'ahead',
+      'title': 'İlerde Olmak İstiyorum',
+      'subtitle': 'Sınıf seviyemin ötesine geçmek istiyorum',
+      'description':
+          'İleri seviye konularla hızlı ilerleyerek avantaj yakalayacağım',
+      'icon': '🚀',
+      'color': Colors.green,
+      'features': [
+        'İleri seviye konular',
+        'Hızlı ilerleme',
+        'Zorlayıcı program',
+        'Avantaj yakalama'
+      ]
     },
   ];
 
-  void _selectStartingPoint(String pointId) {
-    widget.onSelectionChanged(pointId);
+  void _selectStartingPoint(String startingPoint) {
+    widget.onSelectionChanged(startingPoint);
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      color: AppTheme.backgroundColor,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -51,10 +81,10 @@ class _StartingPointPageState extends State<StartingPointPage> {
           Animate(
             effects: const [FadeEffect(duration: Duration(milliseconds: 500))],
             child: Text(
-              'Yolculuğa Nereden Başlıyoruz?',
+              'Hangi seviyeden başlamak istiyorsun?',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimaryColor,
+                    color: AppTheme.getPrimaryTextColor(context),
                   ),
               textAlign: TextAlign.center,
             ),
@@ -64,9 +94,9 @@ class _StartingPointPageState extends State<StartingPointPage> {
             delay: const Duration(milliseconds: 200),
             effects: const [FadeEffect(duration: Duration(milliseconds: 500))],
             child: Text(
-              'Sana en uygun başlangıç noktasını seç.',
+              'AI koçun sana en uygun öğrenme rotasını hazırlayacak:',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textSecondaryColor,
+                    color: AppTheme.getSecondaryTextColor(context),
                   ),
               textAlign: TextAlign.center,
             ),
@@ -77,9 +107,11 @@ class _StartingPointPageState extends State<StartingPointPage> {
               padding: EdgeInsets.zero,
               itemCount: _startingPoints.length,
               itemBuilder: (context, index) {
-                final point = _startingPoints[index];
-                final isSelected = point['id'] == widget.onboardingData.startPoint;
-                return _buildStartingPointCard(point, isSelected, index);
+                final startingPoint = _startingPoints[index];
+                final isSelected =
+                    startingPoint['id'] == widget.onboardingData.startPoint;
+                return _buildStartingPointCard(
+                    startingPoint, isSelected, index);
               },
             ),
           ),
@@ -88,92 +120,158 @@ class _StartingPointPageState extends State<StartingPointPage> {
     );
   }
 
-  Widget _buildStartingPointCard(Map<String, dynamic> point, bool isSelected, int index) {
-    final isRecommended = point['isRecommended'] == true;
+  Widget _buildStartingPointCard(
+      Map<String, dynamic> startingPoint, bool isSelected, int index) {
     return Animate(
       delay: Duration(milliseconds: 300 + 100 * index),
       effects: const [
         FadeEffect(duration: Duration(milliseconds: 400)),
-        SlideEffect(begin: Offset(0, 0.2), end: Offset.zero)
+        SlideEffect(begin: Offset(0.3, 0), end: Offset.zero),
       ],
       child: GestureDetector(
-        onTap: () => _selectStartingPoint(point['id']),
+        onTap: () => _selectStartingPoint(startingPoint['id']),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
+          margin: const EdgeInsets.only(bottom: 20),
           padding: const EdgeInsets.all(20),
-          margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: isSelected ? AppTheme.primaryColor : AppTheme.cardColor,
+            borderRadius: BorderRadius.circular(20),
+            color: isSelected
+                ? AppTheme.primaryColor.withOpacity(0.1)
+                : Theme.of(context).cardColor,
             border: Border.all(
-              color: isSelected ? AppTheme.primaryColor : AppTheme.dividerColor,
+              color: isSelected
+                  ? AppTheme.primaryColor
+                  : Theme.of(context).dividerColor,
               width: isSelected ? 2 : 1,
             ),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: AppTheme.primaryColor.withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: AppTheme.primaryColor.withAlpha(77),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 8,
+                      color: Theme.of(context).shadowColor.withOpacity(0.05),
+                      blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
                   ],
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                point['icon'],
-                size: 40,
-                color: isSelected ? Colors.white : AppTheme.primaryColor,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (isRecommended)
-                      Text(
-                        'Tavsiye Edilen',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white.withOpacity(0.8) : AppTheme.successColor,
-                            ),
+              Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: (startingPoint['color'] as Color).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        startingPoint['icon'],
+                        style: const TextStyle(fontSize: 24),
                       ),
-                    Text(
-                      point['title'],
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
-                          ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      point['subtitle'],
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: isSelected ? Colors.white.withOpacity(0.9) : AppTheme.textSecondaryColor,
-                          ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          startingPoint['title'],
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isSelected
+                                        ? AppTheme.primaryColor
+                                        : AppTheme.getPrimaryTextColor(context),
+                                  ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          startingPoint['subtitle'],
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                color: AppTheme.getSecondaryTextColor(context),
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  if (isSelected)
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                ],
               ),
-              if (isSelected)
-                const Icon(
-                  Icons.check_circle_rounded,
-                  color: Colors.white,
-                  size: 28,
-                ),
+              const SizedBox(height: 16),
+              Text(
+                startingPoint['description'],
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.getSecondaryTextColor(context),
+                      height: 1.4,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children:
+                    (startingPoint['features'] as List<String>).map((feature) {
+                  return Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppTheme.primaryColor.withOpacity(0.1)
+                          : (startingPoint['color'] as Color).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppTheme.primaryColor.withOpacity(0.3)
+                            : (startingPoint['color'] as Color)
+                                .withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      feature,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: isSelected
+                                ? AppTheme.primaryColor
+                                : (startingPoint['color'] as Color),
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                  );
+                }).toList(),
+              ),
             ],
           ),
         ),
       ),
     );
   }
-} 
+}

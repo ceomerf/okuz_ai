@@ -19,10 +19,10 @@ class TestResultScreen extends StatelessWidget {
     final double correctPercentage = (correctAnswers / totalQuestions) * 100;
     final int totalTimeSpent = results.fold(0, (sum, r) => sum + r.timeSpent);
     final double avgTimePerQuestion = totalTimeSpent / totalQuestions;
-    
+
     // Derslere göre performans
     final Map<String, Map<String, dynamic>> subjectPerformance = {};
-    
+
     for (final result in results) {
       if (!subjectPerformance.containsKey(result.subject)) {
         subjectPerformance[result.subject] = {
@@ -31,19 +31,22 @@ class TestResultScreen extends StatelessWidget {
           'timeSpent': 0,
         };
       }
-      
-      subjectPerformance[result.subject]!['total'] = subjectPerformance[result.subject]!['total'] + 1;
+
+      subjectPerformance[result.subject]!['total'] =
+          subjectPerformance[result.subject]!['total'] + 1;
       if (result.isCorrect) {
-        subjectPerformance[result.subject]!['correct'] = subjectPerformance[result.subject]!['correct'] + 1;
+        subjectPerformance[result.subject]!['correct'] =
+            subjectPerformance[result.subject]!['correct'] + 1;
       }
-      subjectPerformance[result.subject]!['timeSpent'] = subjectPerformance[result.subject]!['timeSpent'] + result.timeSpent;
+      subjectPerformance[result.subject]!['timeSpent'] =
+          subjectPerformance[result.subject]!['timeSpent'] + result.timeSpent;
     }
-    
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Test Sonuçları'),
-        backgroundColor: AppTheme.backgroundColor,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -95,7 +98,7 @@ class TestResultScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Derslere göre performans
             const Text(
               'Derslere Göre Performans',
@@ -105,7 +108,7 @@ class TestResultScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             ...subjectPerformance.entries.map((entry) {
               final subject = entry.key;
               final data = entry.value;
@@ -114,7 +117,7 @@ class TestResultScreen extends StatelessWidget {
               final int timeSpent = data['timeSpent'];
               final double correctRate = correct / total;
               final double avgTime = timeSpent / total;
-              
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: Card(
@@ -182,9 +185,9 @@ class TestResultScreen extends StatelessWidget {
                 ),
               );
             }).toList(),
-            
+
             const SizedBox(height: 32),
-            
+
             // Tavsiyeler
             Card(
               elevation: 4,
@@ -214,9 +217,9 @@ class TestResultScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Devam Et Butonu
             Center(
               child: ElevatedButton(
@@ -229,7 +232,8 @@ class TestResultScreen extends StatelessWidget {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -257,7 +261,7 @@ class TestResultScreen extends StatelessWidget {
           height: 80,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: color.withOpacity(0.1),
+            color: color.withAlpha(26),
           ),
           child: Center(
             child: Text(
@@ -287,54 +291,59 @@ class TestResultScreen extends StatelessWidget {
     return Colors.red;
   }
 
-  String _generateRecommendation(Map<String, Map<String, dynamic>> subjectPerformance) {
+  String _generateRecommendation(
+      Map<String, Map<String, dynamic>> subjectPerformance) {
     // En düşük performanslı dersi bul
     String? weakestSubject;
     double lowestRate = 1.0;
-    
+
     for (final entry in subjectPerformance.entries) {
       final subject = entry.key;
       final data = entry.value;
       final double correctRate = data['correct'] / data['total'];
-      
+
       if (correctRate < lowestRate) {
         lowestRate = correctRate;
         weakestSubject = subject;
       }
     }
-    
+
     // En yavaş cevaplanan dersi bul
     String? slowestSubject;
     double highestAvgTime = 0;
-    
+
     for (final entry in subjectPerformance.entries) {
       final subject = entry.key;
       final data = entry.value;
       final double avgTime = data['timeSpent'] / data['total'];
-      
+
       if (avgTime > highestAvgTime) {
         highestAvgTime = avgTime;
         slowestSubject = subject;
       }
     }
-    
+
     // Tavsiye oluştur
     String recommendation = '';
-    
+
     if (weakestSubject != null && lowestRate < 0.5) {
-      recommendation += '• $weakestSubject dersinde temel kavramları gözden geçirmeniz faydalı olacaktır.\n\n';
+      recommendation +=
+          '• $weakestSubject dersinde temel kavramları gözden geçirmeniz faydalı olacaktır.\n\n';
     }
-    
+
     if (slowestSubject != null && highestAvgTime > 45) {
-      recommendation += '• $slowestSubject dersinde soru çözme hızınızı artırmak için daha fazla pratik yapmanızı öneririz.\n\n';
+      recommendation +=
+          '• $slowestSubject dersinde soru çözme hızınızı artırmak için daha fazla pratik yapmanızı öneririz.\n\n';
     }
-    
+
     if (recommendation.isEmpty) {
-      recommendation = 'Tebrikler! Genel performansınız oldukça iyi. Düzenli çalışmaya devam ederek başarınızı koruyabilirsiniz.';
+      recommendation =
+          'Tebrikler! Genel performansınız oldukça iyi. Düzenli çalışmaya devam ederek başarınızı koruyabilirsiniz.';
     } else {
-      recommendation += 'Bu alanlara odaklanarak kişiselleştirilmiş çalışma planınızda daha hızlı ilerleme kaydedebilirsiniz.';
+      recommendation +=
+          'Bu alanlara odaklanarak kişiselleştirilmiş çalışma planınızda daha hızlı ilerleme kaydedebilirsiniz.';
     }
-    
+
     return recommendation;
   }
-} 
+}

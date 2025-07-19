@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:okuz_ai/models/onboarding_data.dart';
 import 'package:okuz_ai/services/api_key.dart';
@@ -11,7 +12,8 @@ class GeminiService {
         ? 'ilgili tüm dersler'
         : data.selectedSubjects.join(', ');
 
-    final String currentDate = DateFormat('d MMMM yyyy', 'tr_TR').format(DateTime.now());
+    final String currentDate =
+        DateFormat('d MMMM yyyy', 'tr_TR').format(DateTime.now());
     final bool followSchool = data.startPoint == 'school';
 
     return '''
@@ -26,20 +28,19 @@ KULLANICI BİLGİLERİ:
 - Okul Müfredatına Paralel mi: [${followSchool ? 'Evet' : 'Hayır'}]
 
 KURALLAR:
-1. Plan, başlangıç tarihinden itibaren TAM OLARAK 1 AYLIK (yaklaşık 4 hafta) bir süreyi kapsamalıdır.
+1. Plan, başlangıç tarihinden itibaren TAM OLARAK 1 HAFTALIK bir süreyi kapsamalıdır.
 2. Plan, kullanıcının sınıf seviyesine ve seçtiği derslere uygun, gerçekçi ve dengeli bir konu dağılımı içermelidir.
-3. Kullanıcı "Okul Müfredatına Paralel" seçeneğini işaretlediyse, planı o ay okulda işlenmesi beklenen konulara göre oluştur. Tatil aylarında (Haziran, Temmuz, Ağustos) genel tekrar ve özet konularına odaklan.
+3. Kullanıcı "Okul Müfredatına Paralel" seçeneğini işaretlediyse, planı o hafta okulda işlenmesi beklenen konulara göre oluştur. Tatil dönemlerinde genel tekrar ve özet konularına odaklan.
 4. "Okul Müfredatına Paralel" seçilmediyse ("En Baştan Başla"), konuları en temelden başlayarak sırayla ele alan bir plan yap.
 5. Her gün için ayrılan toplam süre, kullanıcının belirttiği günlük çalışma süresini aşmamalıdır.
 6. Yanıt olarak SADECE ve SADECE aşağıda belirtilen yapıda bir JSON nesnesi döndür. Başka hiçbir metin, açıklama, selamlama veya ```json ``` gibi işaretçiler ekleme. Yanıtın doğrudan '{' karakteri ile başlamalıdır.
 
 İSTENEN JSON FORMATI:
 {
-  "planTitle": "Temmuz Ayı Çalışma Planı",
-  "weeks": [
-    {
-      "weekNumber": 1,
-      "days": [
+  "planTitle": "1. Hafta Çalışma Planı",
+  "week": {
+    "weekNumber": 1,
+    "days": [
         {
           "day": "Pazartesi",
           "date": "2024-07-22",
@@ -78,9 +79,8 @@ KURALLAR:
           "isRestDay": true,
           "dailyTasks": []
         }
-      ]
-    }
-  ]
+    ]
+  }
 }
 ''';
   }
@@ -88,7 +88,8 @@ KURALLAR:
   /// Oluşturulan prompt'u kullanarak Gemini API'sinden ders planını alır.
   Future<String> getStudyPlanFromGemini(String prompt) async {
     const String model = 'gemini-1.5-pro';
-    final Uri url = Uri.parse('https://generativelanguage.googleapis.com/v1/models/$model:generateContent?key=$geminiApiKey');
+    final Uri url = Uri.parse(
+        'https://generativelanguage.googleapis.com/v1/models/$model:generateContent?key=$geminiApiKey');
 
     try {
       final response = await http.post(
@@ -96,7 +97,11 @@ KURALLAR:
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [
-            {'parts': [{'text': prompt}]}
+            {
+              'parts': [
+                {'text': prompt}
+              ]
+            }
           ],
           "generationConfig": {
             "temperature": 0.3,
@@ -109,16 +114,19 @@ KURALLAR:
 
       if (response.statusCode == 200) {
         final decodedResponse = jsonDecode(response.body);
-        final text = decodedResponse['candidates'][0]['content']['parts'][0]['text'];
+        final text =
+            decodedResponse['candidates'][0]['content']['parts'][0]['text'];
         return text;
       } else {
         final errorBody = response.body;
-        print('API Hatası Detayı: $errorBody');
-        throw Exception('API\'den Hatalı Durum Kodu Döndü: ${response.statusCode}. Detay: $errorBody');
+        debugPrint('❌ API Hatası Detayı: $errorBody');
+        throw Exception(
+            'API\'den Hatalı Durum Kodu Döndü: ${response.statusCode}. Detay: $errorBody');
       }
     } catch (e) {
-      print('Gemini API Hatası: $e');
-      throw Exception('Ders planı oluşturulurken bir hata oluştu. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.');
+      debugPrint('❌ Gemini API Hatası: $e');
+      throw Exception(
+          'Ders planı oluşturulurken bir hata oluştu. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.');
     }
   }
-} 
+}

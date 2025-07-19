@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:okuz_ai/models/onboarding_data.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class NameAndTargetPage extends StatefulWidget {
   final OnboardingData onboardingData;
   final VoidCallback onNext;
+  final bool isParentMode; // Veli modu için
 
-  const NameAndTargetPage({Key? key, required this.onboardingData, required this.onNext}) : super(key: key);
+  const NameAndTargetPage({
+    Key? key,
+    required this.onboardingData,
+    required this.onNext,
+    this.isParentMode = false, // Varsayılan olarak false
+  }) : super(key: key);
 
   @override
   State<NameAndTargetPage> createState() => _NameAndTargetPageState();
@@ -19,7 +26,7 @@ class _NameAndTargetPageState extends State<NameAndTargetPage> {
   String? _selectedUniversity;
   bool _showUniversityList = false;
   final FocusNode _universityFocusNode = FocusNode();
-  
+
   // Üniversite listesi
   final List<String> _universities = [
     // Devlet Üniversiteleri
@@ -150,7 +157,7 @@ class _NameAndTargetPageState extends State<NameAndTargetPage> {
     "Yalova Üniversitesi",
     "Yozgat Bozok Üniversitesi",
     "Zonguldak Bülent Ecevit Üniversitesi",
-    
+
     // Vakıf (Özel) Üniversiteleri
     "Acıbadem Mehmet Ali Aydınlar Üniversitesi (İstanbul)",
     "Alanya Üniversitesi (Antalya)",
@@ -226,7 +233,7 @@ class _NameAndTargetPageState extends State<NameAndTargetPage> {
     "Yeditepe Üniversitesi (İstanbul)",
     "Yeni Yüzyıl Üniversitesi (İstanbul)",
     "Yüksek İhtisas Üniversitesi (Ankara)",
-    
+
     // KKTC Üniversiteleri
     "Ada Kent Üniversitesi (Gazimağusa)",
     "Akdeniz Karpaz Üniversitesi (Lefkoşa)",
@@ -247,17 +254,18 @@ class _NameAndTargetPageState extends State<NameAndTargetPage> {
     "Uluslararası Final Üniversitesi (Girne)",
     "Uluslararası Kıbrıs Üniversitesi (Lefkoşa)"
   ];
-  
+
   List<String> _filteredUniversities = [];
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.onboardingData.fullName);
+    _nameController =
+        TextEditingController(text: widget.onboardingData.fullName);
     _universitySearchController = TextEditingController();
     _selectedUniversity = widget.onboardingData.targetUniversity;
     _filteredUniversities = _universities;
-    
+
     _universityFocusNode.addListener(() {
       if (_universityFocusNode.hasFocus) {
         setState(() {
@@ -292,27 +300,28 @@ class _NameAndTargetPageState extends State<NameAndTargetPage> {
       _selectedUniversity = university;
       _showUniversityList = false;
       _universitySearchController.text = university;
-      
-      // Üniversite seçildiğinde onboardingData'yı güncelle
       widget.onboardingData.targetUniversity = university;
-      
-      // UI'ı yenilemek için onNext çağır
-      widget.onNext();
     });
     FocusScope.of(context).unfocus();
+    _tryAutoSubmit();
   }
 
   bool _isFormValid() {
-    return _nameController.text.trim().isNotEmpty && _selectedUniversity != null;
+    if (widget.isParentMode) {
+      return _nameController.text.trim().isNotEmpty;
+    } else {
+      return _nameController.text.trim().isNotEmpty &&
+          _selectedUniversity != null;
+    }
   }
 
-  void _onNext() {
-    if (_formKey.currentState?.validate() ?? false) {
-      if (_isFormValid()) {
-        widget.onboardingData.fullName = _nameController.text.trim();
+  void _tryAutoSubmit() {
+    if (_isFormValid()) {
+      widget.onboardingData.fullName = _nameController.text.trim();
+      if (!widget.isParentMode && _selectedUniversity != null) {
         widget.onboardingData.targetUniversity = _selectedUniversity!;
-        widget.onNext();
       }
+      widget.onNext();
     }
   }
 
@@ -327,88 +336,202 @@ class _NameAndTargetPageState extends State<NameAndTargetPage> {
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        color: AppTheme.backgroundColor,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 60),
-              Text(
-                'Kendini Tanıt',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: SingleChildScrollView(
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 80),
+                  // Başlık
+                  Text(
+                    widget.isParentMode ? 'Veli Bilgileri' : 'Kendini Tanıt',
+                    style: GoogleFonts.figtree(
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimaryColor,
+                      color: AppTheme.getPrimaryTextColor(context),
                     ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Adını ve hedeflediğin üniversite/bölümü yaz.',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 40),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Ad Soyad',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Lütfen adını gir.' : null,
-                onChanged: (value) {
-                  // Ad soyad değiştiğinde onboardingData'yı güncelle
-                  widget.onboardingData.fullName = value.trim();
-                },
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _universitySearchController,
-                focusNode: _universityFocusNode,
-                decoration: InputDecoration(
-                  labelText: 'Hedef Üniversite/Bölüm',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _universitySearchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _universitySearchController.clear();
-                            _filterUniversities('');
-                          },
-                        )
-                      : null,
-                ),
-                onChanged: _filterUniversities,
-                validator: (v) => (_selectedUniversity == null) ? 'Lütfen hedefini gir.' : null,
-              ),
-              if (_showUniversityList)
-                Expanded(
-                  child: Card(
-                    margin: const EdgeInsets.only(top: 8),
-                    elevation: 4,
-                    child: _filteredUniversities.isEmpty
-                        ? const Center(child: Text('Sonuç bulunamadı'))
-                        : ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: _filteredUniversities.length,
-                            itemBuilder: (context, index) {
-                              final university = _filteredUniversities[index];
-                              return ListTile(
-                                title: Text(university),
-                                onTap: () => _selectUniversity(university),
-                              );
-                            },
-                          ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-              if (!_showUniversityList) const Spacer(),
-            ],
+                  const SizedBox(height: 12),
+                  // Alt başlık
+                  Text(
+                    widget.isParentMode
+                        ? 'Veli adını yaz.'
+                        : 'Adını ve hedeflediğin üniversiteyi yaz.',
+                    style: GoogleFonts.figtree(
+                      fontSize: 16,
+                      color: AppTheme.getSecondaryTextColor(context),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 60),
+                  // İsim alanı
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context).dividerColor,
+                        width: 1,
+                      ),
+                    ),
+                    child: TextFormField(
+                      controller: _nameController,
+                      cursorColor: AppTheme.primaryColor,
+                      style: GoogleFonts.figtree(fontSize: 16),
+                      decoration: InputDecoration(
+                        labelText: widget.isParentMode
+                            ? 'Veli Adı Soyadı'
+                            : 'Ad Soyad',
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 16),
+                        labelStyle: GoogleFonts.figtree(
+                          color: AppTheme.getSecondaryTextColor(context),
+                          fontSize: 16,
+                        ),
+                        floatingLabelStyle: GoogleFonts.figtree(
+                          color: AppTheme.primaryColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Lütfen adını gir.'
+                          : null,
+                      onChanged: (value) {
+                        widget.onboardingData.fullName = value.trim();
+                        setState(() {});
+                        _tryAutoSubmit();
+                      },
+                      textInputAction: widget.isParentMode
+                          ? TextInputAction.done
+                          : TextInputAction.next,
+                      onFieldSubmitted: (_) => _tryAutoSubmit(),
+                    ),
+                  ),
+                  // Öğrenci modu için üniversite alanı
+                  if (!widget.isParentMode) ...[
+                    const SizedBox(height: 24),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).dividerColor,
+                          width: 1,
+                        ),
+                      ),
+                      child: TextFormField(
+                        controller: _universitySearchController,
+                        focusNode: _universityFocusNode,
+                        cursorColor: AppTheme.primaryColor,
+                        style: GoogleFonts.figtree(fontSize: 16),
+                        decoration: InputDecoration(
+                          labelText: 'Hedef Üniversite',
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 16),
+                          labelStyle: GoogleFonts.figtree(
+                            color: AppTheme.getSecondaryTextColor(context),
+                            fontSize: 16,
+                          ),
+                          floatingLabelStyle: GoogleFonts.figtree(
+                            color: AppTheme.primaryColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.school_outlined,
+                            color: AppTheme.primaryColor,
+                            size: 20,
+                          ),
+                          suffixIcon:
+                              _universitySearchController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: Icon(
+                                        Icons.clear,
+                                        color: AppTheme.primaryColor,
+                                        size: 20,
+                                      ),
+                                      onPressed: () {
+                                        _universitySearchController.clear();
+                                        _filterUniversities('');
+                                        setState(() {});
+                                      },
+                                    )
+                                  : null,
+                        ),
+                        onChanged: (value) {
+                          _filterUniversities(value);
+                          setState(() {});
+                        },
+                        validator: (v) => (_selectedUniversity == null)
+                            ? 'Lütfen hedefini gir.'
+                            : null,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _tryAutoSubmit(),
+                      ),
+                    ),
+                  ],
+                  // Üniversite listesi
+                  if (_showUniversityList && !widget.isParentMode)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      constraints: const BoxConstraints(maxHeight: 200),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Theme.of(context).dividerColor,
+                          width: 1,
+                        ),
+                      ),
+                      child: _filteredUniversities.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text('Sonuç bulunamadı',
+                                  style: GoogleFonts.figtree()),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: _filteredUniversities.length,
+                              itemBuilder: (context, index) {
+                                final university = _filteredUniversities[index];
+                                return InkWell(
+                                  onTap: () => _selectUniversity(university),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                    child: Text(
+                                      university,
+                                      style: GoogleFonts.figtree(
+                                        color: AppTheme.getPrimaryTextColor(
+                                            context),
+                                        fontSize: 14,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  const Spacer(),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
-} 
+}

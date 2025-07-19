@@ -23,3 +23,19 @@ plugins {
 }
 
 include ":app"
+
+// Flutter keyboard visibility için özel çözüm
+gradle.beforeProject { project ->
+    if (project.name == 'flutter_keyboard_visibility' && project.projectDir.path.contains('flutter_keyboard_visibility')) {
+        project.ext.android = [
+            'namespace': 'io.flutter.plugins.flutter_keyboard_visibility'
+        ]
+    }
+    
+    // uni_links için namespace ayarı
+    if (project.name == "uni_links") {
+        project.ext.android = [
+            'namespace': 'name.avioli.unilinks'
+        ]
+    }
+}

@@ -23,7 +23,11 @@ class _FieldSelectionPageState extends State<FieldSelectionPage> {
     {'id': 'esit', 'name': 'Eşit Ağırlık', 'icon': Icons.balance_outlined},
     {'id': 'sozel', 'name': 'Sözel', 'icon': Icons.history_edu_outlined},
     {'id': 'dil', 'name': 'Dil', 'icon': Icons.language_outlined},
-    {'id': 'tyt', 'name': 'Sadece TYT', 'icon': Icons.lightbulb_outline_rounded},
+    {
+      'id': 'tyt',
+      'name': 'Sadece TYT',
+      'icon': Icons.lightbulb_outline_rounded
+    },
   ];
 
   void _selectField(String fieldId) {
@@ -34,7 +38,7 @@ class _FieldSelectionPageState extends State<FieldSelectionPage> {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      color: AppTheme.backgroundColor,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -45,7 +49,7 @@ class _FieldSelectionPageState extends State<FieldSelectionPage> {
               'Hedefine Giden Yolu Seç',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimaryColor,
+                    color: AppTheme.getPrimaryTextColor(context),
                   ),
               textAlign: TextAlign.center,
             ),
@@ -57,7 +61,7 @@ class _FieldSelectionPageState extends State<FieldSelectionPage> {
             child: Text(
               'Hangi alanda sınava hazırlanıyorsun?',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textSecondaryColor,
+                    color: AppTheme.getSecondaryTextColor(context),
                   ),
               textAlign: TextAlign.center,
             ),
@@ -75,7 +79,8 @@ class _FieldSelectionPageState extends State<FieldSelectionPage> {
               itemCount: _fields.length,
               itemBuilder: (context, index) {
                 final field = _fields[index];
-                final isSelected = field['id'] == widget.onboardingData.targetExam;
+                final isSelected =
+                    field['id'] == widget.onboardingData.targetExam;
                 return _buildFieldCard(field, isSelected, index);
               },
             ),
@@ -85,7 +90,8 @@ class _FieldSelectionPageState extends State<FieldSelectionPage> {
     );
   }
 
-  Widget _buildFieldCard(Map<String, dynamic> field, bool isSelected, int index) {
+  Widget _buildFieldCard(
+      Map<String, dynamic> field, bool isSelected, int index) {
     return Animate(
       delay: Duration(milliseconds: 300 + 100 * index),
       effects: [
@@ -103,22 +109,26 @@ class _FieldSelectionPageState extends State<FieldSelectionPage> {
           curve: Curves.easeInOut,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: isSelected ? AppTheme.primaryColor : AppTheme.cardColor,
+            color: isSelected
+                ? AppTheme.primaryColor
+                : Theme.of(context).cardColor,
             border: Border.all(
-              color: isSelected ? AppTheme.primaryColor : AppTheme.dividerColor,
+              color: isSelected
+                  ? AppTheme.primaryColor
+                  : Theme.of(context).dividerColor,
               width: isSelected ? 2 : 1,
             ),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: AppTheme.primaryColor.withOpacity(0.3),
+                      color: AppTheme.primaryColor.withAlpha(77),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Theme.of(context).shadowColor.withOpacity(0.04),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -137,8 +147,11 @@ class _FieldSelectionPageState extends State<FieldSelectionPage> {
                 field['name'],
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : AppTheme.getPrimaryTextColor(context),
                     ),
               ),
             ],
@@ -147,4 +160,4 @@ class _FieldSelectionPageState extends State<FieldSelectionPage> {
       ),
     );
   }
-} 
+}

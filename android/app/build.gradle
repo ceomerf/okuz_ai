@@ -7,17 +7,31 @@ plugins {
 }
 
 android {
-    namespace = "com.okuz.ai"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    namespace "com.okuz.ai"
+    compileSdkVersion flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_1_8
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+        
+        // Paketten dolayı oluşan namespace sorunu için çözüm
+        main {
+            manifest.srcFile 'src/main/AndroidManifest.xml'
+            java {
+                srcDirs = ['src/main/java', 'src/main/kotlin']
+                // Flutter keyboard visibility paketi için placeholder sınıf ekle
+                srcDir 'src/main/kotlin/io/flutter/plugins/flutter_keyboard_visibility'
+            }
+        }
     }
 
     defaultConfig {

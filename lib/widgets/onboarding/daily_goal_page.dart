@@ -79,7 +79,7 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      color: AppTheme.backgroundColor,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -90,7 +90,7 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
               'Haftalık Rutinini Ayarla',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimaryColor,
+                    color: AppTheme.getPrimaryTextColor(context),
                   ),
               textAlign: TextAlign.center,
             ),
@@ -102,7 +102,7 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
             child: Text(
               'Hangi günler ve günde kaç saat çalışmak istersin?',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textSecondaryColor,
+                    color: AppTheme.getSecondaryTextColor(context),
                   ),
               textAlign: TextAlign.center,
             ),
@@ -122,17 +122,19 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
                   label: Text(entry.value),
                   selected: isSelected,
                   onSelected: (selected) => _onDaySelected(selected, entry.key),
-                  selectedColor: AppTheme.primaryColor.withOpacity(0.8),
+                  selectedColor: AppTheme.primaryColor.withAlpha(204),
                   checkmarkColor: Colors.white,
                   labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
+                    color: isSelected
+                        ? Colors.white
+                        : AppTheme.getPrimaryTextColor(context),
                     fontWeight: FontWeight.w500,
                   ),
                   shape: StadiumBorder(
                       side: BorderSide(
                           color: isSelected
                               ? AppTheme.primaryColor
-                              : AppTheme.dividerColor)),
+                              : Theme.of(context).dividerColor)),
                 );
               }).toList(),
             ),
@@ -147,9 +149,9 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.cardColor,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppTheme.dividerColor),
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
               child: Text(
                 _formatDuration(_dailyGoal),
@@ -173,11 +175,13 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
                 trackHeight: 10.0,
                 trackShape: const RoundedRectSliderTrackShape(),
                 activeTrackColor: AppTheme.primaryColor,
-                inactiveTrackColor: AppTheme.dividerColor,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14.0),
+                inactiveTrackColor: Theme.of(context).dividerColor,
+                thumbShape:
+                    const RoundSliderThumbShape(enabledThumbRadius: 14.0),
                 thumbColor: AppTheme.primaryColor,
-                overlayColor: AppTheme.primaryColor.withOpacity(0.2),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 28.0),
+                overlayColor: AppTheme.primaryColor.withAlpha(51),
+                overlayShape:
+                    const RoundSliderOverlayShape(overlayRadius: 28.0),
               ),
               child: Slider(
                 value: _dailyGoal,
@@ -192,4 +196,4 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
       ),
     );
   }
-} 
+}

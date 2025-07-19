@@ -10,26 +10,21 @@ class HolidayPlanChoiceScreen extends StatelessWidget {
 
   const HolidayPlanChoiceScreen({
     Key? key,
-    required this.holidayName,
-    required this.holidayType,
+    this.holidayName = "Tatil",
+    this.holidayType = "long_break",
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Tatil türüne göre farklı UI göster
-    if (holidayType == 'LONG_BREAK') {
-      return _buildLongBreakUI(context);
-    } else {
-      // Tek günlük tatiller için bilgilendirme ekranı
-      return _buildOfficialHolidayUI(context);
-    }
+    // Bu ekran sadece uzun tatiller için açılacak
+    return _buildLongBreakUI(context);
   }
 
   Widget _buildLongBreakUI(BuildContext context) {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: AppTheme.mainGradient,
+          gradient: AppTheme.getMainGradient(context),
         ),
         child: SafeArea(
           child: Padding(
@@ -40,29 +35,29 @@ class HolidayPlanChoiceScreen extends StatelessWidget {
                 const SizedBox(height: 40),
                 Text(
                   "Harika bir haber! 🎉",
-                  style: AppTheme.headingStyle.copyWith(
-                    fontSize: 28,
-                    color: Colors.white,
-                  ),
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontSize: 28,
+                        color: Colors.white,
+                      ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   "Görünüşe göre şu an $holidayName'ndesin. ☀️",
-                  style: AppTheme.bodyStyle.copyWith(
-                    fontSize: 18,
-                    color: Colors.white,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 18,
+                        color: Colors.white,
+                      ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
                 Text(
                   "Bu değerli zamanı en verimli şekilde nasıl değerlendirmek istersin?",
-                  style: AppTheme.bodyStyle.copyWith(
-                    fontSize: 16,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 40),
@@ -109,7 +104,7 @@ class HolidayPlanChoiceScreen extends StatelessWidget {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: AppTheme.mainGradient,
+          gradient: AppTheme.getMainGradient(context),
         ),
         child: SafeArea(
           child: Padding(
@@ -125,19 +120,19 @@ class HolidayPlanChoiceScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 Text(
                   "Bugün $holidayName",
-                  style: AppTheme.headingStyle.copyWith(
-                    fontSize: 28,
-                    color: Colors.white,
-                  ),
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontSize: 28,
+                        color: Colors.white,
+                      ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   "Bugün için planın otomatik olarak düzenlendi. Dinlenmeye ve kutlamaya zaman ayırabilirsin.",
-                  style: AppTheme.bodyStyle.copyWith(
-                    fontSize: 18,
-                    color: Colors.white,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 18,
+                        color: Colors.white,
+                      ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 40),
@@ -191,7 +186,7 @@ class HolidayPlanChoiceScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withAlpha(26),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(

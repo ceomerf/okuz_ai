@@ -1,4 +1,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Camera permissions -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    
+    <!-- Storage permissions for Android 12 and below -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    
+    <!-- New granular media permissions for Android 13+ (API 33+) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    
+    <!-- Internet permission for Firebase -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Camera feature -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    
     <application
         android:label="okuz_ai"
         android:name="${applicationName}"
@@ -24,6 +42,19 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            
+            <!-- Deep Link için Intent Filter -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                
+                <!-- Web URL'leri için -->
+                <data android:scheme="https" android:host="okuz.app" android:pathPrefix="/invite" />
+                
+                <!-- Özel URL şeması için -->
+                <data android:scheme="okuzai" android:host="invite" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

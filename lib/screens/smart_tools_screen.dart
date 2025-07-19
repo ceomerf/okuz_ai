@@ -1,9 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_functions/firebase_functions.dart';
-import 'dart:convert';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'focus_mode_screen.dart';
+import 'manual_study_log_screen.dart';
+import 'study_history_screen.dart';
+import 'sos_question_solver_screen.dart';
+import 'live_quiz_screen.dart';
+import 'socratic_evaluation_screen.dart';
+import 'pathfinder_selection_screen.dart';
+import 'exam_simulator_screen.dart';
+import 'weekly_story_screen.dart';
+import 'summary_generator_screen.dart';
+import 'concept_map_screen.dart';
+import 'exam_history_screen.dart';
+import 'leaderboard_screen.dart';
+import 'flashcards_deck_screen.dart';
+import '../theme/app_theme.dart';
+import '../providers/study_data_provider.dart';
+import '../widgets/energy_effect_widget.dart';
+import '../widgets/weekly_report_card.dart';
+import '../widgets/premium_feature_lock.dart';
+import 'generated_content_screen.dart';
+import 'settings_screen.dart';
+import '../widgets/coming_soon_dialog.dart'; // 🚀 YENİ: Coming Soon Dialog
 
 class SmartToolsScreen extends StatefulWidget {
   const SmartToolsScreen({Key? key}) : super(key: key);
@@ -12,418 +32,1367 @@ class SmartToolsScreen extends StatefulWidget {
   State<SmartToolsScreen> createState() => _SmartToolsScreenState();
 }
 
-class _SmartToolsScreenState extends State<SmartToolsScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final TextEditingController _summaryTextController = TextEditingController();
-  final TextEditingController _summaryUrlController = TextEditingController();
-  final TextEditingController _conceptMapSubjectController = TextEditingController();
-  final TextEditingController _conceptMapTopicController = TextEditingController();
-  
-  bool _isGeneratingSummary = false;
-  bool _isGeneratingConceptMap = false;
-  String _summaryResult = '';
-  Map<String, dynamic>? _conceptMapResult;
+class _SmartToolsScreenState extends State<SmartToolsScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _slideAnimation;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+    ));
+    _slideAnimation = Tween<double>(
+      begin: 30.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
+    ));
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.0, 0.8, curve: Curves.elasticOut),
+    ));
+    _animationController.forward();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
-    _summaryTextController.dispose();
-    _summaryUrlController.dispose();
-    _conceptMapSubjectController.dispose();
-    _conceptMapTopicController.dispose();
+    _animationController.dispose();
     super.dispose();
-  }
-
-  Future<void> _generateSummary() async {
-    final text = _summaryTextController.text.trim();
-    final url = _summaryUrlController.text.trim();
-    
-    if (text.isEmpty && url.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen metin veya URL girin')),
-      );
-      return;
-    }
-    
-    setState(() {
-      _isGeneratingSummary = true;
-      _summaryResult = '';
-    });
-    
-    try {
-      final callable = FirebaseFunctions.instance.httpsCallable('generateSummary');
-      final result = await callable.call({
-        'text': text,
-        'url': url,
-      });
-      
-      setState(() {
-        _summaryResult = result.data['summary'] ?? 'Özet oluşturulamadı';
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Özet oluşturulurken hata: $e')),
-      );
-    } finally {
-      setState(() {
-        _isGeneratingSummary = false;
-      });
-    }
-  }
-
-  Future<void> _generateConceptMap() async {
-    final subject = _conceptMapSubjectController.text.trim();
-    final topic = _conceptMapTopicController.text.trim();
-    
-    if (subject.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen en az ders adını girin')),
-      );
-      return;
-    }
-    
-    setState(() {
-      _isGeneratingConceptMap = true;
-      _conceptMapResult = null;
-    });
-    
-    try {
-      final callable = FirebaseFunctions.instance.httpsCallable('generateConceptMap');
-      final result = await callable.call({
-        'subject': subject,
-        'topic': topic.isNotEmpty ? topic : null,
-      });
-      
-      setState(() {
-        _conceptMapResult = result.data;
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Kavram haritası oluşturulurken hata: $e')),
-      );
-    } finally {
-      setState(() {
-        _isGeneratingConceptMap = false;
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Akıllı Araçlar'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Özet Oluşturucu'),
-            Tab(text: 'Kavram Haritası'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildSummaryTab(),
-          _buildConceptMapTab(),
-        ],
-      ),
-    );
-  }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-  Widget _buildSummaryTab() {
-    final theme = Theme.of(context);
-    
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'YKS Formatında Özet Oluşturucu',
-            style: theme.textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Metin veya web sayfası URL\'si girerek YKS formatında özet oluşturun.',
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 24),
-          
-          // URL Girişi
-          TextField(
-            controller: _summaryUrlController,
-            decoration: InputDecoration(
-              labelText: 'Web Sayfası URL',
-              hintText: 'https://tr.wikipedia.org/wiki/Türev',
-              prefixIcon: const Icon(Icons.link),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+    return Consumer<StudyDataProvider>(
+      builder: (context, provider, child) {
+        return Scaffold(
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  isDark ? const Color(0xFF1A1B23) : const Color(0xFFF8FAFC),
+                  isDark ? const Color(0xFF2D3748) : const Color(0xFFE2E8F0),
+                  isDark ? const Color(0xFF1A202C) : const Color(0xFFF1F5F9),
+                ],
+                stops: const [0.0, 0.5, 1.0],
               ),
             ),
-            keyboardType: TextInputType.url,
-          ),
-          
-          const SizedBox(height: 16),
-          const Text('VEYA'),
-          const SizedBox(height: 16),
-          
-          // Metin Girişi
-          TextField(
-            controller: _summaryTextController,
-            decoration: InputDecoration(
-              labelText: 'Metin',
-              hintText: 'Özetlemek istediğiniz metni buraya yapıştırın...',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            maxLines: 5,
-            textInputAction: TextInputAction.newline,
-          ),
-          
-          const SizedBox(height: 24),
-          
-          Center(
-            child: ElevatedButton.icon(
-              onPressed: _isGeneratingSummary ? null : _generateSummary,
-              icon: _isGeneratingSummary
-                  ? Container(
-                      width: 24,
-                      height: 24,
-                      padding: const EdgeInsets.all(2.0),
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 3,
+            child: SafeArea(
+              child: AnimatedBuilder(
+                animation: _animationController,
+                builder: (context, child) {
+                  return FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Transform.translate(
+                      offset: Offset(0, _slideAnimation.value),
+                      child: Transform.scale(
+                        scale: _scaleAnimation.value,
+                        child: CustomScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          slivers: [
+                            _buildModernSliverAppBar(isDark),
+                            SliverToBoxAdapter(
+                              child: AnimationLimiter(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children:
+                                        AnimationConfiguration.toStaggeredList(
+                                      duration:
+                                          const Duration(milliseconds: 600),
+                                      childAnimationBuilder: (widget) =>
+                                          SlideAnimation(
+                                        verticalOffset: 50.0,
+                                        child: FadeInAnimation(child: widget),
+                                      ),
+                                      children: [
+                                        const SizedBox(height: 10),
+                                        _buildModernHeader(provider, isDark),
+                                        const SizedBox(height: 32),
+                                        _buildAIToolsSection(provider, isDark),
+                                        const SizedBox(height: 32),
+                                        _buildContentToolsSection(
+                                            provider, isDark),
+                                        const SizedBox(height: 32),
+                                        _buildStudyToolsSection(
+                                            provider, isDark),
+                                        const SizedBox(height: 32),
+                                        _buildTrackingToolsSection(
+                                            provider, isDark),
+                                        const SizedBox(height: 100),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    )
-                  : const Icon(Icons.auto_awesome),
-              label: Text(_isGeneratingSummary ? 'Oluşturuluyor...' : 'Özet Oluştur'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          if (_summaryResult.isNotEmpty)
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Oluşturulan Özet',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.copy),
-                          onPressed: () {
-                            // Panoya kopyala
-                          },
-                          tooltip: 'Kopyala',
-                        ),
-                      ],
                     ),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                    Text(_summaryResult),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConceptMapTab() {
-    final theme = Theme.of(context);
-    
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Kavram Haritası Oluşturucu',
-            style: theme.textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Ders ve konu bilgisi girerek görsel kavram haritası oluşturun.',
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 24),
-          
-          // Ders Girişi
-          TextField(
-            controller: _conceptMapSubjectController,
-            decoration: InputDecoration(
-              labelText: 'Ders',
-              hintText: 'Örn: Matematik, Fizik, Kimya...',
-              prefixIcon: const Icon(Icons.book),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Konu Girişi
-          TextField(
-            controller: _conceptMapTopicController,
-            decoration: InputDecoration(
-              labelText: 'Konu (İsteğe Bağlı)',
-              hintText: 'Örn: Türev, Asitler ve Bazlar...',
-              prefixIcon: const Icon(Icons.topic),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          Center(
-            child: ElevatedButton.icon(
-              onPressed: _isGeneratingConceptMap ? null : _generateConceptMap,
-              icon: _isGeneratingConceptMap
-                  ? Container(
-                      width: 24,
-                      height: 24,
-                      padding: const EdgeInsets.all(2.0),
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 3,
-                      ),
-                    )
-                  : const Icon(Icons.account_tree),
-              label: Text(_isGeneratingConceptMap ? 'Oluşturuluyor...' : 'Kavram Haritası Oluştur'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          if (_conceptMapResult != null)
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Kavram Haritası',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.save_alt),
-                          onPressed: () {
-                            // Kaydet
-                          },
-                          tooltip: 'Kaydet',
-                        ),
-                      ],
-                    ),
-                    const Divider(),
-                    const SizedBox(height: 16),
-                    // Burada kavram haritası görselleştirilecek
-                    // Örnek olarak basit bir temsil gösteriyoruz
-                    _buildConceptMapVisualization(_conceptMapResult!),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConceptMapVisualization(Map<String, dynamic> conceptMap) {
-    // Bu fonksiyon, gerçek bir kavram haritası görselleştirmesi için
-    // daha karmaşık bir widget ile değiştirilmelidir.
-    // Şimdilik basit bir temsil gösteriyoruz.
-    
-    final nodes = conceptMap['nodes'] as List<dynamic>? ?? [];
-    final edges = conceptMap['edges'] as List<dynamic>? ?? [];
-    
-    return Column(
-      children: [
-        Text('${nodes.length} kavram ve ${edges.length} bağlantı içeren harita oluşturuldu.'),
-        const SizedBox(height: 16),
-        Container(
-          height: 300,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Center(
-            child: Text(
-              'Kavram haritası görselleştirmesi burada gösterilecek.\n'
-              'Bu özellik yakında eklenecektir.',
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        ExpansionTile(
-          title: const Text('Kavram Listesi'),
-          children: [
-            if (nodes.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text('Kavram bulunamadı.'),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: nodes.length > 5 ? 5 : nodes.length,
-                itemBuilder: (context, index) {
-                  final node = nodes[index] as Map<String, dynamic>;
-                  return ListTile(
-                    title: Text(node['topic'] as String? ?? 'Bilinmeyen Kavram'),
-                    subtitle: Text(node['description'] as String? ?? ''),
                   );
                 },
               ),
-            if (nodes.length > 5)
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text('... ve ${nodes.length - 5} kavram daha'),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildModernSliverAppBar(bool isDark) {
+    return SliverAppBar(
+      expandedHeight: 180,
+      floating: false,
+      pinned: true,
+      backgroundColor: Colors.transparent,
+      foregroundColor: isDark ? Colors.white : Colors.black87,
+      elevation: 0,
+      actions: [
+        Container(
+          margin: const EdgeInsets.only(right: 16),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withOpacity(0.1)
+                : AppTheme.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
+            icon: Icon(
+              Icons.settings,
+              color: isDark ? Colors.white : AppTheme.primaryColor,
+              size: 20,
+            ),
+            tooltip: 'Ayarlar',
+          ),
+        ),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        title: Text(
+          'Akıllı Araçlar',
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black87,
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            letterSpacing: -0.5,
+          ),
+        ),
+        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                isDark ? const Color(0xFF1A1B23) : const Color(0xFFF8FAFC),
+                isDark ? const Color(0xFF2D3748) : const Color(0xFFE2E8F0),
+              ],
+            ),
+          ),
+          child: Stack(
+            children: [
+              // Decorative circles
+              Positioned(
+                top: 60,
+                right: 30,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        AppTheme.primaryColor.withOpacity(0.15),
+                        AppTheme.primaryColor.withOpacity(0.05),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
               ),
+              Positioned(
+                top: 40,
+                right: 20,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.1)
+                        : AppTheme.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: AppTheme.primaryColor.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.auto_awesome,
+                    color: AppTheme.primaryColor,
+                    size: 28,
+                  ),
+                ),
+              ),
+              // Floating particles
+              Positioned(
+                top: 100,
+                left: 40,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.primaryColor.withOpacity(0.6),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 120,
+                left: 60,
+                child: Container(
+                  width: 4,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.primaryColor.withOpacity(0.4),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernHeader(StudyDataProvider provider, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withOpacity(0.05)
+            : Colors.white.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppTheme.primaryColor.withOpacity(0.1),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withOpacity(0.3)
+                : AppTheme.primaryColor.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.primaryColor,
+                      AppTheme.primaryColor.withOpacity(0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.psychology,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Akıllı Öğrenme Merkezi',
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.getPrimaryTextColor(context),
+                                letterSpacing: -0.5,
+                              ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'AI destekli araçlarla öğrenme deneyimini üst seviyeye çıkar',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.getSecondaryTextColor(context),
+                            height: 1.4,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (provider.hasActiveTheme) ...[
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primaryColor.withOpacity(0.1),
+                    AppTheme.primaryColor.withOpacity(0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.primaryColor.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.palette,
+                    color: AppTheme.primaryColor,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${provider.getMoodSummary()}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAIToolsSection(StudyDataProvider provider, bool isDark) {
+    return _buildModernSection(
+      '🤖 AI Arkadaşların',
+      'Yapay zeka destekli öğrenme deneyimi',
+      [
+        PremiumFeatureLock(
+          featureName: 'AI Sokrates',
+          child: _buildModernToolCard(
+            title: 'AI Sokrates',
+            subtitle: 'Canlı Soru-Cevap',
+            description: 'Derinlemesine öğrenme',
+            icon: Icons.psychology,
+            color: const Color(0xFF6366F1),
+            onTap: () => showComingSoonDialog(
+              context,
+              featureName: 'Çok Yakında: AI Sokrates',
+              description:
+                  'Yapay zeka ile sohbet ederek öğrendiklerini test edebileceğin bu devrimsel özellik şu anda geliştiriliyor. Bir sonraki büyük güncellememizi bekle!',
+              icon: Icons.psychology,
+              color: const Color(0xFF6366F1),
+            ),
+            provider: provider,
+            iconEmoji: '🧠',
+            isDark: isDark,
+          ),
+        ),
+        _buildModernToolCard(
+          title: 'AI Pathfinder',
+          subtitle: 'Öğrenme Rotası',
+          description: 'Kişisel kaynak yolculuğu',
+          icon: Icons.explore,
+          color: AppTheme.primaryColor,
+          onTap: () => showComingSoonDialog(
+            context,
+            featureName: 'AI Kişisel Öğrenme Rotası',
+            description:
+                'Kişiselleştirilmiş öğrenme yolu öneren gelişmiş AI sistemi hazırlanıyor. Senin öğrenme stiline uygun kaynak ve aktivite önerilerini çok yakında alabileceksin!',
+            icon: Icons.explore,
+            color: AppTheme.primaryColor,
+          ),
+          provider: provider,
+          iconEmoji: '🗺️',
+          isDark: isDark,
+        ),
+        _buildModernToolCard(
+          title: 'Sınav Simülatörü',
+          subtitle: 'Koç Eşliğinde',
+          description: 'Strateji ve analiz',
+          icon: Icons.sports,
+          color: const Color(0xFFEF4444),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => ExamSimulatorScreen()),
+          ),
+          provider: provider,
+          iconEmoji: '🏆',
+          isDark: isDark,
+        ),
+        PremiumFeatureLock(
+          featureName: 'SOS Çözücü',
+          child: _buildModernToolCard(
+            title: 'SOS Çözücü',
+            subtitle: 'Anında Yardım',
+            description: 'Fotoğrafla soru çöz',
+            icon: Icons.help_center,
+            color: const Color(0xFFF59E0B),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => SOSQuestionSolverScreen()),
+            ),
+            provider: provider,
+            iconEmoji: '🆘',
+            isDark: isDark,
+          ),
+        ),
+        _buildModernToolCard(
+          title: 'Liderlik Tablosu',
+          subtitle: 'Rekabet Arenası',
+          description: 'Sıralamada yerini gör',
+          icon: Icons.emoji_events,
+          color: const Color(0xFFEF4444),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => LeaderboardScreen()),
+          ),
+          provider: provider,
+          iconEmoji: '🏆',
+          isDark: isDark,
+        ),
+      ],
+      provider,
+      isDark,
+    );
+  }
+
+  Widget _buildContentToolsSection(StudyDataProvider provider, bool isDark) {
+    return _buildModernSection(
+      '📝 İçerik Araçları',
+      'Metinleri anlayıp özetleme',
+      [
+        PremiumFeatureLock(
+          featureName: 'Akıllı Özet',
+          child: _buildModernToolCard(
+            title: 'Akıllı Özet',
+            subtitle: 'Metin Özetleme',
+            description: 'Uzun metinleri özetle',
+            icon: Icons.summarize,
+            color: const Color(0xFF8B5CF6),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => SummaryGeneratorScreen()),
+            ),
+            provider: provider,
+            iconEmoji: '📄',
+            isDark: isDark,
+          ),
+        ),
+        PremiumFeatureLock(
+          featureName: 'Kavram Haritası',
+          child: _buildModernToolCard(
+            title: 'Kavram Haritası',
+            subtitle: 'Görsel Öğrenme',
+            description: 'Kavramları keşfet',
+            icon: Icons.account_tree,
+            color: const Color(0xFF10B981),
+            onTap: () => showComingSoonDialog(
+              context,
+              featureName: 'Geçici Bakım: Kavram Haritası',
+              description:
+                  'Kavram haritası özelliği geçici olarak bakımdadır. CPU optimizasyonu tamamlandıktan sonra tekrar aktif olacak. Özet özelliğini kullanabilirsin!',
+              icon: Icons.account_tree,
+              color: const Color(0xFF10B981),
+            ),
+            provider: provider,
+            iconEmoji: '🗺️',
+            isDark: isDark,
+          ),
+        ),
+        PremiumFeatureLock(
+          featureName: 'Hafıza Kartları',
+          child: _buildModernToolCard(
+            title: 'Hafıza Kartları',
+            subtitle: 'Akıllı Tekrar',
+            description: 'AI destekli flashcard\'lar',
+            icon: Icons.style,
+            color: const Color(0xFF8B5CF6),
+            onTap: () => showComingSoonDialog(
+              context,
+              featureName: 'AI Hafıza Kartları',
+              description:
+                  'Yapay zeka destekli flashcard sistemi hazırlanıyor. Konu bazlı akıllı hafıza kartları ile etkin tekrar yapabileceksin.',
+              icon: Icons.style,
+              color: const Color(0xFF8B5CF6),
+            ),
+            provider: provider,
+            iconEmoji: '🃏',
+            isDark: isDark,
+          ),
+        ),
+        _buildWideModernToolCard(
+          title: 'Haftanın Hikayesi',
+          subtitle: 'Motivasyon ve başarı hikayeni',
+          icon: Icons.auto_stories,
+          color: const Color(0xFF8B5CF6),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => WeeklyStoryScreen()),
+          ),
+          provider: provider,
+          iconEmoji: '📖',
+          isDark: isDark,
+        ),
+      ],
+      provider,
+      isDark,
+    );
+  }
+
+  Widget _buildStudyToolsSection(StudyDataProvider provider, bool isDark) {
+    return _buildModernSection(
+      '📚 Çalışma Araçları',
+      'Odaklanma ve verimlilik',
+      [
+        _buildModernToolCard(
+          title: 'Odaklanma Modu',
+          subtitle: 'Pomodoro Timer',
+          description: 'Derin odaklanma',
+          icon: Icons.timer,
+          color: const Color(0xFF10B981),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => FocusModeScreen()),
+          ),
+          provider: provider,
+          iconEmoji: '🎯',
+          isDark: isDark,
+        ),
+        _buildModernToolCard(
+          title: 'Çalışma Geçmişi',
+          subtitle: 'İlerleme Takibi',
+          description: 'Başarı hikayeni',
+          icon: Icons.history,
+          color: const Color(0xFF3B82F6),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => StudyHistoryScreen()),
+          ),
+          provider: provider,
+          iconEmoji: '📈',
+          isDark: isDark,
+        ),
+        _buildModernToolCard(
+          title: 'Manuel Kayıt',
+          subtitle: 'Çevrimdışı Çalışma',
+          description: 'Kitap çalışmalarını kaydet',
+          icon: Icons.edit,
+          color: const Color(0xFF06B6D4),
+          onTap: () => showManualStudyBottomSheet(context),
+          provider: provider,
+          iconEmoji: '✍️',
+          isDark: isDark,
+        ),
+      ],
+      provider,
+      isDark,
+    );
+  }
+
+  Widget _buildTrackingToolsSection(StudyDataProvider provider, bool isDark) {
+    return _buildModernSection(
+      '📊 Takip & Ayarlar',
+      'İlerleme takibi ve kişiselleştirme',
+      [
+        _buildModernToolCard(
+          title: 'Deneme Geçmişi',
+          subtitle: 'Sınav Analizleri',
+          description: 'AI destekli gelişim takibi',
+          icon: Icons.analytics,
+          color: const Color(0xFF3B82F6),
+          onTap: () => showComingSoonDialog(
+            context,
+            featureName: 'AI Destekli Sınav Analizi',
+            description:
+                'Gelişmiş sınav geçmişi analizi ve yapay zeka destekli performans takibi çok yakında! Deneme sonuçlarını detaylı analiz edebileceksin.',
+            icon: Icons.analytics,
+            color: const Color(0xFF3B82F6),
+          ),
+          provider: provider,
+          iconEmoji: '📈',
+          isDark: isDark,
+        ),
+        _buildModernToolCard(
+          title: 'Tema Analizi',
+          subtitle: 'Ruh Hali Uyumlu',
+          description: 'Akıllı tema önerisi',
+          icon: Icons.palette,
+          color: AppTheme.primaryColor,
+          onTap: () => _forceThemeUpdate(provider),
+          provider: provider,
+          iconEmoji: '🎨',
+          isDark: isDark,
+        ),
+        _buildModernToolCard(
+          title: 'Tema Değiştir',
+          subtitle: 'Light/Dark Mode',
+          description: 'Görünüm değiştir',
+          icon: Icons.brightness_6,
+          color: isDark ? const Color(0xFF64748B) : const Color(0xFFFFC107),
+          onTap: () => _toggleTheme(),
+          provider: provider,
+          iconEmoji: isDark ? '🌙' : '☀️',
+          isDark: isDark,
+        ),
+      ],
+      provider,
+      isDark,
+    );
+  }
+
+  Widget _buildModernSection(
+    String title,
+    String subtitle,
+    List<Widget> tools,
+    StudyDataProvider provider,
+    bool isDark,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.getPrimaryTextColor(context),
+                      letterSpacing: -0.5,
+                    ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.getSecondaryTextColor(context),
+                      height: 1.4,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: tools,
+            );
+          },
         ),
       ],
     );
   }
-} 
+
+  Widget _buildModernToolCard({
+    required String title,
+    required String subtitle,
+    required String description,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    required StudyDataProvider provider,
+    required String iconEmoji,
+    required bool isDark,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final cardWidth = (screenWidth - 56) / 2; // 20 + 16 + 20 padding
+
+        return GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: cardWidth,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withOpacity(0.05)
+                  : Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: color.withOpacity(0.2),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withOpacity(0.2)
+                      : color.withOpacity(0.1),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              color.withOpacity(0.2),
+                              color.withOpacity(0.1),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: color.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          iconEmoji,
+                          style: const TextStyle(fontSize: 18),
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.arrow_forward_ios,
+                          color: color,
+                          size: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.getPrimaryTextColor(context),
+                          letterSpacing: -0.3,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.getSecondaryTextColor(context),
+                          height: 1.3,
+                          fontSize: 11,
+                        ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildWideModernToolCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    required StudyDataProvider provider,
+    required String iconEmoji,
+    required bool isDark,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withOpacity(0.05)
+              : Colors.white.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: color.withOpacity(0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withOpacity(0.2)
+                  : color.withOpacity(0.1),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      color.withOpacity(0.2),
+                      color.withOpacity(0.1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: color.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  iconEmoji,
+                  style: const TextStyle(fontSize: 24),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.getPrimaryTextColor(context),
+                            letterSpacing: -0.3,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.getSecondaryTextColor(context),
+                            height: 1.3,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.arrow_forward_ios,
+                  color: color,
+                  size: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSubjectSelection() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[850]
+            : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primaryColor.withOpacity(0.2),
+                    AppTheme.primaryColor.withOpacity(0.1),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.school,
+                color: AppTheme.primaryColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            const Text(
+              'Ders Seçimi',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Hangi derste soru-cevap yapmak istiyorsun?',
+              style: TextStyle(
+                color: AppTheme.getSecondaryTextColor(context),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                'Matematik',
+                'Fizik',
+                'Kimya',
+                'Biyoloji',
+                'Türkçe',
+                'Tarih',
+                'Coğrafya',
+                'Felsefe',
+              ]
+                  .map((subject) => GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _showTopicSelection(subject);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppTheme.primaryColor.withOpacity(0.15),
+                                AppTheme.primaryColor.withOpacity(0.05),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppTheme.primaryColor.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            subject,
+                            style: TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ))
+                  .toList(),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              'İptal',
+              style: TextStyle(
+                color: AppTheme.getSecondaryTextColor(context),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTopicSelection(String subject) {
+    final Map<String, List<String>> subjectTopics = {
+      'Matematik': [
+        'Genel Matematik',
+        'Sayılar ve İşlemler',
+        'Denklemler',
+        'Fonksiyonlar',
+        'Geometri',
+        'Trigonometri',
+        'Logaritma',
+        'Türev',
+        'İntegral',
+        'Olasılık'
+      ],
+      'Fizik': [
+        'Genel Fizik',
+        'Hareket',
+        'Kuvvet ve Hareket',
+        'İş Güç Enerji',
+        'İtme ve Momentum',
+        'Elektrik',
+        'Manyetizma',
+        'Dalgalar',
+        'Optik',
+        'Modern Fizik'
+      ],
+      'Kimya': [
+        'Genel Kimya',
+        'Atom ve Periyodik Sistem',
+        'Kimyasal Bağlar',
+        'Kimyasal Tepkimeler',
+        'Gazlar',
+        'Asitler ve Bazlar',
+        'Çözeltiler',
+        'Elektrokimya',
+        'Organik Kimya',
+        'Karbon Kimyası'
+      ],
+      'Biyoloji': [
+        'Genel Biyoloji',
+        'Hücre',
+        'Canlıların Çeşitliliği',
+        'Genetik',
+        'Ekoloji',
+        'İnsan Fizyolojisi',
+        'Bitki Biyolojisi',
+        'Hayvan Biyolojisi',
+        'Moleküler Biyoloji',
+        'Evrim'
+      ],
+      'Türkçe': [
+        'Genel Türkçe',
+        'Dil Bilgisi',
+        'Edebiyat',
+        'Şiir',
+        'Roman',
+        'Öykü',
+        'Tiyatro',
+        'Kompozisyon',
+        'Anlatım Teknikleri',
+        'Sözcük Bilgisi'
+      ],
+      'Tarih': [
+        'Genel Tarih',
+        'Osmanlı Tarihi',
+        'Türk İnkılap Tarihi',
+        'Dünya Tarihi',
+        'İlk Çağ',
+        'Orta Çağ',
+        'Yeni Çağ',
+        'Yakın Çağ',
+        'Cumhuriyet Dönemi',
+        'Atatürk İlkeleri'
+      ],
+      'Coğrafya': [
+        'Genel Coğrafya',
+        'Fiziki Coğrafya',
+        'Beşeri Coğrafya',
+        'Türkiye Coğrafyası',
+        'Dünya Coğrafyası',
+        'İklim',
+        'Nüfus',
+        'Yerleşme',
+        'Ekonomi',
+        'Çevre'
+      ],
+      'Felsefe': [
+        'Genel Felsefe',
+        'Mantık',
+        'Bilgi Felsefesi',
+        'Metafizik',
+        'Ahlak Felsefesi',
+        'Siyaset Felsefesi',
+        'Estetik',
+        'Din Felsefesi',
+        'Türk İslam Düşüncesi',
+        'Çağdaş Felsefe'
+      ],
+    };
+
+    final topics = subjectTopics[subject] ?? ['Genel'];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[850]
+            : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primaryColor.withOpacity(0.2),
+                    AppTheme.primaryColor.withOpacity(0.1),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.topic,
+                color: AppTheme.primaryColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                '$subject - Konu Seçimi',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Hangi konuda soru-cevap yapmak istiyorsun?',
+                style: TextStyle(
+                  color: AppTheme.getSecondaryTextColor(context),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 300,
+                child: SingleChildScrollView(
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: topics
+                        .map((topic) => GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => LiveQuizScreen(
+                                      subject: subject,
+                                      topic: topic,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppTheme.primaryColor.withOpacity(0.15),
+                                      AppTheme.primaryColor.withOpacity(0.05),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color:
+                                        AppTheme.primaryColor.withOpacity(0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Text(
+                                  topic,
+                                  style: TextStyle(
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              'İptal',
+              style: TextStyle(
+                color: AppTheme.getSecondaryTextColor(context),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _forceThemeUpdate(StudyDataProvider provider) async {
+    try {
+      await provider.forceThemeUpdate();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Tema güncellendi: ${provider.getMoodSummary()}'),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Tema güncellenirken hata oluştu'),
+            backgroundColor: AppTheme.errorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _toggleTheme() {
+    AppTheme.toggleTheme();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Theme.of(context).brightness == Brightness.dark
+                    ? Icons.light_mode
+                    : Icons.dark_mode,
+                color: Colors.white,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                Theme.of(context).brightness == Brightness.dark
+                    ? 'Açık temaya geçildi'
+                    : 'Koyu temaya geçildi',
+              ),
+            ],
+          ),
+          backgroundColor: AppTheme.primaryColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+    }
+  }
+
+  void showManualStudyBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ManualStudyLogScreen(),
+    );
+  }
+}

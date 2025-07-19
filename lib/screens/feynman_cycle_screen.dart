@@ -78,7 +78,7 @@ class _FeynmanCycleScreenState extends State<FeynmanCycleScreen> {
         color: AppTheme.cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withAlpha(26),
             spreadRadius: 1,
             blurRadius: 10,
           )
@@ -125,7 +125,8 @@ class _FeynmanCycleScreenState extends State<FeynmanCycleScreen> {
                   },
                   label: const Text('Bitir'),
                   icon: const Icon(Icons.check_circle),
-                  style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                  style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.primaryColor),
                 ),
         ],
       ),
@@ -142,7 +143,8 @@ class _FeynmanCycleScreenState extends State<FeynmanCycleScreen> {
           const SizedBox(height: 16),
           Text(
             explanation,
-            style: GoogleFonts.lato(fontSize: 17, height: 1.5, color: AppTheme.textSecondaryColor),
+            style: GoogleFonts.lato(
+                fontSize: 17, height: 1.5, color: AppTheme.textSecondaryColor),
           ).animate().fadeIn(),
         ],
       ),
@@ -159,7 +161,8 @@ class _FeynmanCycleScreenState extends State<FeynmanCycleScreen> {
           const SizedBox(height: 16),
           Text(
             prompt,
-            style: GoogleFonts.lato(fontSize: 17, height: 1.5, color: AppTheme.textSecondaryColor),
+            style: GoogleFonts.lato(
+                fontSize: 17, height: 1.5, color: AppTheme.textSecondaryColor),
           ),
           const SizedBox(height: 24),
           TextField(
@@ -229,4 +232,4 @@ class _FeynmanCycleScreenState extends State<FeynmanCycleScreen> {
       ],
     ).animate().slideX(begin: -0.2);
   }
-} 
+}

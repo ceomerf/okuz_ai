@@ -45,7 +45,7 @@ class _PlanScopePageState extends State<PlanScopePage> {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      color: AppTheme.backgroundColor,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -56,7 +56,7 @@ class _PlanScopePageState extends State<PlanScopePage> {
               'Planını Nasıl Şekillendirelim?',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimaryColor,
+                    color: AppTheme.getPrimaryTextColor(context),
                   ),
               textAlign: TextAlign.center,
             ),
@@ -68,7 +68,7 @@ class _PlanScopePageState extends State<PlanScopePage> {
             child: Text(
               'Tercihini yap, sana en uygun programı hazırlayalım.',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textSecondaryColor,
+                    color: AppTheme.getSecondaryTextColor(context),
                   ),
               textAlign: TextAlign.center,
             ),
@@ -109,22 +109,26 @@ class _PlanScopePageState extends State<PlanScopePage> {
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: isSelected ? AppTheme.primaryColor : AppTheme.cardColor,
+            color: isSelected
+                ? AppTheme.primaryColor
+                : Theme.of(context).cardColor,
             border: Border.all(
-              color: isSelected ? AppTheme.primaryColor : AppTheme.dividerColor,
+              color: isSelected
+                  ? AppTheme.primaryColor
+                  : Theme.of(context).dividerColor,
               width: isSelected ? 2 : 1,
             ),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: AppTheme.primaryColor.withOpacity(0.3),
+                      color: AppTheme.primaryColor.withAlpha(77),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Theme.of(context).shadowColor.withOpacity(0.04),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -149,7 +153,7 @@ class _PlanScopePageState extends State<PlanScopePage> {
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: isSelected
-                                  ? Colors.white.withOpacity(0.8)
+                                  ? Colors.white.withAlpha(204)
                                   : AppTheme.successColor,
                             ),
                       ),
@@ -159,7 +163,7 @@ class _PlanScopePageState extends State<PlanScopePage> {
                             fontWeight: FontWeight.bold,
                             color: isSelected
                                 ? Colors.white
-                                : AppTheme.textPrimaryColor,
+                                : AppTheme.getPrimaryTextColor(context),
                           ),
                     ),
                     const SizedBox(height: 4),
@@ -167,8 +171,8 @@ class _PlanScopePageState extends State<PlanScopePage> {
                       option['subtitle'],
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: isSelected
-                                ? Colors.white.withOpacity(0.9)
-                                : AppTheme.textSecondaryColor,
+                                ? Colors.white.withAlpha(230)
+                                : AppTheme.getSecondaryTextColor(context),
                           ),
                     ),
                   ],

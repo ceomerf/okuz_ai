@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:okuz_ai/models/gamification.dart';
 import 'package:okuz_ai/services/gamification_service.dart';
 import 'package:percent_indicator/percent_indicator.dart';
+import 'package:okuz_ai/screens/performance_dashboard_screen.dart';
+import 'package:okuz_ai/screens/achievements_screen.dart';
+import 'settings_screen.dart';
 
 class GamificationScreen extends StatefulWidget {
   const GamificationScreen({Key? key}) : super(key: key);
@@ -12,7 +13,8 @@ class GamificationScreen extends StatefulWidget {
   State<GamificationScreen> createState() => _GamificationScreenState();
 }
 
-class _GamificationScreenState extends State<GamificationScreen> with SingleTickerProviderStateMixin {
+class _GamificationScreenState extends State<GamificationScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late Future<Gamification> _gamificationFuture;
   final GamificationService _gamificationService = GamificationService();
@@ -20,7 +22,7 @@ class _GamificationScreenState extends State<GamificationScreen> with SingleTick
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadGamificationData();
   }
 
@@ -37,315 +39,315 @@ class _GamificationScreenState extends State<GamificationScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('İlerleme ve Başarılar'),
+        title: const Text('Oyunlar & Başarılar'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
+            tooltip: 'Ayarlar',
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
             Tab(text: 'Genel Durum'),
-            Tab(text: 'Rozetler'),
+            Tab(text: 'Performans'),
             Tab(text: 'Başarımlar'),
+            Tab(text: 'Rozetler'),
           ],
+          labelColor: Theme.of(context).colorScheme.primary,
+          indicatorColor: Theme.of(context).colorScheme.primary,
         ),
       ),
-      body: FutureBuilder<Gamification>(
-        future: _gamificationFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Veriler yüklenirken bir hata oluştu: ${snapshot.error}',
-                style: TextStyle(color: theme.colorScheme.error),
-              ),
-            );
-          }
-          
-          if (!snapshot.hasData) {
-            return const Center(
-              child: Text('Oyunlaştırma verisi bulunamadı.'),
-            );
-          }
-          
-          final gamification = snapshot.data!;
-          
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              _buildOverviewTab(context, gamification),
-              _buildBadgesTab(context, gamification),
-              _buildAchievementsTab(context, gamification),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildOverviewTab(BuildContext context, Gamification gamification) {
-    final theme = Theme.of(context);
-    
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          // Seviye ve XP Kartı
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${gamification.level}. Seviye',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${gamification.xp} XP',
-                          style: TextStyle(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  LinearPercentIndicator(
-                    lineHeight: 14.0,
-                    percent: gamification.levelProgress,
-                    backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
-                    progressColor: theme.colorScheme.primary,
-                    barRadius: const Radius.circular(7),
-                    padding: EdgeInsets.zero,
-                    animation: true,
-                    animationDuration: 1000,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Bir sonraki seviye için ${gamification.nextLevelXP - gamification.xp} XP daha gerekiyor',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Seri (Streak) Kartı
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.local_fire_department,
-                        color: Colors.orange,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Çalışma Serisi',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '${gamification.streak}',
-                        style: theme.textTheme.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'gün',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    gamification.streak > 0
-                        ? 'Tebrikler! ${gamification.streak} gündür aralıksız çalışıyorsun.'
-                        : 'Bugün bir görev tamamlayarak seriyi başlat!',
-                    style: theme.textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Ders Bazında XP Kartı
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ders Bazında İlerleme',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  if (gamification.subjectXP.isEmpty)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Text('Henüz ders bazında XP kazanılmamış.'),
-                      ),
-                    )
-                  else
-                    ...gamification.subjectXP.entries.map((entry) {
-                      final subject = entry.key;
-                      final xp = entry.value;
-                      final maxXP = gamification.subjectXP.values.reduce((a, b) => a > b ? a : b);
-                      final progress = xp / maxXP;
-                      
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(subject),
-                                Text('$xp XP'),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            LinearPercentIndicator(
-                              lineHeight: 8.0,
-                              percent: progress,
-                              backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
-                              progressColor: theme.colorScheme.primary,
-                              barRadius: const Radius.circular(4),
-                              padding: EdgeInsets.zero,
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                ],
-              ),
-            ),
-          ),
+          _buildOverviewTab(context),
+          const PerformanceDashboardScreen(),
+          const AchievementsScreen(),
+          _buildBadgesTab(context),
         ],
       ),
     );
   }
 
-  Widget _buildBadgesTab(BuildContext context, Gamification gamification) {
+  Widget _buildOverviewTab(BuildContext context) {
     final theme = Theme.of(context);
-    
-    if (gamification.badges.isEmpty) {
-      return const Center(
-        child: Text('Henüz rozet kazanılmamış. Görevleri tamamlayarak rozetler kazanabilirsin!'),
-      );
-    }
-    
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.8,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      itemCount: gamification.badges.length,
-      itemBuilder: (context, index) {
-        final badge = gamification.badges[index];
-        return _buildBadgeCard(context, badge);
+
+    return FutureBuilder<Gamification>(
+      future: _gamificationFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Veriler yüklenirken bir hata oluştu: ${snapshot.error}',
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(
+            child: Text('Oyunlaştırma verisi bulunamadı.'),
+          );
+        }
+
+        final gamification = snapshot.data!;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Seviye ve XP Kartı
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${gamification.level}. Seviye',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withAlpha(51),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '${gamification.xp} XP',
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      LinearPercentIndicator(
+                        lineHeight: 14.0,
+                        percent: gamification.levelProgress,
+                        backgroundColor:
+                            theme.colorScheme.primary.withAlpha(51),
+                        progressColor: theme.colorScheme.primary,
+                        barRadius: const Radius.circular(7),
+                        padding: EdgeInsets.zero,
+                        animation: true,
+                        animationDuration: 1000,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Bir sonraki seviye için ${gamification.nextLevelXP - gamification.xp} XP daha gerekiyor',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Seri (Streak) Kartı
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.local_fire_department,
+                            color: Colors.orange,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Çalışma Serisi',
+                            style: theme.textTheme.titleMedium,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${gamification.streak}',
+                            style: theme.textTheme.headlineLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'gün',
+                            style: theme.textTheme.titleMedium,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Ardışık çalışma günlerin',
+                        style: theme.textTheme.bodySmall,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Hızlı Erişim Kartları
+              Text(
+                'Hızlı Erişim',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.5,
+                children: [
+                  _buildQuickAccessCard(
+                    context,
+                    'Performans Paneli',
+                    'Detaylı analizler',
+                    Icons.analytics,
+                    Colors.blue,
+                    () => _tabController.animateTo(1),
+                  ),
+                  _buildQuickAccessCard(
+                    context,
+                    'Başarımlar',
+                    'Rozetler ve ödüller',
+                    Icons.emoji_events,
+                    Colors.amber,
+                    () => _tabController.animateTo(2),
+                  ),
+                  _buildQuickAccessCard(
+                    context,
+                    'Rozetler',
+                    'Kazanılan rozetler',
+                    Icons.workspace_premium,
+                    Colors.purple,
+                    () => _tabController.animateTo(3),
+                  ),
+                  _buildQuickAccessCard(
+                    context,
+                    'Sıralama',
+                    'Arkadaşlarınla yarış',
+                    Icons.leaderboard,
+                    Colors.green,
+                    () {
+                      // Sıralama ekranına git
+                      Navigator.pushNamed(context, '/leaderboard');
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
       },
     );
   }
 
-  Widget _buildBadgeCard(BuildContext context, Badge badge) {
-    final theme = Theme.of(context);
-    
+  Widget _buildQuickAccessCard(
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return Card(
-      elevation: 4,
+      elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
+      color: Theme.of(context).colorScheme.surface,
       child: InkWell(
-        onTap: () => _showBadgeDetails(context, badge),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(12.0),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              badge.imageUrl.isNotEmpty
-                  ? Image.network(
-                      badge.imageUrl,
-                      height: 80,
-                      width: 80,
-                      errorBuilder: (context, error, stackTrace) => Icon(
-                        Icons.emoji_events,
-                        size: 80,
-                        color: _getBadgeColor(badge.rarity),
-                      ),
-                    )
-                  : Icon(
-                      Icons.emoji_events,
-                      size: 80,
-                      color: _getBadgeColor(badge.rarity),
-                    ),
-              const SizedBox(height: 12),
-              Text(
-                badge.name,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 24,
+                ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Text(
-                _formatDate(badge.awardedAt),
-                style: theme.textTheme.bodySmall,
+                title,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 2),
+              Flexible(
+                child: Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.7),
+                      ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
               ),
             ],
           ),
@@ -354,182 +356,112 @@ class _GamificationScreenState extends State<GamificationScreen> with SingleTick
     );
   }
 
-  Color _getBadgeColor(int rarity) {
-    switch (rarity) {
-      case 1:
-        return Colors.grey;
-      case 2:
-        return Colors.green;
-      case 3:
-        return Colors.blue;
-      case 4:
-        return Colors.purple;
-      case 5:
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
-  }
+  Widget _buildBadgesTab(BuildContext context) {
+    return FutureBuilder<Gamification>(
+      future: _gamificationFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-  void _showBadgeDetails(BuildContext context, Badge badge) {
-    final theme = Theme.of(context);
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(badge.name),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            badge.imageUrl.isNotEmpty
-                ? Image.network(
-                    badge.imageUrl,
-                    height: 100,
-                    width: 100,
-                    errorBuilder: (context, error, stackTrace) => Icon(
-                      Icons.emoji_events,
-                      size: 100,
-                      color: _getBadgeColor(badge.rarity),
-                    ),
-                  )
-                : Icon(
-                    Icons.emoji_events,
-                    size: 100,
-                    color: _getBadgeColor(badge.rarity),
-                  ),
-            const SizedBox(height: 16),
-            Text(badge.description),
-            const SizedBox(height: 8),
-            Text(
-              'Kazanıldı: ${_formatDate(badge.awardedAt)}',
-              style: theme.textTheme.bodySmall,
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Veriler yüklenirken bir hata oluştu: ${snapshot.error}',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Kapat'),
-          ),
-        ],
-      ),
-    );
-  }
+          );
+        }
 
-  Widget _buildAchievementsTab(BuildContext context, Gamification gamification) {
-    final theme = Theme.of(context);
-    
-    if (gamification.achievements.isEmpty) {
-      return const Center(
-        child: Text('Henüz başarım bulunmuyor.'),
-      );
-    }
-    
-    // Başarımları tamamlanmış ve devam edenler olarak grupla
-    final completedAchievements = gamification.achievements.where((a) => a.isCompleted).toList();
-    final inProgressAchievements = gamification.achievements.where((a) => !a.isCompleted).toList();
-    
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (inProgressAchievements.isNotEmpty) ...[
-          Text(
-            'Devam Eden Başarımlar',
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          ...inProgressAchievements.map((achievement) => _buildAchievementCard(context, achievement)),
-          const SizedBox(height: 24),
-        ],
-        
-        if (completedAchievements.isNotEmpty) ...[
-          Text(
-            'Tamamlanan Başarımlar',
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          ...completedAchievements.map((achievement) => _buildAchievementCard(context, achievement)),
-        ],
-      ],
-    );
-  }
+        if (!snapshot.hasData) {
+          return const Center(
+            child: Text('Rozet verisi bulunamadı.'),
+          );
+        }
 
-  Widget _buildAchievementCard(BuildContext context, Achievement achievement) {
-    final theme = Theme.of(context);
-    final progress = achievement.progressPercentage;
-    
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        final gamification = snapshot.data!;
+
+        if (gamification.badges.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Expanded(
-                  child: Text(
-                    achievement.name,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                Icon(
+                  Icons.emoji_events_outlined,
+                  size: 64,
+                  color: Colors.grey[400],
                 ),
-                if (achievement.isCompleted)
-                  Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                  ),
+                const SizedBox(height: 16),
+                Text(
+                  'Henüz rozet kazanmadın',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Çalışmaya devam et, rozetler seni bekliyor!',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[500],
+                      ),
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(achievement.description),
-            const SizedBox(height: 12),
-            LinearPercentIndicator(
-              lineHeight: 10.0,
-              percent: progress,
-              backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
-              progressColor: achievement.isCompleted
-                  ? Colors.green
-                  : theme.colorScheme.primary,
-              barRadius: const Radius.circular(5),
-              padding: EdgeInsets.zero,
-              center: Text(
-                '${achievement.progress}/${achievement.target}',
-                style: TextStyle(
-                  fontSize: 8,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+          );
+        }
+
+        return GridView.builder(
+          padding: const EdgeInsets.all(16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 0.8,
+          ),
+          itemCount: gamification.badges.length,
+          itemBuilder: (context, index) {
+            final badge = gamification.badges[index];
+            return Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.emoji_events,
+                      size: 48,
+                      color: Colors.amber,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      badge.name,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      badge.description,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Ödül: ${achievement.xpReward} XP',
-                  style: theme.textTheme.bodySmall,
-                ),
-                if (achievement.isCompleted && achievement.completedAt != null)
-                  Text(
-                    'Tamamlandı: ${_formatDate(achievement.completedAt!)}',
-                    style: theme.textTheme.bodySmall,
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}.${date.month}.${date.year}';
-  }
-} 
+}

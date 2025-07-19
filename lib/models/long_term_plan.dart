@@ -122,23 +122,87 @@ class DailyTask {
   bool isCompleted;
   final FeynmanStep? feynman;
 
+  // Kısmen tamamlanan görevler için süre takibi
+  final int completedMinutes; // Tamamlanan dakika
+  final int remainingMinutes; // Kalan dakika
+  final DateTime? lastStudiedAt; // Son çalışma tarihi
+  final bool isPartiallyCompleted; // Kısmen tamamlandı mı?
+
   DailyTask({
     required this.subject,
     required this.topic,
     required this.durationInMinutes,
     this.isCompleted = false,
     this.feynman,
-  });
+    this.completedMinutes = 0,
+    int? remainingMinutes,
+    this.lastStudiedAt,
+    this.isPartiallyCompleted = false,
+  }) : remainingMinutes = remainingMinutes ?? durationInMinutes;
 
   factory DailyTask.fromMap(Map<String, dynamic> map) {
+    final duration = map['durationInMinutes'] ?? 0;
+    final completed = map['completedMinutes'] ?? 0;
+
     return DailyTask(
       subject: map['subject'] ?? '',
       topic: map['topic'] ?? '',
-      durationInMinutes: map['durationInMinutes'] ?? 0,
+      durationInMinutes: duration,
       isCompleted: map['isCompleted'] ?? false,
       feynman: map['feynman'] != null
           ? FeynmanStep.fromMap(map['feynman'] as Map<String, dynamic>)
           : null,
+      completedMinutes: completed,
+      remainingMinutes: map['remainingMinutes'] ?? (duration - completed),
+      lastStudiedAt: map['lastStudiedAt'] != null
+          ? DateTime.parse(map['lastStudiedAt'])
+          : null,
+      isPartiallyCompleted: map['isPartiallyCompleted'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'subject': subject,
+      'topic': topic,
+      'durationInMinutes': durationInMinutes,
+      'isCompleted': isCompleted,
+      'feynman': feynman?.toMap(),
+      'completedMinutes': completedMinutes,
+      'remainingMinutes': remainingMinutes,
+      'lastStudiedAt': lastStudiedAt?.toIso8601String(),
+      'isPartiallyCompleted': isPartiallyCompleted,
+    };
+  }
+
+  /// Görevin tamamlanma yüzdesini hesaplar (0.0 - 1.0 arası)
+  double get completionPercentage {
+    if (durationInMinutes == 0) return 0.0;
+    return (completedMinutes / durationInMinutes).clamp(0.0, 1.0);
+  }
+
+  /// Görevin tam olarak tamamlanıp tamamlanmadığını kontrol eder
+  bool get isFullyCompleted {
+    return isCompleted || completedMinutes >= durationInMinutes;
+  }
+
+  /// Kısmen tamamlanan görevi günceller
+  DailyTask updateProgress(int studiedMinutes) {
+    final newCompletedMinutes =
+        (completedMinutes + studiedMinutes).clamp(0, durationInMinutes);
+    final newRemainingMinutes = durationInMinutes - newCompletedMinutes;
+    final isNowCompleted = newCompletedMinutes >= durationInMinutes;
+
+    return DailyTask(
+      subject: subject,
+      topic: topic,
+      durationInMinutes: durationInMinutes,
+      isCompleted: isNowCompleted,
+      feynman: feynman,
+      completedMinutes: newCompletedMinutes,
+      remainingMinutes: newRemainingMinutes,
+      lastStudiedAt: DateTime.now(),
+      isPartiallyCompleted: newCompletedMinutes > 0 && !isNowCompleted,
     );
   }
 }
@@ -159,11 +223,19 @@ class FeynmanStep {
       explanation: map['explanation'] ?? 'Açıklama bulunamadı.',
       analogyPrompt: map['analogyPrompt'] ?? 'Bu konuyu basitçe anlat.',
       quiz: (map['quiz'] as List<dynamic>?)
-              ?.map((qMap) =>
-                  QuizQuestion.fromMap(qMap as Map<String, dynamic>))
+              ?.map(
+                  (qMap) => QuizQuestion.fromMap(qMap as Map<String, dynamic>))
               .toList() ??
           [],
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'explanation': explanation,
+      'analogyPrompt': analogyPrompt,
+      'quiz': quiz.map((q) => q.toMap()).toList(),
+    };
   }
 }
 
@@ -184,5 +256,13 @@ class QuizQuestion {
       options: (map['options'] as List<dynamic>?)?.cast<String>() ?? [],
       correctAnswer: map['correctAnswer'] ?? '',
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'question': question,
+      'options': options,
+      'correctAnswer': correctAnswer,
+    };
   }
 }

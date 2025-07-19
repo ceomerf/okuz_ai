@@ -14,12 +14,14 @@ class LearningHabitsScreen extends StatefulWidget {
 }
 
 class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
-  final List<LearningHabitsQuestion> _questions = LearningHabitsQuestionnaire.getQuestions();
+  final List<LearningHabitsQuestion> _questions =
+      LearningHabitsQuestionnaire.getQuestions();
   final Map<String, dynamic> _answers = {};
   int _currentQuestionIndex = 0;
   bool _isSubmitting = false;
 
-  LearningHabitsQuestion get currentQuestion => _questions[_currentQuestionIndex];
+  LearningHabitsQuestion get currentQuestion =>
+      _questions[_currentQuestionIndex];
   bool get isLastQuestion => _currentQuestionIndex == _questions.length - 1;
 
   @override
@@ -67,7 +69,8 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
 
     if (question.type == 'radio' && answer == null) {
       return false;
-    } else if (question.type == 'checkbox' && (answer == null || (answer as List).isEmpty)) {
+    } else if (question.type == 'checkbox' &&
+        (answer == null || (answer as List).isEmpty)) {
       return false;
     }
 
@@ -86,10 +89,12 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
       }
 
       // Cevapları işle
-      final processedAnswers = LearningHabitsQuestionnaire.processAnswers(_answers);
+      final processedAnswers =
+          LearningHabitsQuestionnaire.processAnswers(_answers);
 
       // Cloud Functions'a gönder
-      final callable = FirebaseFunctions.instance.httpsCallable('createAdvancedProfile');
+      final callable =
+          FirebaseFunctions.instance.httpsCallable('createAdvancedProfile');
       await callable.call({
         'learningHabits': processedAnswers,
       });
@@ -146,7 +151,8 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
                   LinearProgressIndicator(
                     value: (_currentQuestionIndex + 1) / _questions.length,
                     backgroundColor: Colors.grey[300],
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -183,7 +189,8 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.grey[300],
                             foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -192,12 +199,12 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
                         )
                       else
                         const SizedBox(width: 80),
-
                       ElevatedButton(
                         onPressed: _nextQuestion,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryColor,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
@@ -239,7 +246,9 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
           min: min,
           max: max,
           divisions: (max - min).toInt(),
-          label: question.unit != null ? '${value.toInt()} ${question.unit}' : value.toInt().toString(),
+          label: question.unit != null
+              ? '${value.toInt()} ${question.unit}'
+              : value.toInt().toString(),
           onChanged: (newValue) {
             setState(() {
               _answers[question.id] = newValue.toInt();
@@ -250,11 +259,15 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              question.unit != null ? '${min.toInt()} ${question.unit}' : min.toInt().toString(),
+              question.unit != null
+                  ? '${min.toInt()} ${question.unit}'
+                  : min.toInt().toString(),
               style: TextStyle(color: Colors.grey[600]),
             ),
             Text(
-              question.unit != null ? '${max.toInt()} ${question.unit}' : max.toInt().toString(),
+              question.unit != null
+                  ? '${max.toInt()} ${question.unit}'
+                  : max.toInt().toString(),
               style: TextStyle(color: Colors.grey[600]),
             ),
           ],
@@ -293,7 +306,9 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : Colors.white,
+                color: isSelected
+                    ? AppTheme.primaryColor.withAlpha(26)
+                    : Colors.white,
                 border: Border.all(
                   color: isSelected ? AppTheme.primaryColor : Colors.grey,
                 ),
@@ -309,7 +324,9 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
                       border: Border.all(
                         color: isSelected ? AppTheme.primaryColor : Colors.grey,
                       ),
-                      color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+                      color: isSelected
+                          ? AppTheme.primaryColor.withAlpha(26)
+                          : Colors.white,
                     ),
                     child: isSelected
                         ? const Icon(
@@ -325,7 +342,8 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
                       option,
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -340,7 +358,8 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
 
   Widget _buildCheckboxAnswer(LearningHabitsQuestion question) {
     final options = question.options ?? [];
-    final selectedValues = (_answers[question.id] as List<String>?) ?? <String>[];
+    final selectedValues =
+        (_answers[question.id] as List<String>?) ?? <String>[];
 
     return ListView.builder(
       itemCount: options.length,
@@ -366,7 +385,9 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : Colors.white,
+                color: isSelected
+                    ? AppTheme.primaryColor.withAlpha(26)
+                    : Colors.white,
                 border: Border.all(
                   color: isSelected ? AppTheme.primaryColor : Colors.grey,
                 ),
@@ -382,7 +403,9 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
                       border: Border.all(
                         color: isSelected ? AppTheme.primaryColor : Colors.grey,
                       ),
-                      color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+                      color: isSelected
+                          ? AppTheme.primaryColor.withAlpha(26)
+                          : Colors.white,
                     ),
                     child: isSelected
                         ? const Icon(
@@ -398,7 +421,8 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
                       option,
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -410,4 +434,4 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
       },
     );
   }
-} 
+}

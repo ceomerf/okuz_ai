@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -12,7 +11,8 @@ class MentalSupportScreen extends StatefulWidget {
   State<MentalSupportScreen> createState() => _MentalSupportScreenState();
 }
 
-class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTickerProviderStateMixin {
+class _MentalSupportScreenState extends State<MentalSupportScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlaying = false;
@@ -21,7 +21,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
   int _breathingStep = 0; // 0: Nefes al, 1: Tut, 2: Nefes ver
   int _breathingCount = 0;
   bool _isBreathingActive = false;
-  
+
   // Motivasyon mesajları
   final List<String> _motivationQuotes = [
     "Başarı, her gün tekrarlanan küçük çabalardan oluşur.",
@@ -35,7 +35,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
     "Bugün zorlandığın şey, yarın güçlü yanın olacak.",
     "Asla vazgeçme, çünkü vazgeçtiğin an, başarıya en yakın olduğun andır."
   ];
-  
+
   // Odaklanma müzikleri
   final List<Map<String, String>> _focusTracks = [
     {
@@ -75,7 +75,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
         final doc = await FirebaseFirestore.instance
             .doc('users/${user.uid}/mental_support/data')
             .get();
-        
+
         if (doc.exists) {
           // Veri varsa işle
           final data = doc.data() as Map<String, dynamic>;
@@ -97,39 +97,39 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
 
   void _startBreathingExercise() {
     if (_isBreathingActive) return;
-    
+
     setState(() {
       _isBreathingActive = true;
       _breathingStep = 0;
       _breathingCount = 0;
     });
-    
+
     _breathingTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
       if (!_isBreathingActive) {
         timer.cancel();
         return;
       }
-      
+
       setState(() {
         _breathingStep = (_breathingStep + 1) % 3;
         if (_breathingStep == 0) {
           _breathingCount++;
         }
-        
+
         if (_breathingCount >= 10) {
           _stopBreathingExercise();
         }
       });
     });
   }
-  
+
   void _stopBreathingExercise() {
     _breathingTimer?.cancel();
     setState(() {
       _isBreathingActive = false;
     });
   }
-  
+
   Future<void> _playAudio(String url, String title) async {
     if (_isPlaying && _currentTrack == title) {
       // Aynı parça çalıyorsa durdur
@@ -143,7 +143,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
       if (_isPlaying) {
         await _audioPlayer.stop();
       }
-      
+
       // Yeni parçayı çal
       await _audioPlayer.play(UrlSource(url));
       setState(() {
@@ -156,7 +156,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Zihinsel Destek'),
@@ -182,7 +182,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
 
   Widget _buildStressManagementTab() {
     final theme = Theme.of(context);
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -193,7 +193,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          
+
           // 4-7-8 Nefes Egzersizi Kartı
           Card(
             elevation: 4,
@@ -226,10 +226,10 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
                           width: double.infinity,
                           decoration: BoxDecoration(
                             color: _breathingStep == 0
-                                ? Colors.blue.withOpacity(0.3)
+                                ? Colors.blue.withAlpha(77)
                                 : _breathingStep == 1
-                                    ? Colors.blue.withOpacity(0.6)
-                                    : Colors.blue.withOpacity(0.2),
+                                    ? Colors.blue.withAlpha(153)
+                                    : Colors.blue.withAlpha(51),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Center(
@@ -273,19 +273,20 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
               ),
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           Text(
             'Hızlı Rahatlama Teknikleri',
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          
+
           // Progresif Kas Gevşetme Kartı
           _buildTechniqueCard(
             title: 'Progresif Kas Gevşetme',
-            description: 'Vücudunuzdaki her kas grubunu sırayla gerip gevşeterek rahatlayın.',
+            description:
+                'Vücudunuzdaki her kas grubunu sırayla gerip gevşeterek rahatlayın.',
             steps: [
               'Rahat bir pozisyonda oturun veya uzanın.',
               'Ayak parmaklarınızdan başlayarak, her kas grubunu 5 saniye gerin.',
@@ -294,13 +295,14 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
               'Tüm vücudunuzun gevşediğini hissedin.'
             ],
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // 5-4-3-2-1 Tekniği Kartı
           _buildTechniqueCard(
             title: '5-4-3-2-1 Duyusal Farkındalık',
-            description: 'Anksiyete ve stresi hızla azaltmak için duyularınızı kullanın.',
+            description:
+                'Anksiyete ve stresi hızla azaltmak için duyularınızı kullanın.',
             steps: [
               '5 şey gör: Etrafınızdaki beş farklı nesneyi fark edin.',
               '4 şey dokun: Farklı dokulara sahip dört nesneye dokunun.',
@@ -320,7 +322,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
     required List<String> steps,
   }) {
     final theme = Theme.of(context);
-    
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -365,7 +367,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
 
   Widget _buildFocusTab() {
     final theme = Theme.of(context);
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -376,22 +378,22 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          
+
           // Odaklanma müzikleri listesi
           ..._focusTracks.map((track) => _buildMusicCard(
-            title: track['title']!,
-            description: track['description']!,
-            url: track['url']!,
-          )),
-          
+                title: track['title']!,
+                description: track['description']!,
+                url: track['url']!,
+              )),
+
           const SizedBox(height: 24),
-          
+
           Text(
             'Pomodoro Tekniği',
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          
+
           Card(
             elevation: 4,
             shape: RoundedRectangleBorder(
@@ -410,9 +412,8 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Pomodoro tekniği, 25 dakika odaklanmış çalışma ve 5 dakika mola döngüsünden oluşur. '
-                    'Her 4 pomodoro sonrasında 15-30 dakikalık uzun bir mola verilir.'
-                  ),
+                      'Pomodoro tekniği, 25 dakika odaklanmış çalışma ve 5 dakika mola döngüsünden oluşur. '
+                      'Her 4 pomodoro sonrasında 15-30 dakikalık uzun bir mola verilir.'),
                   const SizedBox(height: 16),
                   Center(
                     child: ElevatedButton.icon(
@@ -421,7 +422,8 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
                         // Bu örnekte sadece bir mesaj gösteriyoruz
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Pomodoro zamanlayıcısı yakında eklenecek!'),
+                            content: Text(
+                                'Pomodoro zamanlayıcısı yakında eklenecek!'),
                           ),
                         );
                       },
@@ -433,15 +435,15 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
               ),
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           Text(
             'Odaklanma İpuçları',
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          
+
           _buildTipCard(
             title: 'Çalışma Ortamını Düzenle',
             tips: [
@@ -451,9 +453,9 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
               'Doğal ışık alan bir ortamda çalışmayı tercih edin.'
             ],
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildTipCard(
             title: 'Zihinsel Hazırlık',
             tips: [
@@ -475,7 +477,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
   }) {
     final theme = Theme.of(context);
     final isCurrentlyPlaying = _isPlaying && _currentTrack == title;
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -493,7 +495,9 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
         subtitle: Text(description),
         trailing: IconButton(
           icon: Icon(
-            isCurrentlyPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+            isCurrentlyPlaying
+                ? Icons.pause_circle_filled
+                : Icons.play_circle_filled,
             size: 40,
             color: theme.colorScheme.primary,
           ),
@@ -508,7 +512,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
     required List<String> tips,
   }) {
     final theme = Theme.of(context);
-    
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -526,21 +530,23 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
               ),
             ),
             const SizedBox(height: 16),
-            ...tips.map((tip) => Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.check_circle,
-                    size: 16,
-                    color: Colors.green,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(tip)),
-                ],
-              ),
-            )).toList(),
+            ...tips
+                .map((tip) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            size: 16,
+                            color: Colors.green,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(tip)),
+                        ],
+                      ),
+                    ))
+                .toList(),
           ],
         ),
       ),
@@ -549,7 +555,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
 
   Widget _buildMotivationTab() {
     final theme = Theme.of(context);
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -560,7 +566,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          
+
           // Günün motivasyon sözü kartı
           Card(
             elevation: 4,
@@ -578,7 +584,8 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _motivationQuotes[DateTime.now().day % _motivationQuotes.length],
+                    _motivationQuotes[
+                        DateTime.now().day % _motivationQuotes.length],
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontStyle: FontStyle.italic,
                       fontWeight: FontWeight.w500,
@@ -589,37 +596,40 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
               ),
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           Text(
             'Başarı Hikayeleri',
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          
+
           _buildSuccessStoryCard(
             name: 'Ahmet Yılmaz',
-            story: 'Lise son sınıfta günde sadece 4 saat uyuyarak çalıştım ve sonunda hayalim olan tıp fakültesini kazandım.',
-            lesson: 'Disiplin ve kararlılık, her türlü zorluğu aşmanızı sağlar.',
+            story:
+                'Lise son sınıfta günde sadece 4 saat uyuyarak çalıştım ve sonunda hayalim olan tıp fakültesini kazandım.',
+            lesson:
+                'Disiplin ve kararlılık, her türlü zorluğu aşmanızı sağlar.',
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildSuccessStoryCard(
             name: 'Zeynep Kaya',
-            story: 'YKS\'ye ikinci girişimde, ilk yıl yaptığım hataları düzelterek puanımı 120 puan artırdım ve istediğim üniversiteye yerleştim.',
+            story:
+                'YKS\'ye ikinci girişimde, ilk yıl yaptığım hataları düzelterek puanımı 120 puan artırdım ve istediğim üniversiteye yerleştim.',
             lesson: 'Başarısızlıklar, başarı yolunda öğrenme fırsatlarıdır.',
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           Text(
             'Hedef Belirleme',
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          
+
           Card(
             elevation: 4,
             shape: RoundedRectangleBorder(
@@ -669,7 +679,8 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
                         // Hedef belirleme ekranına yönlendir
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Hedef belirleme ekranı yakında eklenecek!'),
+                            content: Text(
+                                'Hedef belirleme ekranı yakında eklenecek!'),
                           ),
                         );
                       },
@@ -692,7 +703,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
     required String lesson,
   }) {
     final theme = Theme.of(context);
-    
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -759,7 +770,7 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
     required String description,
   }) {
     final theme = Theme.of(context);
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Row(
@@ -799,4 +810,4 @@ class _MentalSupportScreenState extends State<MentalSupportScreen> with SingleTi
       ),
     );
   }
-} 
+}

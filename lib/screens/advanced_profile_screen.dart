@@ -4,27 +4,58 @@ import 'package:okuz_ai/screens/diagnostic_test_screen.dart';
 import 'package:okuz_ai/screens/learning_habits_screen.dart';
 import 'package:okuz_ai/models/diagnostic_test.dart';
 import 'package:okuz_ai/screens/user_plan_screen.dart';
+import 'package:okuz_ai/services/plan_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AdvancedProfileScreen extends StatelessWidget {
   const AdvancedProfileScreen({Key? key}) : super(key: key);
 
+  // Plan var mı kontrol et
+  Future<bool> _checkUserHasPlan() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+
+    try {
+      final planService = PlanService();
+      final planDocument = await planService.getUserPlan();
+      return planDocument != null;
+    } catch (e) {
+      print('Plan kontrolü hatası: $e');
+      return false;
+    }
+  }
+
+  // UserPlanScreen'e yönlendir
+  Future<void> _navigateToUserPlan(BuildContext context) async {
+    // Plan kontrolü yap
+    final hasPlan = await _checkUserHasPlan();
+
+    if (hasPlan) {
+      // Plan varsa direkt UserPlanScreen'e git
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const UserPlanScreen()),
+        (Route<dynamic> route) => false,
+      );
+    } else {
+      // Plan yoksa yine UserPlanScreen'e git, orada "Plan Oluştur" butonu gösterilecek
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const UserPlanScreen()),
+        (Route<dynamic> route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Gelişmiş Profil'),
-        backgroundColor: AppTheme.backgroundColor,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         actions: [
           TextButton(
-            onPressed: () {
-              // Gelişmiş profili atla ve ana ekrana git
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const UserPlanScreen()),
-                (Route<dynamic> route) => false,
-              );
-            },
+            onPressed: () => _navigateToUserPlan(context),
             child: const Text('Atla', style: TextStyle(color: Colors.grey)),
           ),
         ],
@@ -51,15 +82,21 @@ class AdvancedProfileScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
-              
+
               // Mini Teşhis Sınavı Kartı
               _buildOptionCard(
                 context,
                 title: 'Mini Teşhis Sınavı',
-                description: 'Temel konulardaki seviyenizi ölçen kısa bir sınav. Sadece 5-10 dakikanızı alacak.',
+                description:
+                    'Temel konulardaki seviyenizi ölçen kısa bir sınav. Sadece 5-10 dakikanızı alacak.',
                 icon: Icons.quiz,
-                color: Colors.blue.shade100,
-                iconColor: Colors.blue,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF3F51B5)
+                        .withOpacity(0.2) // Koyu mavi arka plan
+                    : Colors.blue.shade100,
+                iconColor: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF7986CB) // Açık mavi icon
+                    : Colors.blue,
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -70,17 +107,23 @@ class AdvancedProfileScreen extends StatelessWidget {
                   );
                 },
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Öğrenme Alışkanlıkları Anketi Kartı
               _buildOptionCard(
                 context,
                 title: 'Öğrenme Alışkanlıkları Anketi',
-                description: 'Çalışma alışkanlıklarınızı analiz ederek size özel tavsiyeler sunmamızı sağlar.',
+                description:
+                    'Çalışma alışkanlıklarınızı analiz ederek size özel tavsiyeler sunmamızı sağlar.',
                 icon: Icons.psychology,
-                color: Colors.purple.shade100,
-                iconColor: Colors.purple,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF5C6BC0)
+                        .withOpacity(0.2) // Orta mavi arka plan
+                    : Colors.purple.shade100,
+                iconColor: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF9FA8DA) // Açık mavi-gri icon
+                    : Colors.purple,
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -89,22 +132,24 @@ class AdvancedProfileScreen extends StatelessWidget {
                   );
                 },
               ),
-              
+
               const SizedBox(height: 40),
-              
+
               // Devam Et Butonu
               Center(
                 child: ElevatedButton(
                   onPressed: () {
                     // Ana ekrana git
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const UserPlanScreen()),
+                      MaterialPageRoute(
+                          builder: (context) => const UserPlanScreen()),
                       (Route<dynamic> route) => false,
                     );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 40, vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
@@ -200,4 +245,4 @@ class AdvancedProfileScreen extends StatelessWidget {
       ),
     );
   }
-} 
+}

@@ -6,7 +6,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.3.0'
+        classpath 'com.android.tools.build:gradle:7.4.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.google.gms:google-services:4.3.15'  // Google Services plugin
     }
@@ -25,6 +25,14 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(':app')
+    // Flutter paketleri için namespace sorunu çözümü
+    if (project.hasProperty('android')) {
+        android {
+            if (!project.android.hasProperty('namespace')) {
+                namespace = "io.flutter.plugins.${project.name.replace('-', '_').replace(':', '.')}"
+            }
+        }
+    }
 }
 
 tasks.register("clean", Delete) {
