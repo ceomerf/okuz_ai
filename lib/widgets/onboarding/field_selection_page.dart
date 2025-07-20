@@ -18,6 +18,14 @@ class FieldSelectionPage extends StatefulWidget {
 }
 
 class _FieldSelectionPageState extends State<FieldSelectionPage> {
+  String? _selectedField;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedField = widget.onboardingData.academicTrack;
+  }
+
   final List<Map<String, dynamic>> _fields = [
     {'id': 'sayisal', 'name': 'Sayısal', 'icon': Icons.calculate_outlined},
     {'id': 'esit', 'name': 'Eşit Ağırlık', 'icon': Icons.balance_outlined},
@@ -31,6 +39,9 @@ class _FieldSelectionPageState extends State<FieldSelectionPage> {
   ];
 
   void _selectField(String fieldId) {
+    setState(() {
+      _selectedField = fieldId;
+    });
     widget.onSelectionChanged(fieldId);
   }
 
@@ -79,8 +90,7 @@ class _FieldSelectionPageState extends State<FieldSelectionPage> {
               itemCount: _fields.length,
               itemBuilder: (context, index) {
                 final field = _fields[index];
-                final isSelected =
-                    field['id'] == widget.onboardingData.targetExam;
+                final isSelected = field['id'] == _selectedField;
                 return _buildFieldCard(field, isSelected, index);
               },
             ),

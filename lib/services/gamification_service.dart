@@ -14,7 +14,7 @@ class GamificationService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFunctions _functions = FirebaseFunctions.instance;
-  final String _apiBaseUrl = 'http://89.116.38.173:3000/api/v1'; // API Base URL
+  final String _apiBaseUrl = 'http://89.116.38.173:3000/api'; // API Base URL
 
   // Mevcut seçili profil ID'si
   String? _selectedProfileId;

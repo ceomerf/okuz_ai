@@ -11,7 +11,7 @@ class PlanService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Express API base URL
-  static const String _apiBaseUrl = 'http://89.116.38.173:3000/api/v1';
+  static const String _apiBaseUrl = 'http://89.116.38.173:3000/api';
 
   // Mevcut seçili profil ID'si
   String? _selectedProfileId;

@@ -18,6 +18,14 @@ class PlanScopePage extends StatefulWidget {
 }
 
 class _PlanScopePageState extends State<PlanScopePage> {
+  String? _selectedPlan;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedPlan = widget.onboardingData.planScope;
+  }
+
   final List<Map<String, dynamic>> _planOptions = [
     {
       'id': 'recommended',
@@ -38,6 +46,9 @@ class _PlanScopePageState extends State<PlanScopePage> {
   ];
 
   void _selectPlan(String planId) {
+    setState(() {
+      _selectedPlan = planId;
+    });
     widget.onSelectionChanged(planId);
   }
 
@@ -80,8 +91,7 @@ class _PlanScopePageState extends State<PlanScopePage> {
               itemCount: _planOptions.length,
               itemBuilder: (context, index) {
                 final option = _planOptions[index];
-                final isSelected =
-                    option['id'] == widget.onboardingData.planScope;
+                final isSelected = option['id'] == _selectedPlan;
                 return _buildPlanOptionCard(option, isSelected, index);
               },
             ),

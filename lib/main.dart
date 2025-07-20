@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:okuz_ai/firebase_options.dart';
 import 'package:okuz_ai/services/family_account_service.dart';
 import 'package:okuz_ai/services/subscription_service.dart';
+import 'package:okuz_ai/providers/subscription_provider.dart';
+import 'package:okuz_ai/theme/app_theme.dart';
 import 'package:okuz_ai/services/deep_link_service.dart';
 import 'package:okuz_ai/screens/student_invite_register_screen.dart';
 import 'package:okuz_ai/screens/parent_invite_register_screen.dart';
@@ -13,7 +15,6 @@ import 'package:okuz_ai/screens/onboarding_screen.dart';
 import 'package:okuz_ai/screens/login_screen.dart';
 import 'package:okuz_ai/screens/profile_screen.dart';
 import 'package:okuz_ai/screens/family_portal_screen.dart';
-import 'package:okuz_ai/theme/app_theme.dart';
 
 /// Ana fonksiyon - Uygulama başlangıç noktası
 /// Firebase ve Flutter framework'ü burada başlatılır
@@ -87,6 +88,20 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     // Deep link servisini başlat
     _initializeDeepLinks();
+
+    // Tema durumunu yükle
+    _initializeTheme();
+  }
+
+  /// Tema durumunu başlatan fonksiyon
+  Future<void> _initializeTheme() async {
+    try {
+      final themeProvider = ThemeProvider();
+      await themeProvider.initTheme();
+      debugPrint('✅ Tema durumu başarıyla yüklendi');
+    } catch (e) {
+      debugPrint('❌ Tema yükleme hatası: $e');
+    }
   }
 
   @override
@@ -225,53 +240,67 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           create: (_) => FamilyAccountService(),
         ),
 
-        // Subscription Service - Abonelik yönetimi
+        // Theme Provider - Tema yönetimi
+        ChangeNotifierProvider(
+          create: (_) => ThemeProvider(),
+        ),
+
+        // Subscription Provider - Abonelik yönetimi
+        ChangeNotifierProvider(
+          create: (_) => SubscriptionProvider(),
+        ),
+
+        // Subscription Service - Abonelik servisi
         Provider(
           create: (_) => SubscriptionService(),
         ),
       ],
-      child: MaterialApp(
-        // Uygulama başlığı
-        title: 'OKUZ AI - Akıllı Eğitim Asistanı',
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            // Uygulama başlığı
+            title: 'OKUZ AI - Akıllı Eğitim Asistanı',
 
-        // Debug banner'ını kaldır
-        debugShowCheckedModeBanner: false,
+            // Debug banner'ını kaldır
+            debugShowCheckedModeBanner: false,
 
-        // Tema ayarları
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system, // Sistem temasını takip et
+            // Tema ayarları
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
 
-        // Navigator key - Deep linking için gerekli
-        navigatorKey: _navigatorKey,
+            // Navigator key - Deep linking için gerekli
+            navigatorKey: _navigatorKey,
 
-        // Ana ekran - Auth kontrolü
-        home: const AuthWrapper(),
+            // Ana ekran - Auth kontrolü
+            home: const AuthWrapper(),
 
-        // Uygulama genelinde kullanılacak route'lar
-        routes: {
-          '/student-invite': (context) {
-            final args = ModalRoute.of(context)?.settings.arguments
-                as Map<String, dynamic>?;
-            final token = args?['token'] as String?;
+            // Uygulama genelinde kullanılacak route'lar
+            routes: {
+              '/student-invite': (context) {
+                final args = ModalRoute.of(context)?.settings.arguments
+                    as Map<String, dynamic>?;
+                final token = args?['token'] as String?;
 
-            if (token != null) {
-              return StudentInviteRegisterScreen(token: token);
-            }
+                if (token != null) {
+                  return StudentInviteRegisterScreen(token: token);
+                }
 
-            return const LoginScreen();
-          },
-          '/parent-invite': (context) {
-            final args = ModalRoute.of(context)?.settings.arguments
-                as Map<String, dynamic>?;
-            final token = args?['token'] as String?;
+                return const LoginScreen();
+              },
+              '/parent-invite': (context) {
+                final args = ModalRoute.of(context)?.settings.arguments
+                    as Map<String, dynamic>?;
+                final token = args?['token'] as String?;
 
-            if (token != null) {
-              return ParentInviteRegisterScreen(token: token);
-            }
+                if (token != null) {
+                  return ParentInviteRegisterScreen(token: token);
+                }
 
-            return const LoginScreen();
-          },
+                return const LoginScreen();
+              },
+            },
+          );
         },
       ),
     );

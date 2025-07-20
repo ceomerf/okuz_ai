@@ -36,6 +36,30 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Ana route - API bilgisi
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Okuz AI API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      planning: '/api/planning',
+      profile: '/api/profile',
+      interaction: '/api/interaction',
+      gamification: '/api/gamification',
+      analysis: '/api/analysis',
+      subscription: '/api/subscription',
+      notifications: '/api/notifications',
+      invite: '/api/invite',
+      student_invite: '/invite/student/:token',
+      parent_invite: '/invite/parent/:token',
+      apple_app_site_association: '/.well-known/apple-app-site-association'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // API Routes
 app.use('/api/planning', planningRoutes);
 app.use('/api/profile', profileRoutes);

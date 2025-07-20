@@ -18,6 +18,14 @@ class StartingPointPage extends StatefulWidget {
 }
 
 class _StartingPointPageState extends State<StartingPointPage> {
+  String? _selectedStartingPoint;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedStartingPoint = widget.onboardingData.startPoint;
+  }
+
   final List<Map<String, dynamic>> _startingPoints = [
     {
       'id': 'behind',
@@ -28,24 +36,25 @@ class _StartingPointPageState extends State<StartingPointPage> {
       'icon': '🔄',
       'color': Colors.orange,
       'features': [
-        'Temel konulardan başlama',
-        'Eksik konuları kapatma',
-        'Sağlam temel oluşturma',
-        'Adım adım ilerleme'
+        'Eksik konuları tamamlama',
+        'Temel güçlendirme',
+        'Kademeli ilerleme',
+        'Güvenli öğrenme'
       ]
     },
     {
       'id': 'current',
-      'title': 'Seviyemde',
-      'subtitle': 'Mevcut sınıf seviyemden devam etmek istiyorum',
-      'description': 'Sınıf seviyeme uygun konularla normal tempoda ilerlerim',
-      'icon': '⚖️',
+      'title': 'Sınıf Seviyemde',
+      'subtitle': 'Mevcut konularımı pekiştirmek istiyorum',
+      'description':
+          'Şu anki sınıf seviyemdeki konuları pekiştirerek sağlam ilerleyeceğim',
+      'icon': '📚',
       'color': Colors.blue,
       'features': [
-        'Sınıf seviyesi konular',
-        'Normal tempo ilerleme',
+        'Mevcut konular',
+        'Sağlam pekiştirme',
         'Dengeli program',
-        'Müfredata uygun çalışma'
+        'Sistematik ilerleme'
       ]
     },
     {
@@ -66,6 +75,9 @@ class _StartingPointPageState extends State<StartingPointPage> {
   ];
 
   void _selectStartingPoint(String startingPoint) {
+    setState(() {
+      _selectedStartingPoint = startingPoint;
+    });
     widget.onSelectionChanged(startingPoint);
   }
 
@@ -109,7 +121,7 @@ class _StartingPointPageState extends State<StartingPointPage> {
               itemBuilder: (context, index) {
                 final startingPoint = _startingPoints[index];
                 final isSelected =
-                    startingPoint['id'] == widget.onboardingData.startPoint;
+                    startingPoint['id'] == _selectedStartingPoint;
                 return _buildStartingPointCard(
                     startingPoint, isSelected, index);
               },

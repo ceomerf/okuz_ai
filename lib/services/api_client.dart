@@ -7,7 +7,6 @@ import '../models/parent_invite_token.dart';
 import '../models/parent_model.dart';
 
 class ApiClient {
-  // VPS API URL'si
   static const String baseUrl = 'http://89.116.38.173:3000/api';
 
   // Firebase Auth instance

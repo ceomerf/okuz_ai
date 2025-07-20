@@ -101,7 +101,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       final token = await user.getIdToken();
       final response = await http.get(
         Uri.parse(
-            'http://89.116.38.173:3000/api/v1/planning/check-holiday-status'),
+            'http://89.116.38.173:3000/api/planning/check-holiday-status'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -570,8 +570,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // Express API'ye gönder
       final token = await user.getIdToken();
       final response = await http.post(
-        Uri.parse(
-            'http://89.116.38.173:3000/api/v1/profile/complete-onboarding'),
+        Uri.parse('http://localhost:3000/api/profile/complete-onboarding'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

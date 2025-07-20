@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:okuz_ai/models/onboarding_data.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 
 class LastTopicsSelectionPage extends StatefulWidget {
   final OnboardingData onboardingData;
@@ -31,34 +30,94 @@ class _LastTopicsSelectionPageState extends State<LastTopicsSelectionPage> {
     _loadTopicsFromCurriculum();
   }
 
-  Future<void> _loadTopicsFromCurriculum() async {
-    try {
-      final functions = FirebaseFunctions.instance;
-      final callable = functions.httpsCallable('getTopicsForGradeAndSubjects');
+  void _loadTopicsFromCurriculum() {
+    // Mock data ile basit konular oluşturalım
+    final mockTopics = <String, List<Map<String, dynamic>>>{};
 
-      final result = await callable.call({
-        'grade': widget.onboardingData.grade,
-        'academicTrack': widget.onboardingData.academicTrack,
-        'selectedSubjects': widget.onboardingData.selectedSubjects,
-      });
-
-      if (mounted) {
-        setState(() {
-          _subjectTopics = Map<String, List<Map<String, dynamic>>>.from(
-              result.data['subjectTopics'].map((key, value) =>
-                  MapEntry(key, List<Map<String, dynamic>>.from(value))));
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('Konular yüklenirken hata: $e');
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Konular yüklenemedi: ${e.toString()}';
-          _isLoading = false;
-        });
-      }
+    for (String subject in widget.onboardingData.selectedSubjects) {
+      mockTopics[subject] = _getMockTopicsForSubject(subject);
     }
+
+    setState(() {
+      _subjectTopics = mockTopics;
+      _isLoading = false;
+    });
+  }
+
+  List<Map<String, dynamic>> _getMockTopicsForSubject(String subject) {
+    // Her ders için örnek konular
+    final topicMap = {
+      'Matematik': [
+        {'id': 'matematik_1', 'name': 'Sayılar'},
+        {'id': 'matematik_2', 'name': 'Cebirsel İfadeler'},
+        {'id': 'matematik_3', 'name': 'Denklemler'},
+        {'id': 'matematik_4', 'name': 'Fonksiyonlar'},
+        {'id': 'matematik_5', 'name': 'Geometri'},
+      ],
+      'Fizik': [
+        {'id': 'fizik_1', 'name': 'Hareket'},
+        {'id': 'fizik_2', 'name': 'Kuvvet'},
+        {'id': 'fizik_3', 'name': 'Enerji'},
+        {'id': 'fizik_4', 'name': 'Elektrik'},
+        {'id': 'fizik_5', 'name': 'Optik'},
+      ],
+      'Kimya': [
+        {'id': 'kimya_1', 'name': 'Atom Yapısı'},
+        {'id': 'kimya_2', 'name': 'Periyodik Tablo'},
+        {'id': 'kimya_3', 'name': 'Kimyasal Bağlar'},
+        {'id': 'kimya_4', 'name': 'Asit-Baz'},
+        {'id': 'kimya_5', 'name': 'Organik Kimya'},
+      ],
+      'Biyoloji': [
+        {'id': 'biyoloji_1', 'name': 'Hücre'},
+        {'id': 'biyoloji_2', 'name': 'Metabolizma'},
+        {'id': 'biyoloji_3', 'name': 'Genetik'},
+        {'id': 'biyoloji_4', 'name': 'Ekoloji'},
+        {'id': 'biyoloji_5', 'name': 'Evrim'},
+      ],
+      'Türkçe': [
+        {'id': 'turkce_1', 'name': 'Dil Bilgisi'},
+        {'id': 'turkce_2', 'name': 'Okuduğunu Anlama'},
+        {'id': 'turkce_3', 'name': 'Yazım Kuralları'},
+        {'id': 'turkce_4', 'name': 'Edebiyat'},
+        {'id': 'turkce_5', 'name': 'Kompozisyon'},
+      ],
+      'Türk Dili ve Edebiyatı': [
+        {'id': 'edebiyat_1', 'name': 'Divan Edebiyatı'},
+        {'id': 'edebiyat_2', 'name': 'Tanzimat Edebiyatı'},
+        {'id': 'edebiyat_3', 'name': 'Cumhuriyet Dönemi'},
+        {'id': 'edebiyat_4', 'name': 'Modern Türk Edebiyatı'},
+        {'id': 'edebiyat_5', 'name': 'Şiir'},
+      ],
+      'Tarih': [
+        {'id': 'tarih_1', 'name': 'İlk Çağ'},
+        {'id': 'tarih_2', 'name': 'Orta Çağ'},
+        {'id': 'tarih_3', 'name': 'Osmanlı Tarihi'},
+        {'id': 'tarih_4', 'name': 'Türkiye Cumhuriyeti'},
+        {'id': 'tarih_5', 'name': 'Dünya Tarihi'},
+      ],
+      'Coğrafya': [
+        {'id': 'cografya_1', 'name': 'Fiziki Coğrafya'},
+        {'id': 'cografya_2', 'name': 'Beşeri Coğrafya'},
+        {'id': 'cografya_3', 'name': 'Türkiye Coğrafyası'},
+        {'id': 'cografya_4', 'name': 'Dünya Coğrafyası'},
+        {'id': 'cografya_5', 'name': 'Harita Bilgisi'},
+      ],
+      'İngilizce': [
+        {'id': 'ingilizce_1', 'name': 'Grammar'},
+        {'id': 'ingilizce_2', 'name': 'Vocabulary'},
+        {'id': 'ingilizce_3', 'name': 'Reading'},
+        {'id': 'ingilizce_4', 'name': 'Writing'},
+        {'id': 'ingilizce_5', 'name': 'Speaking'},
+      ],
+    };
+
+    return topicMap[subject] ??
+        [
+          {'id': '${subject.toLowerCase()}_1', 'name': '$subject - Konu 1'},
+          {'id': '${subject.toLowerCase()}_2', 'name': '$subject - Konu 2'},
+          {'id': '${subject.toLowerCase()}_3', 'name': '$subject - Konu 3'},
+        ];
   }
 
   void _selectLastTopic(String subject, String topic) {
@@ -330,8 +389,7 @@ class _LastTopicsSelectionPageState extends State<LastTopicsSelectionPage> {
                   ),
                   const SizedBox(height: 12),
                   ...topics.map((topicData) {
-                    final topicName = topicData['konuAdi'] as String;
-                    final unitName = topicData['uniteAdi'] as String?;
+                    final topicName = topicData['name'] as String;
                     final isSelected = selectedTopic == topicName;
 
                     return GestureDetector(
@@ -372,18 +430,6 @@ class _LastTopicsSelectionPageState extends State<LastTopicsSelectionPage> {
                                                   context),
                                         ),
                                   ),
-                                  if (unitName != null && unitName.isNotEmpty)
-                                    Text(
-                                      unitName,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color:
-                                                AppTheme.getSecondaryTextColor(
-                                                    context),
-                                          ),
-                                    ),
                                 ],
                               ),
                             ),

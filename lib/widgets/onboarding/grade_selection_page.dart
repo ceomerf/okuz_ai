@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:okuz_ai/models/onboarding_data.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 
 class GradeSelectionPage extends StatefulWidget {
   final OnboardingData onboardingData;
@@ -22,39 +21,38 @@ class _GradeSelectionPageState extends State<GradeSelectionPage> {
   final List<String> _grades = ['9', '10', '11', '12', 'Mezun'];
   bool _isHoliday = false;
   String _holidayReason = '';
-  bool _isLoading = true;
+  String? _selectedGrade;
 
   @override
   void initState() {
     super.initState();
+    _selectedGrade = widget.onboardingData.grade;
     _checkHolidayStatus();
   }
 
-  Future<void> _checkHolidayStatus() async {
-    try {
-      final functions = FirebaseFunctions.instance;
-      final callable = functions.httpsCallable('checkHolidayStatus');
-      final result = await callable.call();
+  void _checkHolidayStatus() {
+    // Basit tatil kontrolü - yaz tatili dönemi
+    final now = DateTime.now();
+    final month = now.month;
 
-      if (mounted) {
-        setState(() {
-          _isHoliday = result.data['isHoliday'] ?? false;
-          _holidayReason = result.data['holidayReason'] ?? '';
-          _isLoading = false;
-        });
+    setState(() {
+      if (month >= 6 && month <= 8) {
+        _isHoliday = true;
+        _holidayReason = 'Yaz Tatili';
+      } else if (month == 1 || month == 2) {
+        _isHoliday = true;
+        _holidayReason = 'Sömestr Tatili';
+      } else {
+        _isHoliday = false;
+        _holidayReason = '';
       }
-    } catch (e) {
-      print('Tatil durumu kontrol hatası: $e');
-      if (mounted) {
-        setState(() {
-          _isHoliday = false;
-          _isLoading = false;
-        });
-      }
-    }
+    });
   }
 
   void _selectGrade(String grade) {
+    setState(() {
+      _selectedGrade = grade;
+    });
     widget.onSelectionChanged(grade);
   }
 
@@ -79,65 +77,59 @@ class _GradeSelectionPageState extends State<GradeSelectionPage> {
             ),
           ),
           const SizedBox(height: 16),
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator())
-          else
-            Animate(
-              delay: const Duration(milliseconds: 200),
-              effects: const [
-                FadeEffect(duration: Duration(milliseconds: 500))
-              ],
-              child: Column(
-                children: [
-                  Text(
-                    _isHoliday
-                        ? 'Kaçıncı sınıfa gireceksin?'
-                        : 'Hangi sınıftasın?',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppTheme.getSecondaryTextColor(context),
-                          fontWeight: FontWeight.w600,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (_isHoliday && _holidayReason.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: AppTheme.primaryColor.withOpacity(0.3),
-                          width: 1,
-                        ),
+          Animate(
+            delay: const Duration(milliseconds: 200),
+            effects: const [FadeEffect(duration: Duration(milliseconds: 500))],
+            child: Column(
+              children: [
+                Text(
+                  _isHoliday
+                      ? 'Kaçıncı sınıfa gireceksin?'
+                      : 'Hangi sınıftasın?',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppTheme.getSecondaryTextColor(context),
+                        fontWeight: FontWeight.w600,
                       ),
-                      child: Text(
-                        '🏖️ $_holidayReason döneminde',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.primaryColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                        textAlign: TextAlign.center,
+                  textAlign: TextAlign.center,
+                ),
+                if (_isHoliday && _holidayReason.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        width: 1,
                       ),
                     ),
-                  ],
+                    child: Text(
+                      '🏖️ $_holidayReason döneminde',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
+          ),
           const SizedBox(height: 40),
-          if (!_isLoading)
-            Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                itemCount: _grades.length,
-                itemBuilder: (context, index) {
-                  final grade = _grades[index];
-                  final isSelected = grade == widget.onboardingData.grade;
-                  return _buildGradeCard(grade, isSelected, index);
-                },
-              ),
+          Expanded(
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: _grades.length,
+              itemBuilder: (context, index) {
+                final grade = _grades[index];
+                final isSelected = grade == _selectedGrade;
+                return _buildGradeCard(grade, isSelected, index);
+              },
             ),
+          ),
         ],
       ),
     );
@@ -177,7 +169,7 @@ class _GradeSelectionPageState extends State<GradeSelectionPage> {
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: AppTheme.primaryColor.withAlpha(77),
+                      color: AppTheme.primaryColor.withOpacity(0.3),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
