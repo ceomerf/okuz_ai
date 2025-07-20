@@ -126,6 +126,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   /// Gelen deep link'leri işleyen fonksiyon
   /// Token varsa ilgili kayıt ekranına yönlendirir
   void _handleDeepLink(DeepLinkData data) {
+    debugPrint('🔗 _handleDeepLink called with: $data');
+
     // Token yoksa işlem yapma
     if (data.token == null || data.token!.isEmpty) {
       debugPrint('⚠️ Deep link token bulunamadı');
@@ -143,6 +145,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     // Deep link tipine göre yönlendirme yap
     switch (data.type) {
       case DeepLinkType.studentInvite:
+        debugPrint('📚 Student invite routing...');
         // Öğrenci davet bağlantısı - Öğrenci kayıt ekranına git
         _navigatorKey.currentState!.push(
           MaterialPageRoute(
@@ -154,6 +157,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         break;
 
       case DeepLinkType.parentInvite:
+        debugPrint('👨‍👩‍👧‍👦 Parent invite routing...');
         // Veli davet bağlantısı - Veli kayıt ekranına git
         _navigatorKey.currentState!.push(
           MaterialPageRoute(

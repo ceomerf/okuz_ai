@@ -82,6 +82,12 @@ router.get('/student/:token', async (req, res) => {
     
     const tokenData = tokenDoc.data() as InviteTokenData;
     
+    if (!tokenData) {
+      return res.status(404).json({ 
+        error: 'Token verisi bulunamadı' 
+      });
+    }
+    
     // Token kullanılmış mı kontrol et
     if (tokenData.isUsed) {
       return res.status(400).json({ 
@@ -107,7 +113,9 @@ router.get('/student/:token', async (req, res) => {
     
     if (parentDoc.exists) {
       const parentData = parentDoc.data();
-      parentName = parentData.fullName || parentData.displayName || 'Veli';
+      if (parentData) {
+        parentName = parentData.fullName || parentData.displayName || 'Veli';
+      }
     }
     
     // Token geçerli, bilgileri döndür
@@ -194,6 +202,12 @@ router.get('/parent/:token', async (req, res) => {
     
     const tokenData = tokenDoc.data() as InviteTokenData;
     
+    if (!tokenData) {
+      return res.status(404).json({ 
+        error: 'Token verisi bulunamadı' 
+      });
+    }
+    
     // Token kullanılmış mı kontrol et
     if (tokenData.isUsed) {
       return res.status(400).json({ 
@@ -219,7 +233,9 @@ router.get('/parent/:token', async (req, res) => {
     
     if (studentDoc.exists) {
       const studentData = studentDoc.data();
-      studentName = studentData.fullName || studentData.displayName || 'Öğrenci';
+      if (studentData) {
+        studentName = studentData.fullName || studentData.displayName || 'Öğrenci';
+      }
     }
     
     // Token geçerli, bilgileri döndür
@@ -266,6 +282,12 @@ router.post('/register-student', async (req, res) => {
     
     const tokenData = tokenDoc.data() as InviteTokenData;
     
+    if (!tokenData) {
+      return res.status(404).json({ 
+        error: 'Token verisi bulunamadı' 
+      });
+    }
+    
     // Token kullanılmış mı kontrol et
     if (tokenData.isUsed) {
       return res.status(400).json({ 
@@ -275,6 +297,12 @@ router.post('/register-student', async (req, res) => {
     
     // Veli ID'sini al
     const parentId = tokenData.parentId;
+    
+    if (!parentId) {
+      return res.status(400).json({ 
+        error: 'Geçersiz token: Veli ID bulunamadı' 
+      });
+    }
     
     // Öğrenci verisi oluştur
     const studentData = {
@@ -371,6 +399,12 @@ router.post('/register-parent', async (req, res) => {
     
     const tokenData = tokenDoc.data() as InviteTokenData;
     
+    if (!tokenData) {
+      return res.status(404).json({ 
+        error: 'Token verisi bulunamadı' 
+      });
+    }
+    
     // Token kullanılmış mı kontrol et
     if (tokenData.isUsed) {
       return res.status(400).json({ 
@@ -380,6 +414,12 @@ router.post('/register-parent', async (req, res) => {
     
     // Öğrenci ID'sini al
     const studentId = tokenData.studentId;
+    
+    if (!studentId) {
+      return res.status(400).json({ 
+        error: 'Geçersiz token: Öğrenci ID bulunamadı' 
+      });
+    }
     
     // Veli verisi oluştur
     const parentData = {
