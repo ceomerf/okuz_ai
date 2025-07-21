@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:okuz_ai/screens/onboarding_screen.dart';
 import 'package:okuz_ai/screens/plan_display_screen.dart';
 import 'package:okuz_ai/services/plan_service.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import '../services/family_account_service.dart';
-import '../models/student_profile.dart';
+import '../services/auth_service.dart';
+import '../providers/loading_provider.dart';
+import '../services/error_handler.dart';
 import '../screens/profile_selection_screen.dart';
 import 'role_selection_screen.dart';
 
@@ -27,13 +25,11 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLogin = true; // true = login, false = register
   bool _isPasswordVisible = false;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final PlanService _planService = PlanService();
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
@@ -48,6 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _nameController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
@@ -64,137 +61,35 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
-    setState(() {
-      _isLoading = true;
-    });
+    final loadingProvider =
+        Provider.of<LoadingProvider>(context, listen: false);
+    loadingProvider.setLoading('google_login',
+        message: 'Google ile giriş yapılıyor...');
 
     try {
-      // Google Sign-In akışını başlat
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      // Google ile giriş işlemi artık doğrudan backend'e gönderilecek
+      final authService = Provider.of<AuthService>(context, listen: false);
 
-      if (googleUser == null) {
-        // Kullanıcı giriş işlemini iptal etti
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
+      // Backend'e Google ile giriş yap
+      final response = await authService.loginWithGoogle();
 
-      // Google authentication token'larını al
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      // Kullanıcı bilgilerini kontrol et
+      await _checkUserAndRedirect(response);
 
-      // Firebase credential oluştur
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+      loadingProvider.setLoaded('google_login');
+    } catch (e) {
+      // Hata durumunu yönet
+      final errorHandler = Provider.of<ErrorHandler>(context, listen: false);
+      final errorMessage = errorHandler.getUserFriendlyMessage(e);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
       );
 
-      // Firebase ile giriş yap
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
-
-      if (mounted && userCredential.user != null) {
-        // Kullanıcı oturum açtıktan sonra idToken'ı yenile
-        await userCredential.user!.reload();
-        await userCredential.user!.getIdToken(true);
-
-        // Kullanıcı dokümanını oluştur/güncelle
-        await _createUserDocument(userCredential.user!);
-
-        // Hesap tipine göre yönlendir
-        await _navigateBasedOnAccountType();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google ile giriş yapılırken hata oluştu: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  // Kullanıcı dokümanını oluştur veya güncelle
-  Future<void> _createUserDocument(User user) async {
-    try {
-      // Kullanıcı dokümanını kontrol et
-      final docRef = _firestore.collection('users').doc(user.uid);
-      final docSnapshot = await docRef.get();
-
-      if (!docSnapshot.exists) {
-        // Yeni kullanıcı için Firestore'da bir döküman oluştur
-        await docRef.set({
-          'email': user.email,
-          'createdAt': FieldValue.serverTimestamp(),
-          'onboardingCompleted': false,
-          'isPremium':
-              false, // Yeni kullanıcılar varsayılan olarak premium değil
-          'accountType': 'single', // Varsayılan: tek kullanıcı hesabı
-        });
-      } else {
-        // Mevcut kullanıcı için isPremium alanı yoksa ekle
-        final data = docSnapshot.data();
-        if (data != null && !data.containsKey('isPremium')) {
-          await docRef.update({
-            'isPremium': false,
-          });
-        }
-        // accountType alanı yoksa ekle (eski kullanıcılar için)
-        if (data != null && !data.containsKey('accountType')) {
-          await docRef.update({
-            'accountType': 'single',
-          });
-        }
-      }
-    } catch (e) {
-      print('Kullanıcı dokümanı oluşturma hatası: $e');
-      // Hata durumunda bile devam et
-    }
-  }
-
-  Future<void> _navigateBasedOnAccountType() async {
-    try {
-      // FamilyAccountService'den hesap tipini al
-      final familyService =
-          Provider.of<FamilyAccountService>(context, listen: false);
-      await familyService.loadAccountData();
-
-      // Eğer hesap yoksa veya yeni kullanıcıysa rol seçimine yönlendir
-      if (familyService.currentAccount == null) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
-        );
-        return;
-      }
-
-      final accountType = familyService.accountType;
-
-      if (accountType == AccountType.parent) {
-        // Aile hesabı - profil seçim ekranına git
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-              builder: (context) => const ProfileSelectionScreen()),
-        );
-      } else {
-        // Öğrenci hesabı - onboarding durumunu kontrol et
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-        );
-      }
-    } catch (e) {
-      // Hata durumunda veya yeni kullanıcı ise rol seçimine yönlendir
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
-      );
+      loadingProvider.setError('google_login', e);
     }
   }
 
@@ -203,92 +98,121 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    final loadingProvider =
+        Provider.of<LoadingProvider>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final errorHandler = Provider.of<ErrorHandler>(context, listen: false);
+
+    loadingProvider.setLoading(
+      'auth_form',
+      message: _isLogin ? 'Giriş yapılıyor...' : 'Kayıt olunuyor...',
+    );
 
     try {
-      UserCredential userCredential;
+      Map<String, dynamic> response;
 
       if (_isLogin) {
-        // Giriş işlemi
-        userCredential = await _auth.signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
+        // Backend'e giriş yap
+        response = await authService.login(
+          _emailController.text,
+          _passwordController.text,
         );
       } else {
-        // Kayıt işlemi
-        userCredential = await _auth.createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
+        // Şifre kontrolü
+        if (_passwordController.text != _confirmPasswordController.text) {
+          loadingProvider.setError('auth_form', 'Şifreler eşleşmiyor');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Şifreler eşleşmiyor'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        // Backend'e kayıt ol
+        response = await authService.register(
+          _emailController.text,
+          _passwordController.text,
+          _nameController.text,
         );
-
-        // Kullanıcı kaydı başarılı olduktan sonra token'ı yenile
-        await userCredential.user!.reload();
-        await userCredential.user!.getIdToken(true);
-
-        // Kullanıcı dokümanını oluştur
-        await _createUserDocument(userCredential.user!);
       }
 
-      if (mounted && userCredential.user != null) {
-        // Kullanıcı oturum açtıktan sonra idToken'ı yenile
-        await userCredential.user!.reload();
-        await userCredential.user!.getIdToken(true);
+      // Kullanıcı bilgilerini kontrol et
+      await _checkUserAndRedirect(response);
 
-        // Giriş yapan kullanıcı için de doküman kontrolü yap
-        await _createUserDocument(userCredential.user!);
+      loadingProvider.setLoaded('auth_form');
+    } catch (e) {
+      // Hata durumunu yönet
+      final errorMessage = errorHandler.getUserFriendlyMessage(e);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      loadingProvider.setError('auth_form', e);
+    }
+  }
+
+  Future<void> _checkUserAndRedirect(Map<String, dynamic> userData) async {
+    try {
+      // Backend'den gelen kullanıcı bilgilerini kontrol et
+      final user = userData['user'];
+
+      if (user != null) {
+        // Kullanıcı tipini kontrol et
+        final isParentAccount = user['isParent'] == true;
+        final isStudentAccount = user['isStudent'] == true;
+
+        // SharedPreferences'a kaydet
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_parent_account', isParentAccount);
+        await prefs.setBool('is_student_account', isStudentAccount);
 
         // Onboarding durumunu kontrol et
-        final hasCompletedOnboarding =
-            await _planService.checkOnboardingStatus();
+        final onboardingCompleted = user['onboardingCompleted'] == true;
+        await prefs.setBool('onboarding_completed', onboardingCompleted);
 
         if (mounted) {
-          if (hasCompletedOnboarding) {
-            // Onboarding tamamlanmışsa plan ekranına yönlendir
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                  builder: (context) => const PlanDisplayScreen()),
-            );
-          } else {
+          if (!onboardingCompleted) {
             // Onboarding tamamlanmamışsa onboarding ekranına yönlendir
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (context) => const OnboardingScreen()),
             );
+          } else if (isParentAccount) {
+            // Veli hesabıysa profil seçim ekranına yönlendir
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                  builder: (context) => const ProfileSelectionScreen()),
+            );
+          } else {
+            // Öğrenci hesabıysa plan ekranına yönlendir
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                  builder: (context) => const PlanDisplayScreen()),
+            );
           }
         }
-      }
-    } on FirebaseAuthException catch (e) {
-      String errorMessage = 'Bir hata oluştu';
-
-      if (e.code == 'user-not-found') {
-        errorMessage = 'Bu e-posta adresi ile kayıtlı kullanıcı bulunamadı.';
-      } else if (e.code == 'wrong-password') {
-        errorMessage = 'Hatalı şifre girdiniz.';
-      } else if (e.code == 'email-already-in-use') {
-        errorMessage = 'Bu e-posta adresi zaten kullanılıyor.';
-      } else if (e.code == 'weak-password') {
-        errorMessage = 'Şifre çok zayıf.';
-      } else if (e.code == 'invalid-email') {
-        errorMessage = 'Geçersiz e-posta adresi.';
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+      } else {
+        // Kullanıcı bilgileri yoksa rol seçim ekranına yönlendir
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+                builder: (context) => const RoleSelectionScreen()),
+          );
+        }
       }
     } catch (e) {
+      print('Kullanıcı kontrolü hatası: $e');
+
+      // Hata durumunda rol seçim ekranına yönlendir
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: ${e.toString()}')),
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
       }
     }
   }
@@ -590,9 +514,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             onPressed: () {
                               // Şifre sıfırlama işlemi
                               if (_emailController.text.isNotEmpty) {
-                                _auth
+                                // Backend'e şifre sıfırlama isteği gönder
+                                final authService = Provider.of<AuthService>(
+                                    context,
+                                    listen: false);
+                                authService
                                     .sendPasswordResetEmail(
-                                        email: _emailController.text.trim())
+                                  email: _emailController.text.trim(),
+                                )
                                     .then((_) {
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(

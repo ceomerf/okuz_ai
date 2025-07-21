@@ -90,13 +90,12 @@ class _PlanGenerationScreenState extends State<PlanGenerationScreen> {
         }
 
         final result = await planService.generateInitialLongTermPlan(
-          grade: _userProfile!['grade'],
-          targetExam: _userProfile!['targetExam'],
-          dailyHours: _userProfile!['dailyHours'],
-          planScope: _userProfile!['planScope'] ?? '4_weeks',
-          selectedSubjects:
-              List<String>.from(_userProfile!['selectedSubjects'] ?? []),
-          planType: widget.holidayPlanType ?? 'holiday_balanced',
+          subjects: List<String>.from(_userProfile!['selectedSubjects'] ?? []),
+          goals: [_userProfile!['targetExam'] ?? 'YKS'],
+          availableTime:
+              (_userProfile!['dailyHours'] ?? 2) * 60, // Saati dakikaya çevir
+          learningStyle: 'balanced',
+          currentLevel: _userProfile!['grade'] ?? '12',
         );
         return result;
       } else {
@@ -125,24 +124,22 @@ class _PlanGenerationScreenState extends State<PlanGenerationScreen> {
           final profileData = profileDoc.data() as Map<String, dynamic>;
 
           final result = await planService.generateInitialLongTermPlan(
-            grade: profileData['grade'] ?? '12',
-            targetExam: profileData['targetExam'] ?? 'YKS',
-            dailyHours: (profileData['dailyHours'] ?? 2).toInt(),
-            planScope: profileData['planScope'] ?? '4_weeks',
-            selectedSubjects: List<String>.from(
+            subjects: List<String>.from(
                 profileData['selectedSubjects'] ?? ['Matematik', 'Türkçe']),
-            planType: widget.planType ?? 'regular',
+            goals: [profileData['targetExam'] ?? 'YKS'],
+            availableTime: ((profileData['dailyHours'] ?? 2).toInt()) * 60,
+            learningStyle: 'balanced',
+            currentLevel: profileData['grade'] ?? '12',
           );
           return result;
         }
 
         final result = await planService.generateInitialLongTermPlan(
-          grade: onboardingData.grade,
-          targetExam: onboardingData.targetExam,
-          dailyHours: onboardingData.dailyGoalInHours.toInt(),
-          planScope: onboardingData.planScope,
-          selectedSubjects: onboardingData.selectedSubjects,
-          planType: widget.planType,
+          subjects: onboardingData.selectedSubjects,
+          goals: [onboardingData.targetExam],
+          availableTime: onboardingData.dailyGoalInHours.toInt() * 60,
+          learningStyle: 'balanced',
+          currentLevel: onboardingData.grade,
         );
         return result;
       }

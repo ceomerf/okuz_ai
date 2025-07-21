@@ -16,7 +16,9 @@ class GamificationScreen extends StatefulWidget {
 class _GamificationScreenState extends State<GamificationScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late Future<Gamification> _gamificationFuture;
+  late Future<GamificationProgress> _progressFuture;
+  late Future<LevelInfo> _levelInfoFuture;
+  late Future<EnergyStatus> _energyStatusFuture;
   final GamificationService _gamificationService = GamificationService();
 
   @override
@@ -27,7 +29,9 @@ class _GamificationScreenState extends State<GamificationScreen>
   }
 
   void _loadGamificationData() {
-    _gamificationFuture = _gamificationService.getUserGamification();
+    _progressFuture = _gamificationService.getProgress();
+    _levelInfoFuture = _gamificationService.getLevelInfo();
+    _energyStatusFuture = _gamificationService.getEnergyStatus();
   }
 
   @override
@@ -84,8 +88,8 @@ class _GamificationScreenState extends State<GamificationScreen>
   Widget _buildOverviewTab(BuildContext context) {
     final theme = Theme.of(context);
 
-    return FutureBuilder<Gamification>(
-      future: _gamificationFuture,
+    return FutureBuilder<GamificationProgress>(
+      future: _progressFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -106,7 +110,7 @@ class _GamificationScreenState extends State<GamificationScreen>
           );
         }
 
-        final gamification = snapshot.data!;
+        final progress = snapshot.data!;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -128,7 +132,7 @@ class _GamificationScreenState extends State<GamificationScreen>
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            '${gamification.level}. Seviye',
+                            '${progress.level.currentLevel}. Seviye',
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
@@ -141,7 +145,7 @@ class _GamificationScreenState extends State<GamificationScreen>
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
-                              '${gamification.xp} XP',
+                              '${progress.level.totalXP} XP',
                               style: TextStyle(
                                 color: theme.colorScheme.primary,
                                 fontWeight: FontWeight.bold,
@@ -153,7 +157,7 @@ class _GamificationScreenState extends State<GamificationScreen>
                       const SizedBox(height: 16),
                       LinearPercentIndicator(
                         lineHeight: 14.0,
-                        percent: gamification.levelProgress,
+                        percent: progress.level.progressToNext / 100,
                         backgroundColor:
                             theme.colorScheme.primary.withAlpha(51),
                         progressColor: theme.colorScheme.primary,
@@ -164,7 +168,7 @@ class _GamificationScreenState extends State<GamificationScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Bir sonraki seviye için ${gamification.nextLevelXP - gamification.xp} XP daha gerekiyor',
+                        'Bir sonraki seviye için ${progress.level.nextLevelXP - progress.level.currentXP} XP daha gerekiyor',
                         style: theme.textTheme.bodySmall,
                       ),
                     ],
@@ -174,7 +178,75 @@ class _GamificationScreenState extends State<GamificationScreen>
 
               const SizedBox(height: 16),
 
-              // Seri (Streak) Kartı
+              // Enerji Durumu Kartı
+              FutureBuilder<EnergyStatus>(
+                future: _energyStatusFuture,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final energy = snapshot.data!;
+
+                  return Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.bolt,
+                                color: Colors.amber,
+                                size: 28,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Enerji',
+                                style: theme.textTheme.titleMedium,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          LinearPercentIndicator(
+                            lineHeight: 14.0,
+                            percent: energy.percentage / 100,
+                            backgroundColor: Colors.amber.withAlpha(51),
+                            progressColor: Colors.amber,
+                            barRadius: const Radius.circular(7),
+                            padding: EdgeInsets.zero,
+                            animation: true,
+                            animationDuration: 1000,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${energy.current}/${energy.max} enerji',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                              Text(
+                                'Yenilenme: ${energy.nextRefillIn}',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // İstatistikler Kartı
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -185,44 +257,27 @@ class _GamificationScreenState extends State<GamificationScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.local_fire_department,
-                            color: Colors.orange,
-                            size: 28,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Çalışma Serisi',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                        ],
+                      Text(
+                        'İstatistikler',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '${gamification.streak}',
-                            style: theme.textTheme.headlineLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'gün',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Ardışık çalışma günlerin',
-                        style: theme.textTheme.bodySmall,
-                        textAlign: TextAlign.center,
-                      ),
+                      _buildStatItem(
+                          context,
+                          'Toplam Çalışma Süresi',
+                          '${progress.stats.totalStudyTime} dakika',
+                          Icons.timer),
+                      _buildStatItem(context, 'Tamamlanan Quizler',
+                          '${progress.stats.completedQuizzes}', Icons.quiz),
+                      _buildStatItem(
+                          context,
+                          'Çözülen Sorular',
+                          '${progress.stats.solvedQuestions}',
+                          Icons.question_answer),
+                      _buildStatItem(context, 'Haftalık XP',
+                          '${progress.stats.weeklyXP} XP', Icons.trending_up),
                     ],
                   ),
                 ),
@@ -287,6 +342,35 @@ class _GamificationScreenState extends State<GamificationScreen>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildStatItem(
+      BuildContext context, String title, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -357,8 +441,8 @@ class _GamificationScreenState extends State<GamificationScreen>
   }
 
   Widget _buildBadgesTab(BuildContext context) {
-    return FutureBuilder<Gamification>(
-      future: _gamificationFuture,
+    return FutureBuilder<GamificationProgress>(
+      future: _progressFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -379,9 +463,9 @@ class _GamificationScreenState extends State<GamificationScreen>
           );
         }
 
-        final gamification = snapshot.data!;
+        final progress = snapshot.data!;
 
-        if (gamification.badges.isEmpty) {
+        if (progress.badges.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -419,9 +503,9 @@ class _GamificationScreenState extends State<GamificationScreen>
             mainAxisSpacing: 16,
             childAspectRatio: 0.8,
           ),
-          itemCount: gamification.badges.length,
+          itemCount: progress.badges.length,
           itemBuilder: (context, index) {
-            final badge = gamification.badges[index];
+            final badge = progress.badges[index];
             return Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -432,14 +516,13 @@ class _GamificationScreenState extends State<GamificationScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.emoji_events,
-                      size: 48,
-                      color: Colors.amber,
+                    Text(
+                      badge.icon,
+                      style: const TextStyle(fontSize: 48),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      badge.name,
+                      badge.title,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -447,7 +530,7 @@ class _GamificationScreenState extends State<GamificationScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      badge.description,
+                      badge.unlockedAt.toString().substring(0, 10),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Colors.grey[600],
                           ),

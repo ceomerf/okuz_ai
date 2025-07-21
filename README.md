@@ -1,16 +1,38 @@
-# okuz_ai
+# Okuz AI NestJS Backend API
 
-A new Flutter project.
+Bu proje Okuz AI uygulamasının NestJS tabanlı backend API'sidir.
 
-## Getting Started
+## 🚀 CI/CD Pipeline
 
-This project is a starting point for a Flutter application.
+Bu proje GitHub Actions ile otomatik deployment sistemine sahiptir. Her push sonrası VPS'e otomatik deploy edilir.
 
-A few resources to get you started if this is your first Flutter project:
+## 🛠️ Kurulum
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+npm install
+npm run build
+npm run start:prod
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 📊 PM2 ile Çalıştırma
+
+```bash
+pm2 start ecosystem.config.js --env production
+```
+
+## 🏥 Health Check
+
+```bash
+curl http://localhost:3000/health
+```
+
+## 🔄 Otomatik Deployment
+
+Her `git push origin master` sonrası otomatik olarak:
+1. VPS'e SSH ile bağlanır
+2. Kodu günceller (`git pull`)
+3. Bağımlılıkları yükler (`npm install`)
+4. Build eder (`npm run build`)
+5. PM2'yi restart eder (`pm2 restart okuz-api`)
+
+**Son güncelleme: 20 Temmuz 2025 - CI/CD Pipeline aktif!** 🎯

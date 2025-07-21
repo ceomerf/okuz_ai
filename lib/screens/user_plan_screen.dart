@@ -670,7 +670,7 @@ class _UserPlanScreenState extends State<UserPlanScreen>
       });
 
       // Backend'e kaydet
-      await _planService.markTaskAsCompleted(taskId, newStatus);
+      await _planService.markTaskAsCompleted(taskId, newStatus.toString());
 
       // Eğer görev tamamlandıysa gamification sistemini güncelle
       if (newStatus) {
@@ -686,7 +686,7 @@ class _UserPlanScreenState extends State<UserPlanScreen>
           // Başarım ilerlemesini güncelle
           await _gamificationService.updateAchievementProgress(
             'daily_tasks_completed',
-            additionalData: {'count': 1},
+            1,
           );
 
           // Başarı haptic feedback'i

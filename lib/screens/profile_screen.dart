@@ -658,11 +658,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Navigator.pop(context);
 
               try {
-                // Önce tüm stream'leri temizle
-                final studyProvider =
-                    Provider.of<StudyDataProvider>(context, listen: false);
-                studyProvider.dispose();
-
                 // Firebase Auth'tan çıkış yap
                 await FirebaseAuth.instance.signOut();
 

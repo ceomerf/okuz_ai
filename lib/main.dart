@@ -7,8 +7,18 @@ import 'package:okuz_ai/firebase_options.dart';
 import 'package:okuz_ai/services/family_account_service.dart';
 import 'package:okuz_ai/services/subscription_service.dart';
 import 'package:okuz_ai/providers/subscription_provider.dart';
+import 'package:okuz_ai/providers/study_data_provider.dart';
+import 'package:okuz_ai/providers/loading_provider.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
 import 'package:okuz_ai/services/deep_link_service.dart';
+import 'package:okuz_ai/services/api_client.dart';
+import 'package:okuz_ai/services/auth_service.dart';
+import 'package:okuz_ai/services/gamification_service.dart';
+import 'package:okuz_ai/services/plan_service.dart';
+import 'package:okuz_ai/services/performance_analysis_service.dart';
+import 'package:okuz_ai/services/gemini_service.dart';
+import 'package:okuz_ai/services/offline_sync_service.dart';
+import 'package:okuz_ai/services/error_handler.dart';
 import 'package:okuz_ai/screens/student_invite_register_screen.dart';
 import 'package:okuz_ai/screens/parent_invite_register_screen.dart';
 import 'package:okuz_ai/screens/onboarding_screen.dart';
@@ -26,8 +36,27 @@ void main() async {
   // Firebase'i güvenli şekilde başlat
   await _initializeFirebase();
 
+  // Backend bağlantısını kontrol et
+  await _checkBackendConnection();
+
   // Flutter uygulamasını başlat
   runApp(const MyApp());
+}
+
+/// Backend bağlantısını kontrol eden fonksiyon
+Future<void> _checkBackendConnection() async {
+  try {
+    final apiClient = ApiClient();
+    final isHealthy = await apiClient.healthCheck();
+
+    if (isHealthy) {
+      debugPrint('✅ Backend bağlantısı başarılı (Health check OK)');
+    } else {
+      debugPrint('⚠️ Backend bağlantısı başarısız (Health check failed)');
+    }
+  } catch (e) {
+    debugPrint('❌ Backend bağlantı hatası: $e');
+  }
 }
 
 /// Firebase'i güvenli şekilde başlatan fonksiyon
@@ -76,6 +105,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   // Deep Link servisi - Singleton pattern kullanılır
   late final DeepLinkService _deepLinkService;
 
+  // Offline sync servisi
+  late final OfflineSyncService _offlineSyncService;
+
   // Navigator için global key - Deep link routing için gerekli
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
@@ -91,6 +123,39 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     // Tema durumunu yükle
     _initializeTheme();
+
+    // Offline sync servisini başlat
+    _initializeOfflineSync();
+  }
+
+  /// Offline sync servisini başlatan fonksiyon
+  Future<void> _initializeOfflineSync() async {
+    try {
+      _offlineSyncService = OfflineSyncService();
+      await _offlineSyncService.init((request) async {
+        final apiClient = ApiClient();
+        final endpoint = request['endpoint'];
+        final method = request['method'];
+        final data = request['data'];
+
+        if (method == 'POST') {
+          await apiClient.post(endpoint, data);
+        } else if (method == 'GET') {
+          await apiClient.get(endpoint);
+        }
+      });
+
+      debugPrint('✅ Offline sync servisi başarıyla başlatıldı');
+
+      // Bekleyen istek sayısını kontrol et
+      final pendingCount = await _offlineSyncService.getPendingRequestCount();
+      if (pendingCount > 0) {
+        debugPrint('ℹ️ $pendingCount bekleyen istek senkronize ediliyor');
+        await _offlineSyncService.syncNow();
+      }
+    } catch (e) {
+      debugPrint('❌ Offline sync servisi başlatma hatası: $e');
+    }
   }
 
   /// Tema durumunu başlatan fonksiyon
@@ -111,6 +176,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     // Deep link servisini temizle
     _deepLinkService.dispose();
+
+    // Offline sync servisini temizle
+    _offlineSyncService.dispose();
 
     super.dispose();
   }
@@ -213,6 +281,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         debugPrint('🔄 Uygulama ön plana geçti');
+        // Uygulama ön plana gelince senkronizasyon yap
+        _offlineSyncService.syncNow();
         break;
       case AppLifecycleState.paused:
         debugPrint('⏸️ Uygulama arka plana geçti');
@@ -254,6 +324,46 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         Provider(
           create: (_) => SubscriptionService(),
         ),
+
+        // Study Data Provider - Çalışma verisi yönetimi
+        ChangeNotifierProvider(
+          create: (_) => StudyDataProvider(),
+        ),
+
+        // Loading Provider - Yükleme durumu yönetimi
+        ChangeNotifierProvider(
+          create: (_) => LoadingProvider(),
+        ),
+
+        // Auth Service - Kimlik doğrulama servisi
+        Provider(
+          create: (_) => AuthService(),
+        ),
+
+        // Gamification Service - Oyunlaştırma servisi
+        Provider(
+          create: (_) => GamificationService(),
+        ),
+
+        // Plan Service - Plan servisi
+        Provider(
+          create: (_) => PlanService(),
+        ),
+
+        // Performance Analysis Service - Performans analiz servisi
+        Provider(
+          create: (_) => PerformanceAnalysisService(),
+        ),
+
+        // Gemini Service - AI servisi
+        Provider(
+          create: (_) => GeminiService(),
+        ),
+
+        // Error Handler - Hata yönetimi
+        Provider(
+          create: (_) => ErrorHandler(),
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
@@ -274,6 +384,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
             // Ana ekran - Auth kontrolü
             home: const AuthWrapper(),
+
+            // Navigator observer - State kontrolü için
+            navigatorObservers: [
+              NavigatorObserver(),
+            ],
 
             // Uygulama genelinde kullanılacak route'lar
             routes: {
