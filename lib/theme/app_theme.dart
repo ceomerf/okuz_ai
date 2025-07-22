@@ -88,6 +88,8 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      fontFamily: 'Figtree',
+      textTheme: GoogleFonts.figtreeTextTheme(),
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryColor,
         brightness: Brightness.light,
@@ -109,68 +111,6 @@ class AppTheme {
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: Colors.white,
-        ),
-      ),
-      textTheme: TextTheme(
-        displayLarge: GoogleFonts.figtree(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: lightTextPrimaryColor,
-        ),
-        displayMedium: GoogleFonts.figtree(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: lightTextPrimaryColor,
-        ),
-        displaySmall: GoogleFonts.figtree(
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-          color: lightTextPrimaryColor,
-        ),
-        headlineLarge: GoogleFonts.figtree(
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-          color: lightTextPrimaryColor,
-        ),
-        headlineMedium: GoogleFonts.figtree(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: lightTextPrimaryColor,
-        ),
-        headlineSmall: GoogleFonts.figtree(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: lightTextPrimaryColor,
-        ),
-        titleLarge: GoogleFonts.figtree(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: lightTextPrimaryColor,
-        ),
-        titleMedium: GoogleFonts.figtree(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: lightTextPrimaryColor,
-        ),
-        titleSmall: GoogleFonts.figtree(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: lightTextPrimaryColor,
-        ),
-        bodyLarge: GoogleFonts.figtree(
-          fontSize: 16,
-          fontWeight: FontWeight.normal,
-          color: lightTextPrimaryColor,
-        ),
-        bodyMedium: GoogleFonts.figtree(
-          fontSize: 14,
-          fontWeight: FontWeight.normal,
-          color: lightTextSecondaryColor,
-        ),
-        bodySmall: GoogleFonts.figtree(
-          fontSize: 12,
-          fontWeight: FontWeight.normal,
-          color: lightTextSecondaryColor,
         ),
       ),
       cardTheme: CardTheme(
@@ -246,6 +186,8 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      fontFamily: 'Figtree',
+      textTheme: GoogleFonts.figtreeTextTheme(),
       colorScheme: ColorScheme.fromSeed(
         seedColor: darkPrimary,
         brightness: Brightness.dark,
@@ -271,68 +213,6 @@ class AppTheme {
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: darkTextPrimaryColor,
-        ),
-      ),
-      textTheme: TextTheme(
-        displayLarge: GoogleFonts.figtree(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: darkTextPrimaryColor,
-        ),
-        displayMedium: GoogleFonts.figtree(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: darkTextPrimaryColor,
-        ),
-        displaySmall: GoogleFonts.figtree(
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-          color: darkTextPrimaryColor,
-        ),
-        headlineLarge: GoogleFonts.figtree(
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-          color: darkTextPrimaryColor,
-        ),
-        headlineMedium: GoogleFonts.figtree(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: darkTextPrimaryColor,
-        ),
-        headlineSmall: GoogleFonts.figtree(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: darkTextPrimaryColor,
-        ),
-        titleLarge: GoogleFonts.figtree(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: darkTextPrimaryColor,
-        ),
-        titleMedium: GoogleFonts.figtree(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: darkTextPrimaryColor,
-        ),
-        titleSmall: GoogleFonts.figtree(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: darkTextPrimaryColor,
-        ),
-        bodyLarge: GoogleFonts.figtree(
-          fontSize: 16,
-          fontWeight: FontWeight.normal,
-          color: darkTextPrimaryColor,
-        ),
-        bodyMedium: GoogleFonts.figtree(
-          fontSize: 14,
-          fontWeight: FontWeight.normal,
-          color: darkTextSecondaryColor,
-        ),
-        bodySmall: GoogleFonts.figtree(
-          fontSize: 12,
-          fontWeight: FontWeight.normal,
-          color: darkTextSecondaryColor,
         ),
       ),
       cardTheme: CardTheme(
@@ -419,7 +299,7 @@ class AppTheme {
         }),
         trackColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return darkSecondary.withOpacity(0.3);
+            return darkSecondary.withValues(alpha: 0.3);
           }
           return darkDividerColor;
         }),
@@ -485,12 +365,12 @@ class AppTheme {
     return LinearGradient(
       colors: isDark
           ? [
-              const Color(0xFF3F51B5).withOpacity(0.3),
-              const Color(0xFF7986CB).withOpacity(0.1),
+              const Color(0xFF3F51B5).withValues(alpha: 0.3),
+              const Color(0xFF7986CB).withValues(alpha: 0.1),
             ]
           : [
-              primaryLightColor.withOpacity(0.6),
-              primaryLightColor.withOpacity(0.2),
+              primaryLightColor.withValues(alpha: 0.6),
+              primaryLightColor.withValues(alpha: 0.2),
             ],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,

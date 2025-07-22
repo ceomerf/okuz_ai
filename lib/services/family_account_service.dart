@@ -1,584 +1,187 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
+// JWT Backend için basit Family Account servisi
+// Firebase bağımlılığı tamamen kaldırıldı
+
+import 'package:flutter/material.dart';
+import 'api_client.dart';
 import '../models/student_profile.dart';
-import 'package:flutter/widgets.dart'; // Added for WidgetsBinding
+import '../models/user_account.dart';
+import '../models/account_type.dart';
 
-/// Esnek aile/öğrenci hesap sistemini yöneten servis
 class FamilyAccountService extends ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final ApiClient _apiClient = ApiClient();
 
-  UserAccount? _currentAccount;
-  String? _selectedStudentId; // For parents viewing specific student data
+  List<Map<String, dynamic>> _familyMembers = [];
+  List<StudentProfile> _studentProfiles = [];
+  String? _selectedProfileId;
   bool _isLoading = false;
+  bool _isFamilyAccount = false;
 
-  // Getters
-  UserAccount? get currentAccount => _currentAccount;
-  String? get selectedStudentId => _selectedStudentId;
+  List<Map<String, dynamic>> get familyMembers => _familyMembers;
+  List<StudentProfile> get studentProfiles => _studentProfiles;
+  String? get selectedProfileId => _selectedProfileId;
   bool get isLoading => _isLoading;
+  bool get isFamilyAccount => _isFamilyAccount;
+  AccountType get accountType => AccountType.parent; // Mock implementation
 
-  bool get isLoggedIn => _currentAccount != null;
-  bool get isStudent => _currentAccount?.isStudent ?? false;
-  bool get isParent => _currentAccount?.isParent ?? false;
-  bool get hasParent => _currentAccount?.hasParent ?? false;
-  bool get hasStudents => _currentAccount?.hasStudents ?? false;
-  bool get isOnboardingCompleted =>
-      _currentAccount?.isOnboardingCompleted ?? false;
-
-  // Backward compatibility getters
-  AccountType get accountType =>
-      _currentAccount?.accountType ?? AccountType.student;
-  bool get isFamilyAccount => isParent;
-  String? get selectedProfileId => _selectedStudentId;
-
-  // StudentProfile nesneleri döndüren getter
-  List<StudentProfile> get studentProfiles {
-    if (_currentAccount?.studentProfiles == null) return [];
-
-    // Referansları gerçek profillere dönüştür
-    return _currentAccount!.studentProfiles!
-        .map((ref) => StudentProfile.fromStudentReference(ref))
-        .toList();
-  }
-
-  /// Kullanıcı hesap verilerini yükle
+  // Hesap verilerini yükle
   Future<UserAccount?> loadAccountData() async {
     _isLoading = true;
-    // notifyListeners()'ı hemen çağırmayalım, build sırasında çakışma yaratabilir
-
-    final user = _auth.currentUser;
-    if (user == null) {
-      _currentAccount = null;
-      _isLoading = false;
-      // Build tamamlandıktan sonra notify et
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        notifyListeners();
-      });
-      return null;
-    }
+    notifyListeners();
 
     try {
-      final doc = await _firestore.collection('users').doc(user.uid).get();
-
-      if (doc.exists) {
-        _currentAccount = UserAccount.fromMap({
-          'userId': user.uid,
-          ...doc.data()!,
-        });
-
-        // Eğer veli hesabıysa, öğrenci profillerini gerçek verilerle zenginleştir
-        if (_currentAccount!.isParent &&
-            _currentAccount!.studentProfiles != null) {
-          // Öğrenci profilleri için gerçek verileri yükle
-          await _enrichStudentProfiles();
-        }
-      } else {
-        // Kullanıcı dokümanı yoksa, önce Cloud Functions'ın oluşturmasını bekle
-        // Bu genellikle onboarding sırasında oluşur
-        debugPrint(
-            '⚠️ Kullanıcı dokümanı bulunamadı, onboarding tamamlanmamış olabilir');
-        _currentAccount = null;
-      }
-
-      _isLoading = false;
-      // Build tamamlandıktan sonra notify et
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        notifyListeners();
-      });
-      return _currentAccount;
-    } catch (e) {
-      debugPrint('Hesap verileri yüklenirken hata: $e');
-      _currentAccount = null;
-      _isLoading = false;
-      // Build tamamlandıktan sonra notify et
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        notifyListeners();
-      });
-      return null;
-    }
-  }
-
-  /// Öğrenci profillerini gerçek verilerle zenginleştir
-  Future<void> _enrichStudentProfiles() async {
-    if (_currentAccount == null ||
-        !_currentAccount!.isParent ||
-        _currentAccount!.studentProfiles == null) {
-      return;
-    }
-
-    final updatedProfiles = <StudentReference>[];
-
-    for (final ref in _currentAccount!.studentProfiles!) {
-      try {
-        // Öğrenci verileri
-        final studentDoc =
-            await _firestore.collection('users').doc(ref.studentUserId).get();
-        if (!studentDoc.exists) {
-          updatedProfiles.add(ref);
-          continue;
-        }
-
-        // Gamification verileri
-        final gamificationDoc = await _firestore
-            .collection('users')
-            .doc(ref.studentUserId)
-            .collection('gamification')
-            .doc('data')
-            .get();
-
-        // Çalışma verileri
-        final studyStatsDoc = await _firestore
-            .collection('users')
-            .doc(ref.studentUserId)
-            .collection('study_tracking')
-            .doc('stats')
-            .get();
-
-        // Performans verileri
-        final performanceDoc = await _firestore
-            .collection('users')
-            .doc(ref.studentUserId)
-            .collection('performance_analytics')
-            .doc('summary')
-            .get();
-
-        // Son aktivite zamanı
-        final lastActiveDoc = await _firestore
-            .collection('users')
-            .doc(ref.studentUserId)
-            .collection('activity')
-            .doc('last_seen')
-            .get();
-
-        // Çalışma alışkanlıkları
-        final habitsDoc = await _firestore
-            .collection('users')
-            .doc(ref.studentUserId)
-            .collection('learning_habits')
-            .doc('summary')
-            .get();
-
-        // Güncel durum
-        final statusDoc = await _firestore
-            .collection('users')
-            .doc(ref.studentUserId)
-            .collection('activity')
-            .doc('current_status')
-            .get();
-
-        // Referansa ek verileri ekle
-        final enrichedRef = StudentReference(
-          studentUserId: ref.studentUserId,
-          studentName: ref.studentName,
-          studentEmail: ref.studentEmail,
-          grade: ref.grade,
-          addedAt: ref.addedAt,
-          isActive: ref.isActive,
-        );
-
-        // Zenginleştirilmiş referansı ekle
-        updatedProfiles.add(enrichedRef);
-      } catch (e) {
-        debugPrint(
-            'Öğrenci profili zenginleştirme hatası (${ref.studentName}): $e');
-        updatedProfiles.add(ref);
-      }
-    }
-
-    // Güncellenmiş profilleri kaydet
-    _currentAccount =
-        _currentAccount!.copyWith(studentProfiles: updatedProfiles);
-  }
-
-  /// Yeni hesap oluştur (onboarding sonrası)
-  Future<void> createAccount({
-    required String fullName,
-    required AccountType accountType,
-    String? grade,
-    String? targetUniversity,
-    String? learningStyle,
-    String? parentTitle,
-  }) async {
-    final user = _auth.currentUser;
-    if (user == null) throw Exception('Kullanıcı oturum açmamış');
-
-    _currentAccount = UserAccount(
-      userId: user.uid,
-      email: user.email ?? '',
-      fullName: fullName,
-      accountType: accountType,
-      createdAt: DateTime.now(),
-      grade: grade,
-      targetUniversity: targetUniversity,
-      learningStyle: learningStyle,
-      parentTitle: parentTitle,
-    );
-
-    await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .set(_currentAccount!.toMap());
-    notifyListeners();
-  }
-
-  /// Öğrenci hesabına veli ekle
-  Future<void> connectParent({
-    required String parentUserId,
-    required String parentEmail,
-    required String parentName,
-  }) async {
-    if (!isStudent) throw Exception('Sadece öğrenci hesabına veli eklenebilir');
-
-    final user = _auth.currentUser;
-    if (user == null) throw Exception('Kullanıcı oturum açmamış');
-
-    // Update student's parent info
-    final parentInfo = ParentInfo(
-      parentUserId: parentUserId,
-      parentEmail: parentEmail,
-      parentName: parentName,
-      connectedAt: DateTime.now(),
-    );
-
-    _currentAccount = _currentAccount!.copyWith(parentInfo: parentInfo);
-
-    await _firestore.collection('users').doc(user.uid).update({
-      'parentInfo': parentInfo.toMap(),
-    });
-
-    // Add student to parent's profile
-    final studentRef = StudentReference(
-      studentUserId: user.uid,
-      studentName: _currentAccount!.fullName,
-      studentEmail: _currentAccount!.email,
-      grade: _currentAccount!.grade ?? '',
-      addedAt: DateTime.now(),
-    );
-
-    await _firestore.collection('users').doc(parentUserId).update({
-      'studentProfiles': FieldValue.arrayUnion([studentRef.toMap()]),
-    });
-
-    notifyListeners();
-  }
-
-  /// Veli hesabına öğrenci ekle
-  Future<void> addStudent({
-    required String studentUserId,
-    required String studentName,
-    required String studentEmail,
-    required String grade,
-  }) async {
-    if (!isParent) throw Exception('Sadece veli hesabına öğrenci eklenebilir');
-
-    final user = _auth.currentUser;
-    if (user == null) throw Exception('Kullanıcı oturum açmamış');
-
-    // Create student reference
-    final studentRef = StudentReference(
-      studentUserId: studentUserId,
-      studentName: studentName,
-      studentEmail: studentEmail,
-      grade: grade,
-      addedAt: DateTime.now(),
-    );
-
-    // Update parent's student list
-    final updatedStudents =
-        List<StudentReference>.from(_currentAccount?.studentProfiles ?? []);
-    updatedStudents.add(studentRef);
-
-    _currentAccount =
-        _currentAccount!.copyWith(studentProfiles: updatedStudents);
-
-    await _firestore.collection('users').doc(user.uid).update({
-      'studentProfiles': updatedStudents.map((s) => s.toMap()).toList(),
-    });
-
-    // Update student's parent info
-    final parentInfo = ParentInfo(
-      parentUserId: user.uid,
-      parentEmail: _currentAccount!.email,
-      parentName: _currentAccount!.fullName,
-      connectedAt: DateTime.now(),
-    );
-
-    await _firestore.collection('users').doc(studentUserId).update({
-      'parentInfo': parentInfo.toMap(),
-    });
-
-    notifyListeners();
-  }
-
-  /// Veli tarafından belirli bir öğrenciyi seç
-  void selectStudent(String studentUserId) {
-    if (!isParent) throw Exception('Sadece veli hesabı öğrenci seçebilir');
-
-    final hasStudent = _currentAccount?.studentProfiles?.any(
-          (s) => s.studentUserId == studentUserId,
-        ) ??
-        false;
-
-    if (!hasStudent) throw Exception('Bu öğrenci bu veli hesabına bağlı değil');
-
-    _selectedStudentId = studentUserId;
-    notifyListeners();
-  }
-
-  /// Seçili öğrenciyi temizle
-  void clearSelectedStudent() {
-    _selectedStudentId = null;
-    notifyListeners();
-  }
-
-  /// Hesap tipini al (backward compatibility)
-  Future<AccountType> getAccountType(String userId) async {
-    try {
-      final doc = await _firestore.collection('users').doc(userId).get();
-      if (doc.exists) {
-        final data = doc.data()!;
-        return AccountType.values.firstWhere(
-          (e) => e.name == data['accountType'],
-          orElse: () => AccountType.student,
-        );
-      }
-      return AccountType.student;
-    } catch (e) {
-      debugPrint('Hesap tipi alınırken hata: $e');
-      return AccountType.student;
-    }
-  }
-
-  /// Kullanıcı verilerini güncelle
-  Future<void> updateUserData(Map<String, dynamic> updates) async {
-    final user = _auth.currentUser;
-    if (user == null) throw Exception('Kullanıcı oturum açmamış');
-
-    await _firestore.collection('users').doc(user.uid).update(updates);
-    await loadAccountData(); // Refresh data
-  }
-
-  /// Hesaptan çıkış
-  Future<void> signOut() async {
-    _currentAccount = null;
-    _selectedStudentId = null;
-    notifyListeners();
-  }
-
-  /// Veli kontrol paneli için verileri topla
-  Future<Map<String, dynamic>> getParentDashboardData({
-    required String profileId,
-  }) async {
-    if (!isParent)
-      throw Exception('Sadece veli hesabı dashboard verilerine erişebilir');
-
-    try {
-      // Temel profil verilerini al
-      final profileDoc =
-          await _firestore.collection('users').doc(profileId).get();
-
-      if (!profileDoc.exists) {
-        throw Exception('Öğrenci profili bulunamadı');
-      }
-
-      final profileData = profileDoc.data()!;
-
-      // Gamification verilerini al
-      Map<String, dynamic>? gamificationData;
-      try {
-        final gamificationDoc = await _firestore
-            .collection('users')
-            .doc(profileId)
-            .collection('gamification')
-            .doc('data')
-            .get();
-
-        if (gamificationDoc.exists) {
-          gamificationData = gamificationDoc.data();
-        }
-      } catch (e) {
-        debugPrint('Gamification verileri alınamadı: $e');
-      }
-
-      // Haftalık istatistikleri hesapla
-      final weekStart =
-          DateTime.now().subtract(Duration(days: DateTime.now().weekday - 1));
-      final weekEnd = weekStart.add(const Duration(days: 6));
-
-      Map<String, dynamic> weeklyStats = {
-        'completedTasks': 0,
-        'totalStudyTime': 0,
-        'averageScore': 0,
-        'streak': gamificationData?['streak'] ?? 0,
-      };
-
-      // Son oturumları al (örnek veri - gerçekte plan verilerinden alınacak)
-      List<dynamic> recentSessions = [
-        {
-          'subject': 'Matematik',
-          'topic': 'Türev',
-          'duration': 45,
-          'completedAt': DateTime.now()
-              .subtract(const Duration(hours: 2))
-              .toIso8601String(),
-          'score': 85,
-        },
-        {
-          'subject': 'Fizik',
-          'topic': 'Hareket',
-          'duration': 30,
-          'completedAt': DateTime.now()
-              .subtract(const Duration(hours: 5))
-              .toIso8601String(),
-          'score': 78,
-        },
+      // Mock veri - gerçek uygulamada API'den gelecek
+      _studentProfiles = [
+        StudentProfile(
+          id: '1',
+          profileName: 'Ali Yılmaz',
+          studentName: 'Ali Yılmaz',
+          lastActive: DateTime.now(),
+        ),
+        StudentProfile(
+          id: '2',
+          profileName: 'Ayşe Yılmaz',
+          studentName: 'Ayşe Yılmaz',
+          lastActive: DateTime.now().subtract(Duration(hours: 2)),
+        ),
       ];
+      _isFamilyAccount = _studentProfiles.length > 1;
+      _selectedProfileId =
+          _studentProfiles.isNotEmpty ? _studentProfiles.first.id : null;
 
-      return {
-        'profile': profileData,
-        'gamification': gamificationData,
-        'weeklyStats': weeklyStats,
-        'recentSessions': recentSessions,
-      };
-    } catch (e) {
-      debugPrint('Dashboard verileri alınırken hata: $e');
-      rethrow;
-    }
-  }
-
-  /// Hesap türünü değiştir (özel durumlar için)
-  Future<void> changeAccountType(AccountType newType) async {
-    final user = _auth.currentUser;
-    if (user == null) throw Exception('Kullanıcı oturum açmamış');
-
-    await _firestore.collection('users').doc(user.uid).update({
-      'accountType': newType.name,
-    });
-
-    await loadAccountData();
-  }
-
-  /// Öğrenci-veli bağlantısını kaldır
-  Future<void> disconnectParent() async {
-    if (!isStudent || !hasParent) {
-      throw Exception('Öğrenci hesabında veli bağlantısı yok');
-    }
-
-    final user = _auth.currentUser;
-    if (user == null) throw Exception('Kullanıcı oturum açmamış');
-
-    final parentUserId = _currentAccount!.parentInfo!.parentUserId!;
-
-    // Remove parent info from student
-    await _firestore.collection('users').doc(user.uid).update({
-      'parentInfo': FieldValue.delete(),
-    });
-
-    // Remove student from parent's list
-    await _firestore.collection('users').doc(parentUserId).update({
-      'studentProfiles': FieldValue.arrayRemove([
-        {
-          'studentUserId': user.uid,
-          'studentName': _currentAccount!.fullName,
-          'studentEmail': _currentAccount!.email,
-          'grade': _currentAccount!.grade ?? '',
-          'addedAt':
-              _currentAccount!.parentInfo!.connectedAt!.millisecondsSinceEpoch,
-        }
-      ]),
-    });
-
-    await loadAccountData();
-  }
-
-  /// Profil değiştir (veli için öğrenci seçimi)
-  Future<void> switchToProfile(String profileId) async {
-    if (!isParent) {
-      debugPrint('❌ Sadece veli hesapları profil değiştirebilir');
-      return;
-    }
-
-    // Check if the profile exists
-    final profileExists = _currentAccount?.studentProfiles
-            ?.any((profile) => profile.studentUserId == profileId) ??
-        false;
-
-    if (!profileExists) {
-      debugPrint('❌ Profil bulunamadı: $profileId');
-      return;
-    }
-
-    _selectedStudentId = profileId;
-    notifyListeners();
-    debugPrint('✅ Profil değiştirildi: $profileId');
-  }
-
-  /// Hesap tipini güncelle
-  Future<void> updateAccountType(AccountType accountType) async {
-    final user = _auth.currentUser;
-    if (user == null) {
-      throw Exception('Kullanıcı oturumu bulunamadı');
-    }
-
-    await _firestore.doc('users/${user.uid}').update({
-      'accountType': accountType.name,
-    });
-
-    // Local state'i güncelle
-    if (_currentAccount != null) {
-      _currentAccount = UserAccount(
-        userId: _currentAccount!.userId,
-        email: _currentAccount!.email,
-        fullName: _currentAccount!.fullName,
-        accountType: accountType,
-        createdAt: _currentAccount!.createdAt,
-        parentInfo: _currentAccount!.parentInfo,
-        grade: _currentAccount!.grade,
-        targetUniversity: _currentAccount!.targetUniversity,
-        learningStyle: _currentAccount!.learningStyle,
-        studentProfiles: _currentAccount!.studentProfiles,
-        parentTitle: _currentAccount!.parentTitle,
+      // Mock UserAccount döndür
+      return UserAccount(
+        id: 'parent_1',
+        uid: 'parent_1',
+        email: 'parent@example.com',
+        fullName: 'Veli Yılmaz',
+        accountType: AccountType.parent,
       );
+    } catch (e) {
+      debugPrint('Hesap verileri yükleme hatası: $e');
+      _studentProfiles = [];
+      return null;
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
-
-    debugPrint('✅ Hesap tipi güncellendi: ${accountType.name}');
   }
 
-  /// Veli bilgilerini güncelle
+  // Profil değiştir
+  Future<void> switchToProfile(String profileId) async {
+    try {
+      _selectedProfileId = profileId;
+      notifyListeners();
+      // Gerçek uygulamada API'ye profil değiştirme isteği gönderilir
+    } catch (e) {
+      debugPrint('Profil değiştirme hatası: $e');
+    }
+  }
+
+  // Hesap tipini güncelle
+  Future<void> updateAccountType(AccountType accountType) async {
+    try {
+      // Gerçek uygulamada API'ye hesap tipi güncelleme isteği gönderilir
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Hesap tipi güncelleme hatası: $e');
+    }
+  }
+
+  // Aile üyelerini getir
+  Future<void> loadFamilyMembers() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await _apiClient.get('/family/members');
+      _familyMembers =
+          List<Map<String, dynamic>>.from(response['members'] ?? []);
+    } catch (e) {
+      debugPrint('Aile üyeleri yükleme hatası: $e');
+      _familyMembers = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Aile üyesi ekle
+  Future<bool> addFamilyMember(String email, String role) async {
+    try {
+      await _apiClient.post('/family/add-member', {
+        'email': email,
+        'role': role,
+      });
+      await loadFamilyMembers(); // Listeyi yenile
+      return true;
+    } catch (e) {
+      debugPrint('Aile üyesi ekleme hatası: $e');
+      return false;
+    }
+  }
+
+  // Öğrenci ekle (mock implementation)
+  Future<bool> addStudent(String name, String grade) async {
+    try {
+      // Mock implementation
+      final newStudent = StudentProfile(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        profileName: name,
+        studentName: name,
+        lastActive: DateTime.now(),
+      );
+      _studentProfiles.add(newStudent);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Öğrenci ekleme hatası: $e');
+      return false;
+    }
+  }
+
+  // Aile üyesi kaldır
+  Future<bool> removeFamilyMember(String memberId) async {
+    try {
+      await _apiClient.post('/family/remove-member', {
+        'memberId': memberId,
+      });
+      await loadFamilyMembers(); // Listeyi yenile
+      return true;
+    } catch (e) {
+      debugPrint('Aile üyesi kaldırma hatası: $e');
+      return false;
+    }
+  }
+
+  // Veli bilgilerini güncelle
   Future<void> updateParentInfo({
     required String fullName,
     String? parentTitle,
   }) async {
-    final user = _auth.currentUser;
-    if (user == null) {
-      throw Exception('Kullanıcı oturumu bulunamadı');
-    }
-
-    await _firestore.doc('users/${user.uid}').update({
-      'fullName': fullName,
-      'parentTitle': parentTitle,
-    });
-
-    // Local state'i güncelle
-    if (_currentAccount != null) {
-      _currentAccount = UserAccount(
-        userId: _currentAccount!.userId,
-        email: _currentAccount!.email,
-        fullName: fullName,
-        accountType: _currentAccount!.accountType,
-        createdAt: _currentAccount!.createdAt,
-        parentInfo: _currentAccount!.parentInfo,
-        grade: _currentAccount!.grade,
-        targetUniversity: _currentAccount!.targetUniversity,
-        learningStyle: _currentAccount!.learningStyle,
-        studentProfiles: _currentAccount!.studentProfiles,
-        parentTitle: parentTitle,
-      );
+    try {
+      await _apiClient.post('/family/update-parent-info', {
+        'fullName': fullName,
+        'parentTitle': parentTitle,
+      });
       notifyListeners();
+    } catch (e) {
+      debugPrint('Veli bilgileri güncelleme hatası: $e');
+      rethrow;
     }
+  }
 
-    debugPrint('✅ Veli bilgileri güncellendi');
+  // Mock method for parent dashboard data
+  Future<Map<String, dynamic>> getParentDashboardData(
+      {String? profileId}) async {
+    // Mock implementation
+    return {
+      'studentName': 'Ali Yılmaz',
+      'totalStudyTime': 120, // minutes
+      'completedTasks': 15,
+      'totalTasks': 20,
+      'streak': 7,
+      'currentLevel': 5,
+      'weeklyProgress': 75.0,
+    };
   }
 }

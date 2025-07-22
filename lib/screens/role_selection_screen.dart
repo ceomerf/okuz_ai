@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/family_account_service.dart';
 import '../models/student_profile.dart';
+import '../models/account_type.dart';
 import 'onboarding_screen.dart';
 import 'parent_info_screen.dart';
 
@@ -110,7 +111,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.blue.withOpacity(0.3),
+                color: Colors.blue.withValues(alpha: 0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -157,7 +158,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       height: 160,
       child: Card(
         elevation: 8,
-        shadowColor: color.withOpacity(0.3),
+        shadowColor: color.withValues(alpha: 0.3),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
@@ -171,8 +172,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  color.withOpacity(0.1),
-                  color.withOpacity(0.05),
+                  color.withValues(alpha: 0.1),
+                  color.withValues(alpha: 0.05),
                 ],
               ),
             ),
@@ -185,17 +186,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: color.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: color.withOpacity(0.3),
+                        color: color.withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
                     child: Icon(
                       icon,
                       size: 30,
-                      color: color.withOpacity(0.8),
+                      color: color.withValues(alpha: 0.8),
                     ),
                   ),
 
@@ -212,7 +213,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           style: GoogleFonts.poppins(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: color.withOpacity(0.8),
+                            color: color.withValues(alpha: 0.8),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -231,7 +232,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   // Ok işareti
                   Icon(
                     Icons.arrow_forward_ios,
-                    color: color.withOpacity(0.7),
+                    color: color.withValues(alpha: 0.7),
                     size: 20,
                   ),
                 ],

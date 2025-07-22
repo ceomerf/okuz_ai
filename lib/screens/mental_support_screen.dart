@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:async';
+import 'package:okuz_ai/services/mock_auth_service.dart';
+import 'package:okuz_ai/services/mock_database_service.dart';
 
 class MentalSupportScreen extends StatefulWidget {
   const MentalSupportScreen({Key? key}) : super(key: key);
@@ -69,18 +70,14 @@ class _MentalSupportScreenState extends State<MentalSupportScreen>
 
   Future<void> _loadUserMentalData() async {
     // Kullanıcının zihinsel destek verilerini yükle
-    final user = FirebaseAuth.instance.currentUser;
+    final authService = Provider.of<MockAuthService>(context, listen: false);
+    final user = authService.currentUser;
     if (user != null) {
       try {
-        final doc = await FirebaseFirestore.instance
-            .doc('users/${user.uid}/mental_support/data')
-            .get();
-
-        if (doc.exists) {
-          // Veri varsa işle
-          final data = doc.data() as Map<String, dynamic>;
-          // İlgili verileri state'e yükle
-        }
+        final dbService =
+            Provider.of<MockDatabaseService>(context, listen: false);
+        // Mock implementation - gerçek uygulamada veri yüklenecek
+        print('Zihinsel destek verileri yüklendi');
       } catch (e) {
         print('Zihinsel destek verileri yüklenirken hata: $e');
       }

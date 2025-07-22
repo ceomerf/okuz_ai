@@ -150,7 +150,7 @@ class _StartingPointPageState extends State<StartingPointPage> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             color: isSelected
-                ? AppTheme.primaryColor.withOpacity(0.1)
+                ? AppTheme.primaryColor.withValues(alpha: 0.1)
                 : Theme.of(context).cardColor,
             border: Border.all(
               color: isSelected
@@ -168,7 +168,7 @@ class _StartingPointPageState extends State<StartingPointPage> {
                   ]
                 : [
                     BoxShadow(
-                      color: Theme.of(context).shadowColor.withOpacity(0.05),
+                      color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
@@ -257,12 +257,12 @@ class _StartingPointPageState extends State<StartingPointPage> {
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppTheme.primaryColor.withOpacity(0.1)
+                          ? AppTheme.primaryColor.withValues(alpha: 0.1)
                           : (startingPoint['color'] as Color).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isSelected
-                            ? AppTheme.primaryColor.withOpacity(0.3)
+                            ? AppTheme.primaryColor.withValues(alpha: 0.3)
                             : (startingPoint['color'] as Color)
                                 .withOpacity(0.3),
                         width: 1,

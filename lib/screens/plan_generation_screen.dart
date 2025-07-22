@@ -1,285 +1,238 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:okuz_ai/models/onboarding_data.dart';
-import 'package:okuz_ai/services/plan_service.dart';
-import 'package:okuz_ai/theme/app_theme.dart';
-import 'package:lottie/lottie.dart';
-import 'package:okuz_ai/screens/user_plan_screen.dart';
-import 'package:okuz_ai/screens/family_portal_screen.dart';
-import 'package:okuz_ai/services/family_account_service.dart';
-import 'package:okuz_ai/models/student_profile.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/family_account_service.dart';
+import '../models/account_type.dart';
+import '../theme/app_theme.dart';
+import 'plan_generation_status_screen.dart';
 
 class PlanGenerationScreen extends StatefulWidget {
-  final OnboardingData? onboardingData;
-  final String? planType; // 'regular', 'holiday_review' etc.
-  final bool isHolidayPlan;
-  final String? holidayPlanType;
-
-  const PlanGenerationScreen({
-    Key? key,
-    this.onboardingData,
-    this.planType = 'regular', // Varsayılan değer
-    this.isHolidayPlan = false,
-    this.holidayPlanType,
-  }) : super(key: key);
+  const PlanGenerationScreen({Key? key}) : super(key: key);
 
   @override
-  _PlanGenerationScreenState createState() => _PlanGenerationScreenState();
+  State<PlanGenerationScreen> createState() => _PlanGenerationScreenState();
 }
 
 class _PlanGenerationScreenState extends State<PlanGenerationScreen> {
-  Future<Map<String, dynamic>>? _planFuture;
-  Map<String, dynamic>? _userProfile;
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  String _selectedSubject = 'Matematik';
+  String _selectedGrade = '9. Sınıf';
+  String _selectedGoal = 'Sınav Hazırlığı';
+  int _selectedDuration = 30;
+
+  bool _isLoading = false;
+
+  final List<String> _subjects = [
+    'Matematik',
+    'Fizik',
+    'Kimya',
+    'Biyoloji',
+    'Türkçe',
+    'Tarih',
+    'Coğrafya',
+    'Felsefe',
+  ];
+
+  final List<String> _grades = [
+    '9. Sınıf',
+    '10. Sınıf',
+    '11. Sınıf',
+    '12. Sınıf',
+  ];
+
+  final List<String> _goals = [
+    'Sınav Hazırlığı',
+    'Konu Tekrarı',
+    'Eksik Kapatma',
+    'İleri Seviye',
+  ];
 
   @override
-  void initState() {
-    super.initState();
-    _loadUserProfile().then((_) {
-      _planFuture = _generatePlan();
-    });
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
   }
 
-  Future<void> _loadUserProfile() async {
-    if (!widget.isHolidayPlan)
-      return; // Tatil planı değilse profil yüklemesine gerek yok
+  Future<void> _generatePlan() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception("Kullanıcı bulunamadı. Lütfen tekrar giriş yapın.");
-      }
+      // Mock plan generation
+      await Future.delayed(Duration(seconds: 2));
 
-      final profileDoc = await FirebaseFirestore.instance
-          .doc('users/${user.uid}/privateProfile/profile')
-          .get();
-
-      if (profileDoc.exists) {
-        setState(() {
-          _userProfile = profileDoc.data() as Map<String, dynamic>;
-        });
-      } else {
-        throw Exception("Kullanıcı profili bulunamadı.");
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => PlanGenerationStatusScreen(
+              planName: _nameController.text,
+              subject: _selectedSubject,
+              grade: _selectedGrade,
+              goal: _selectedGoal,
+              duration: _selectedDuration,
+            ),
+          ),
+        );
       }
     } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Plan oluşturulurken hata: $e')),
+      );
+    } finally {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Profil yüklenemedi: ${e.toString()}')),
-        );
+        setState(() => _isLoading = false);
       }
-      rethrow;
-    }
-  }
-
-  Future<Map<String, dynamic>> _generatePlan() async {
-    final planService = context.read<PlanService>();
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception("Kullanıcı bulunamadı. Lütfen tekrar giriş yapın.");
-      }
-      await user.getIdToken(true);
-
-      if (widget.isHolidayPlan) {
-        // Tatil planı oluşturma
-        if (_userProfile == null) {
-          throw Exception("Kullanıcı profili yüklenemedi.");
-        }
-
-        final result = await planService.generateInitialLongTermPlan(
-          subjects: List<String>.from(_userProfile!['selectedSubjects'] ?? []),
-          goals: [_userProfile!['targetExam'] ?? 'YKS'],
-          availableTime:
-              (_userProfile!['dailyHours'] ?? 2) * 60, // Saati dakikaya çevir
-          learningStyle: 'balanced',
-          currentLevel: _userProfile!['grade'] ?? '12',
-        );
-        return result;
-      } else {
-        // Normal plan oluşturma (onboarding sonrası)
-        final onboardingData = widget.onboardingData;
-
-        if (onboardingData == null) {
-          // Onboarding verisi yoksa Firebase'den kullanıcı profilini oku
-          final user = FirebaseAuth.instance.currentUser;
-          if (user == null) {
-            throw Exception("Kullanıcı oturum açmamış.");
-          }
-
-          final profileDoc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .collection('privateProfile')
-              .doc('profile')
-              .get();
-
-          if (!profileDoc.exists) {
-            throw Exception(
-                "Kullanıcı profili bulunamadı. Lütfen onboarding'i tamamlayın.");
-          }
-
-          final profileData = profileDoc.data() as Map<String, dynamic>;
-
-          final result = await planService.generateInitialLongTermPlan(
-            subjects: List<String>.from(
-                profileData['selectedSubjects'] ?? ['Matematik', 'Türkçe']),
-            goals: [profileData['targetExam'] ?? 'YKS'],
-            availableTime: ((profileData['dailyHours'] ?? 2).toInt()) * 60,
-            learningStyle: 'balanced',
-            currentLevel: profileData['grade'] ?? '12',
-          );
-          return result;
-        }
-
-        final result = await planService.generateInitialLongTermPlan(
-          subjects: onboardingData.selectedSubjects,
-          goals: [onboardingData.targetExam],
-          availableTime: onboardingData.dailyGoalInHours.toInt() * 60,
-          learningStyle: 'balanced',
-          currentLevel: onboardingData.grade,
-        );
-        return result;
-      }
-    } catch (e) {
-      // Hata durumunda kullanıcıya bildir ve hatayı yukarı taşı
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Plan oluşturulamadı: ${e.toString()}')),
-        );
-      }
-      rethrow;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      body: SingleChildScrollView(
-        child: FutureBuilder<Map<String, dynamic>>(
-          future: _planFuture,
-          builder: (context, snapshot) {
-            Widget content;
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              content = _buildStatusContent(
-                  'AI Koçun Çalışıyor...',
-                  widget.isHolidayPlan
-                      ? 'Tatil dönemine özel kişiselleştirilmiş çalışma planınız hazırlanıyor.'
-                      : 'AI Koçun, sana özel 1 haftalık stratejik başlangıç planını hazırlıyor...\n\n🎯 Güven seviyelerine göre konu analizi\n✨ Kişiselleştirilmiş görev oluşturma\n🚀 Haftalık başarı stratejisi tasarlama',
-                  '');
-            } else if (snapshot.hasError) {
-              content = _buildStatusContent(
-                  'Bir Hata Oluştu',
-                  'Planınız oluşturulurken bir sorunla karşılaşıldı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.\n\nHata: ${snapshot.error}',
-                  'assets/animations/error.json',
-                  isError: true);
-            } else if (snapshot.hasData) {
-              // Plan başarıyla oluşturuldu, yönlendirme yap.
-              WidgetsBinding.instance.addPostFrameCallback((_) async {
-                // Hesap tipini kontrol et
-                final familyService = context.read<FamilyAccountService>();
-                await familyService.loadAccountData();
-                final accountType = familyService.accountType;
-
-                if (accountType == AccountType.parent) {
-                  // Veli hesabı - Family Portal'a git
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                        builder: (context) => const FamilyPortalScreen()),
-                    (Route<dynamic> route) => false,
-                  );
-                } else {
-                  // Öğrenci hesabı - User Plan Screen'e git
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                        builder: (context) => const UserPlanScreen()),
-                    (Route<dynamic> route) => false,
-                  );
-                }
-              });
-              content = _buildStatusContent(
-                  'Stratejik Planın Hazır! 🎉',
-                  widget.isHolidayPlan
-                      ? 'Tatilinize özel çalışma planınız başarıyla oluşturuldu. Şimdi sizi planınıza yönlendiriyoruz.'
-                      : '1 haftalık stratejik başlangıç planın hazır!\n\n🎯 Her gün için özel tema\n✨ Güven seviyelerine göre kişiselleştirilmiş görevler\n🏆 7. günde performans raporu seni bekliyor',
-                  'assets/animations/success.json');
-            } else {
-              // Başlangıç durumu
-              content = _buildStatusContent('Başlatılıyor...',
-                  'Plan oluşturma süreci başlatılıyor. Lütfen bekleyin.', '');
-            }
-            return Center(child: content);
-          },
-        ),
+      appBar: AppBar(
+        title: const Text('Plan Oluştur'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-    );
-  }
-
-  Widget _buildStatusContent(
-      String title, String message, String animationAsset,
-      {bool isError = false}) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          animationAsset.isEmpty
-              ? Container(
-                  width: 200,
-                  height: 200,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            AppTheme.primaryColor),
-                        strokeWidth: 3,
-                      ),
-                      const SizedBox(height: 20),
-                      Icon(
-                        Icons.psychology,
-                        size: 64,
-                        color: AppTheme.primaryColor,
-                      ),
-                    ],
-                  ),
-                )
-              : Lottie.asset(
-                  animationAsset,
-                  width: 200,
-                  height: 200,
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Plan Adı
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Plan Adı',
+                  border: OutlineInputBorder(),
                 ),
-          const SizedBox(height: 20),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.headlineSmall,
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 500.ms),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ).animate().fadeIn(delay: 1000.ms),
-          ),
-          if (isError)
-            Padding(
-              padding: const EdgeInsets.only(top: 24.0),
-              child: ElevatedButton(
-                onPressed: () {
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Plan adı gerekli';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Açıklama
+              TextFormField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Açıklama (İsteğe bağlı)',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+
+              // Ders Seçimi
+              DropdownButtonFormField<String>(
+                value: _selectedSubject,
+                decoration: const InputDecoration(
+                  labelText: 'Ders',
+                  border: OutlineInputBorder(),
+                ),
+                items: _subjects.map((subject) {
+                  return DropdownMenuItem(
+                    value: subject,
+                    child: Text(subject),
+                  );
+                }).toList(),
+                onChanged: (value) {
                   setState(() {
-                    _planFuture = _generatePlan();
+                    _selectedSubject = value!;
                   });
                 },
-                child: const Text('Tekrar Dene'),
               ),
-            ),
-        ],
+              const SizedBox(height: 16),
+
+              // Sınıf Seçimi
+              DropdownButtonFormField<String>(
+                value: _selectedGrade,
+                decoration: const InputDecoration(
+                  labelText: 'Sınıf',
+                  border: OutlineInputBorder(),
+                ),
+                items: _grades.map((grade) {
+                  return DropdownMenuItem(
+                    value: grade,
+                    child: Text(grade),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedGrade = value!;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Hedef Seçimi
+              DropdownButtonFormField<String>(
+                value: _selectedGoal,
+                decoration: const InputDecoration(
+                  labelText: 'Hedef',
+                  border: OutlineInputBorder(),
+                ),
+                items: _goals.map((goal) {
+                  return DropdownMenuItem(
+                    value: goal,
+                    child: Text(goal),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedGoal = value!;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Süre Seçimi
+              DropdownButtonFormField<int>(
+                value: _selectedDuration,
+                decoration: const InputDecoration(
+                  labelText: 'Günlük Çalışma Süresi (Dakika)',
+                  border: OutlineInputBorder(),
+                ),
+                items: [15, 30, 45, 60, 90, 120].map((duration) {
+                  return DropdownMenuItem(
+                    value: duration,
+                    child: Text('$duration dakika'),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedDuration = value!;
+                  });
+                },
+              ),
+              const SizedBox(height: 32),
+
+              // Plan Oluştur Butonu
+              ElevatedButton(
+                onPressed: _isLoading ? null : _generatePlan,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Plan Oluştur',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

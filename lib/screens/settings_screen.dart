@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_theme.dart' show themeNotifier;
 import '../theme/app_theme.dart';
 import '../providers/study_data_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../services/family_account_service.dart';
 import '../models/student_profile.dart';
+import '../models/user_account.dart';
 import '../screens/add_student_profile_screen.dart';
 import 'profile_screen.dart';
 import 'help_and_faq_screen.dart';
@@ -380,7 +380,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -395,8 +395,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.primaryColor.withOpacity(0.1),
-                  AppTheme.primaryColor.withOpacity(0.05),
+                  AppTheme.primaryColor.withValues(alpha: 0.1),
+                  AppTheme.primaryColor.withValues(alpha: 0.05),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -411,7 +411,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -459,8 +459,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: isDestructive
-                      ? Colors.red.withOpacity(0.1)
-                      : AppTheme.primaryColor.withOpacity(0.1),
+                      ? Colors.red.withValues(alpha: 0.1)
+                      : AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -522,7 +522,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -717,7 +717,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             end: Alignment.bottomRight,
             colors: [
               Theme.of(context).cardColor,
-              AppTheme.primaryColor.withOpacity(0.05),
+              AppTheme.primaryColor.withValues(alpha: 0.05),
             ],
           ),
         ),
@@ -730,7 +730,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -765,7 +765,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   return Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Colors.grey.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Center(
@@ -788,13 +788,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? AppTheme.primaryColor.withOpacity(0.1)
+                              ? AppTheme.primaryColor.withValues(alpha: 0.1)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: isSelected
                                 ? AppTheme.primaryColor
-                                : Colors.grey.withOpacity(0.3),
+                                : Colors.grey.withValues(alpha: 0.3),
                           ),
                         ),
                         child: ListTile(
@@ -898,118 +898,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Premium test metodları
   void _upgradeToPremium(BuildContext context) async {
-    final subscriptionProvider =
-        Provider.of<SubscriptionProvider>(context, listen: false);
-
-    try {
-      final success =
-          await subscriptionProvider.upgradeToPremium(tier: 'ai_pro');
-      if (success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Premium abonelik başarıyla aktifleştirildi!'),
-            backgroundColor: AppTheme.successColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: AppTheme.errorColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
-      }
-    }
+    // Mock implementation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Premium abonelik başarıyla aktifleştirildi!'),
+        backgroundColor: AppTheme.successColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
   }
 
   void _startTrial(BuildContext context) async {
-    final subscriptionProvider =
-        Provider.of<SubscriptionProvider>(context, listen: false);
-
-    try {
-      final success = await subscriptionProvider.startUserTrial();
-      if (success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('7 günlük trial başlatıldı!'),
-            backgroundColor: AppTheme.successColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: AppTheme.errorColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
-      }
-    }
+    // Mock implementation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('7 günlük trial başlatıldı!'),
+        backgroundColor: AppTheme.successColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
   }
 
   void _testFounderMembership(BuildContext context) async {
-    final subscriptionProvider =
-        Provider.of<SubscriptionProvider>(context, listen: false);
-
-    try {
-      final result = await subscriptionProvider.joinFounderMembership();
-      if (result != null && result['success'] == true && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Kurucu üye #${result['founderNumber']} olarak kaydoldunuz!'),
-            backgroundColor: Colors.orange,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
-      } else if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Kurucu üye kaydı başarısız.'),
-            backgroundColor: AppTheme.errorColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: AppTheme.errorColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
-      }
-    }
+    // Mock implementation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Kurucu üye #42 olarak kaydoldunuz!'),
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
   }
 
   void _showLogoutDialog() {
@@ -1078,7 +1005,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _performLogout() async {
     try {
       // Firebase Auth'dan çıkış yap
-      await FirebaseAuth.instance.signOut();
+      // await FirebaseAuth.instance.signOut(); // Mock servis
 
       // Loading göster
       if (mounted) {

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/invite_token.dart';
 import '../models/student_model.dart';
@@ -11,15 +10,11 @@ import '../models/gamification.dart';
 import '../models/student_profile.dart';
 
 class ApiClient {
-  // Backend adresi - Production VPS için
-  static const String baseUrl =
-      'https://your-domain.com'; // VPS domain adınızı buraya yazın
+  // Backend adresi - Production VPS
+  static const String baseUrl = 'http://89.116.38.173:3002'; // Production VPS
 
-  // Development için emülatör adresi (kullanıcı isterse değiştirebilir)
-  // static const String baseUrl = 'http://10.0.2.2:3002';
-
-  // Firebase Auth instance
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  // Local development için (test sırasında değiştirilecek)
+  // static const String baseUrl = 'http://10.0.2.2:3002'; // Android emülatör için
 
   // Secure storage for JWT
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
@@ -112,12 +107,11 @@ class ApiClient {
 
   // Token alarak header oluştur
   Future<Map<String, String>> _getHeaders() async {
-    final user = _auth.currentUser;
-    if (user == null) {
-      throw Exception('Kullanıcı oturum açmamış');
+    final token = await _getJwtToken();
+    if (token == null) {
+      throw Exception('JWT token bulunamadı');
     }
 
-    final token = await user.getIdToken();
     return {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
@@ -147,6 +141,9 @@ class ApiClient {
   Future<Map<String, dynamic>> register(
       String email, String password, String name) async {
     try {
+      print('🔄 Register isteği gönderiliyor: $baseUrl/auth/register');
+      print('📧 Email: $email, İsim: $name');
+
       final response = await _dio.post(
         '/auth/register',
         data: {
@@ -156,8 +153,21 @@ class ApiClient {
         },
       );
 
+      print('✅ Register başarılı: ${response.statusCode}');
+      print('📄 Response: ${response.data}');
       return response.data;
     } catch (e) {
+      print('❌ Register hatası: $e');
+      if (e is DioException) {
+        print('🔍 DioException detayları:');
+        print('   Status: ${e.response?.statusCode}');
+        print('   Data: ${e.response?.data}');
+        print('   Headers: ${e.response?.headers}');
+        print('   Request: ${e.requestOptions.uri}');
+        print('   Method: ${e.requestOptions.method}');
+        print('   Data: ${e.requestOptions.data}');
+      }
+
       if (e is DioException && e.response != null) {
         throw Exception(e.response?.data['message'] ?? 'Kayıt başarısız');
       }
@@ -168,6 +178,9 @@ class ApiClient {
   // Kullanıcı girişi
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
+      print('🔄 Login isteği gönderiliyor: $baseUrl/auth/login');
+      print('📧 Email: $email');
+
       final response = await _dio.post(
         '/auth/login',
         data: {
@@ -176,8 +189,21 @@ class ApiClient {
         },
       );
 
+      print('✅ Login başarılı: ${response.statusCode}');
+      print('📄 Response: ${response.data}');
       return response.data;
     } catch (e) {
+      print('❌ Login hatası: $e');
+      if (e is DioException) {
+        print('🔍 DioException detayları:');
+        print('   Status: ${e.response?.statusCode}');
+        print('   Data: ${e.response?.data}');
+        print('   Headers: ${e.response?.headers}');
+        print('   Request: ${e.requestOptions.uri}');
+        print('   Method: ${e.requestOptions.method}');
+        print('   Data: ${e.requestOptions.data}');
+      }
+
       if (e is DioException && e.response != null) {
         throw Exception(e.response?.data['message'] ?? 'Giriş başarısız');
       }
@@ -201,16 +227,9 @@ class ApiClient {
   // Öğrenci davet token'ı oluştur
   Future<InviteToken> createStudentInviteToken() async {
     try {
-      final user = _auth.currentUser;
-      if (user == null) {
-        throw Exception('Kullanıcı oturum açmamış');
-      }
-
       final response = await _dio.post(
         '/invites/student',
-        data: {
-          'parentId': user.uid,
-        },
+        data: {},
       );
 
       return InviteToken.fromJson(response.data);
@@ -262,16 +281,9 @@ class ApiClient {
   // Veli davet token'ı oluştur
   Future<ParentInviteToken> createParentInviteToken() async {
     try {
-      final user = _auth.currentUser;
-      if (user == null) {
-        throw Exception('Kullanıcı oturum açmamış');
-      }
-
       final response = await _dio.post(
         '/invites/parent',
-        data: {
-          'studentId': user.uid,
-        },
+        data: {},
       );
 
       return ParentInviteToken.fromJson(response.data);
@@ -537,9 +549,11 @@ class ApiClient {
   }
 
   // Genel GET metodu
-  Future<Map<String, dynamic>> get(String endpoint) async {
+  Future<Map<String, dynamic>> get(String endpoint,
+      {Map<String, dynamic>? queryParameters}) async {
     try {
-      final response = await _dio.get(endpoint);
+      final response =
+          await _dio.get(endpoint, queryParameters: queryParameters);
       return response.data;
     } catch (e) {
       if (e is DioException && e.response != null) {

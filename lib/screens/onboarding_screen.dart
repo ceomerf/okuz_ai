@@ -2,6 +2,7 @@ import 'package:dots_indicator/dots_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:okuz_ai/models/onboarding_data.dart';
 import 'package:okuz_ai/models/onboarding_page_type.dart';
+import 'package:okuz_ai/models/account_type.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:okuz_ai/widgets/onboarding/daily_goal_page.dart';
@@ -28,9 +29,10 @@ import 'package:okuz_ai/screens/plan_generation_status_screen.dart'; // 🚀 YEN
 // import 'package:okuz_ai/screens/plan_setup_screen.dart'; // 🚀 KALDIRILDI: İnteraktif plan kurulum
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../services/family_account_service.dart';
+import '../services/mock_auth_service.dart';
+import '../services/production_auth_service.dart';
 import 'package:okuz_ai/models/student_profile.dart';
 import 'parent_invite_screen.dart';
 import 'package:okuz_ai/screens/family_portal_screen.dart';
@@ -95,13 +97,47 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _checkHolidayStatus() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      // Önce ProductionAuthService'i dene, yoksa MockAuthService'i kullan
+      final productionAuthService =
+          Provider.of<ProductionAuthService>(context, listen: false);
+      final currentUser = await productionAuthService.getCurrentUser();
+
+      if (currentUser != null) {
+        // ProductionAuthService ile giriş yapılmış
+        final token = await productionAuthService.getToken();
+        if (token != null) {
+          final response = await http.get(
+            Uri.parse(
+                'http://89.116.38.173:3002/api/planning/check-holiday-status'),
+            headers: {
+              'Authorization': 'Bearer $token',
+            },
+          );
+
+          if (response.statusCode == 200) {
+            final result = jsonDecode(response.body);
+            if (mounted) {
+              setState(() {
+                _isHoliday = result['isHoliday'] ?? false;
+                _holidayReason = result['message'] ?? '';
+                _holidayCheckLoading = false;
+              });
+            }
+            return;
+          }
+        }
+      }
+
+      // ProductionAuthService ile giriş yapılmamışsa MockAuthService'i dene
+      final mockAuthService =
+          Provider.of<MockAuthService>(context, listen: false);
+      final user = mockAuthService.currentUser;
       if (user == null) return;
 
-      final token = await user.getIdToken();
+      final token = user.id; // Mock token
       final response = await http.get(
         Uri.parse(
-            'http://89.116.38.173:3000/api/planning/check-holiday-status'),
+            'http://89.116.38.173:3002/api/planning/check-holiday-status'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -242,14 +278,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (_onboardingData.accountType == AccountType.student) {
       // FieldSelectionPage - sadece 11. sınıf ve üzeri için
       if (page.key == const Key('field_selection')) {
-        return _onboardingData.grade.isNotEmpty &&
-            ((int.tryParse(_onboardingData.grade) ?? 0) >= 11 ||
-                _onboardingData.grade == 'Mezun');
+        return (_onboardingData.grade?.isNotEmpty ?? false) &&
+            ((int.tryParse(_onboardingData.grade ?? '') ?? 0) >= 11 ||
+                (_onboardingData.grade ?? '') == 'Mezun');
       }
 
       // PlanScopePage - sınıf seçildikten sonra
       if (page.key == const Key('plan_scope')) {
-        return _onboardingData.grade.isNotEmpty;
+        return (_onboardingData.grade?.isNotEmpty ?? false);
       }
 
       // SubjectSelectionPage - sadece custom plan seçildiğinde
@@ -265,12 +301,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
       // DailyGoalPage - plan kapsamı seçildikten sonra
       if (page.key == const Key('daily_goal')) {
-        return _onboardingData.planScope.isNotEmpty;
+        return (_onboardingData.planScope?.isNotEmpty ?? false);
       }
 
       // PreferredStudyTimesPage - günlük hedef belirlendikten sonra
       if (page.key == const Key('study_times')) {
-        return _onboardingData.dailyGoalInHours > 0;
+        return (_onboardingData.dailyGoalInHours ?? 0) > 0;
       }
 
       // PreferredSessionDurationPage - çalışma saatleri seçildikten sonra
@@ -280,12 +316,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
       // LearningStylePage - ideal çalışma süresi belirlendikten sonra
       if (page.key == const Key('learning_style')) {
-        return _onboardingData.preferredSessionDuration > 0;
+        return (_onboardingData.preferredSessionDuration ?? 0) > 0;
       }
 
       // ConfidenceLevelsPage - öğrenme stili seçildikten sonra
       if (page.key == const Key('confidence_levels')) {
-        return _onboardingData.learningStyle.isNotEmpty;
+        return (_onboardingData.learningStyle?.isNotEmpty ?? false);
       }
 
       // StartingPointPage - sadece normal dönemde ve güven seviyeleri belirlendikten sonra
@@ -306,10 +342,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       if (page.key == const Key('summary_student')) {
         if (_isHoliday && !_holidayCheckLoading) {
           return _onboardingData.confidenceLevels.isNotEmpty &&
-              _onboardingData.holidayPlanType.isNotEmpty;
+              (_onboardingData.holidayPlanType?.isNotEmpty ?? false);
         } else if (!_isHoliday && !_holidayCheckLoading) {
           return _onboardingData.confidenceLevels.isNotEmpty &&
-              _onboardingData.startPoint.isNotEmpty;
+              (_onboardingData.startPoint?.isNotEmpty ?? false);
         }
         return _onboardingData.confidenceLevels.isNotEmpty;
       }
@@ -479,13 +515,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _saveOnboardingData() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw Exception('Kullanıcı oturum açmamış');
+    // Önce ProductionAuthService'i dene
+    final productionAuthService =
+        Provider.of<ProductionAuthService>(context, listen: false);
+    final currentUser = await productionAuthService.getCurrentUser();
+    final token = await productionAuthService.getToken();
+
+    String userId = '';
+
+    if (currentUser != null && token != null) {
+      // ProductionAuthService ile giriş yapılmış
+      userId = currentUser['id'] ?? '';
+    } else {
+      // MockAuthService'i dene
+      final user = MockAuthService.instance.currentUser;
+      if (user == null) {
+        throw Exception('Kullanıcı oturum açmamış');
+      }
+      userId = user.id;
     }
 
     // Hesap tipine göre gerekli verileri kontrol et
-    if (_onboardingData.fullName.trim().isEmpty) {
+    if ((_onboardingData.fullName?.trim() ?? '').isEmpty) {
       throw Exception('Lütfen adını gir');
     }
 
@@ -494,26 +545,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // Veli için ek kontroller gerekmez
     } else {
       // Öğrenci hesabı için tüm bilgiler gerekli
-      if (_onboardingData.grade.isEmpty) {
+      if ((_onboardingData.grade?.isEmpty ?? true)) {
         throw Exception('Lütfen sınıfını seç');
       }
-      if (_onboardingData.targetUniversity.trim().isEmpty) {
+      if ((_onboardingData.targetUniversity?.trim() ?? '').isEmpty) {
         throw Exception('Lütfen hedef üniversiteni gir');
       }
-      if (_onboardingData.learningStyle.isEmpty) {
+      if ((_onboardingData.learningStyle?.isEmpty ?? true)) {
         throw Exception('Lütfen öğrenme stilini seç');
       }
       if (_onboardingData.preferredStudyTimes.isEmpty) {
         throw Exception('Lütfen çalışma saatlerini seç');
       }
-      if (_onboardingData.dailyGoalInHours <= 0) {
+      if ((_onboardingData.dailyGoalInHours ?? 0) <= 0) {
         throw Exception('Lütfen günlük hedefini belirle');
       }
     }
 
     // 9. ve 10. sınıf öğrencileri için varsayılan değerler ayarla
-    String academicTrack = _onboardingData.academicTrack;
-    String targetExam = _onboardingData.targetExam;
+    String academicTrack = _onboardingData.academicTrack ?? '';
+    String targetExam = _onboardingData.targetExam ?? '';
 
     if (_onboardingData.grade == '9' || _onboardingData.grade == '10') {
       // 9. ve 10. sınıf öğrencileri için varsayılan değerler
@@ -525,34 +576,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
     }
 
-    // Firebase'e gönderilecek veriyi hazırla
+    // Mock servis'e gönderilecek veriyi hazırla
     final data = {
-      'fullName': _onboardingData.fullName.trim(),
+      'fullName': (_onboardingData.fullName?.trim() ?? ''),
       'accountType': _onboardingData.accountType.name, // Hesap tipini ekle
       'isNewProfile': false, // Bu yeni bir profil değil, ana kullanıcı
-      'userId': user.uid, // Firebase Authentication kullanıcı ID'sini ekle
+      'userId': userId, // Kullanıcı ID'sini ekle
     };
 
     // Öğrenci hesabı için ek veriler
     if (_onboardingData.accountType == AccountType.student) {
       data.addAll({
-        'grade': _onboardingData.grade,
+        'grade': _onboardingData.grade ?? '',
         'academicTrack': academicTrack,
-        'targetUniversity': _onboardingData.targetUniversity.trim(),
+        'targetUniversity': (_onboardingData.targetUniversity?.trim() ?? ''),
         'targetExam': targetExam,
-        'learningStyle': _onboardingData.learningStyle,
+        'learningStyle': _onboardingData.learningStyle ?? '',
         'confidenceLevels': _onboardingData.confidenceLevels,
         'preferredStudyTimes': _onboardingData.preferredStudyTimes,
         'preferredSessionDuration':
-            _onboardingData.preferredSessionDuration, // 🚀 YENİ
+            (_onboardingData.preferredSessionDuration ?? 0), // 🚀 YENİ
         'studyDays': _onboardingData.studyDays,
-        'dailyHours': _onboardingData.dailyGoalInHours.toInt(),
+        'dailyHours': (_onboardingData.dailyGoalInHours?.toInt() ?? 0),
       });
     } else {
       // Veli hesabı için varsayılan değerler
       data.addAll({
-        'parentName': _onboardingData.fullName
-            .trim(), // Veli adını parentName olarak gönder
+        'parentName': (_onboardingData.fullName?.trim() ??
+            ''), // Veli adını parentName olarak gönder
         'grade': '', // Veli için sınıf bilgisi yok
         'academicTrack': 'parent',
         'targetUniversity': '', // Veli için üniversite bilgisi yok
@@ -565,15 +616,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       });
     }
 
-    // Kullanıcı verilerini Express API'ye kaydet
+    // Kullanıcı verilerini API'ye kaydet
     try {
-      // Express API'ye gönder
-      final token = await user.getIdToken();
+      // API'ye gönder
+      String authToken = 'mock_token';
+      String apiUrl = 'http://localhost:3000/api/profile/complete-onboarding';
+
+      // ProductionAuthService ile giriş yapılmışsa gerçek token kullan
+      if (currentUser != null && token != null) {
+        authToken = token;
+        apiUrl = 'http://89.116.38.173:3002/api/users/complete-onboarding';
+      }
+
       final response = await http.post(
-        Uri.parse('http://localhost:3000/api/profile/complete-onboarding'),
+        Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $authToken',
         },
         body: jsonEncode(data),
       );
@@ -586,17 +645,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
       // Öğrenci hesabı için aile hesabına ekleme işlemi
       if (_onboardingData.accountType == AccountType.student) {
-        debugPrint('✅ Öğrenci hesabı oluşturuldu: ${user.uid}');
+        debugPrint('✅ Öğrenci hesabı oluşturuldu: $userId');
 
         // Bu öğrenci hesabını mevcut veli hesabına ekle
         try {
           final familyService =
               Provider.of<FamilyAccountService>(context, listen: false);
           await familyService.addStudent(
-            studentUserId: user.uid, // Firebase Authentication kullanıcı ID'si
-            studentName: _onboardingData.fullName.trim(),
-            studentEmail: user.email ?? '',
-            grade: _onboardingData.grade,
+            (_onboardingData.fullName?.trim() ?? ''),
+            _onboardingData.grade ?? '',
           );
           debugPrint('✅ Öğrenci aile hesabına eklendi');
         } catch (e) {
@@ -786,36 +843,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (currentPageWidget is NameAndTargetPage) {
       // Veli modu için sadece isim gerekli
       if (_onboardingData.accountType == AccountType.parent) {
-        return _onboardingData.fullName.isNotEmpty;
+        return (_onboardingData.fullName?.isNotEmpty ?? false);
       }
       // Öğrenci modu için isim ve üniversite gerekli
-      return _onboardingData.fullName.isNotEmpty &&
-          _onboardingData.targetUniversity.isNotEmpty;
+      return (_onboardingData.fullName?.isNotEmpty ?? false) &&
+          (_onboardingData.targetUniversity?.isNotEmpty ?? false);
     }
     if (currentPageWidget is GradeSelectionPage)
-      return _onboardingData.grade.isNotEmpty;
+      return (_onboardingData.grade?.isNotEmpty ?? false);
     if (currentPageWidget is FieldSelectionPage)
-      return _onboardingData.targetExam.isNotEmpty;
+      return (_onboardingData.targetExam?.isNotEmpty ?? false);
     if (currentPageWidget is PlanScopePage)
-      return _onboardingData.planScope.isNotEmpty;
+      return (_onboardingData.planScope?.isNotEmpty ?? false);
     if (currentPageWidget is SubjectSelectionPage)
       return _onboardingData.selectedSubjects.isNotEmpty;
     if (currentPageWidget is LastTopicsSelectionPage)
       return _onboardingData.lastCompletedTopics.isNotEmpty;
     if (currentPageWidget is DailyGoalPage)
-      return _onboardingData.dailyGoalInHours > 0;
+      return (_onboardingData.dailyGoalInHours ?? 0) > 0;
     if (currentPageWidget is PreferredStudyTimesPage)
       return _onboardingData.preferredStudyTimes.isNotEmpty;
     if (currentPageWidget is PreferredSessionDurationPage)
-      return _onboardingData.preferredSessionDuration > 0;
+      return (_onboardingData.preferredSessionDuration ?? 0) > 0;
     if (currentPageWidget is LearningStylePage)
-      return _onboardingData.learningStyle.isNotEmpty;
+      return (_onboardingData.learningStyle?.isNotEmpty ?? false);
     if (currentPageWidget is ConfidenceLevelsPage)
       return _onboardingData.confidenceLevels.isNotEmpty;
     if (currentPageWidget is StartingPointPage)
-      return _onboardingData.startPoint.isNotEmpty;
+      return (_onboardingData.startPoint?.isNotEmpty ?? false);
     if (currentPageWidget is HolidayPlanTypePage)
-      return _onboardingData.holidayPlanType.isNotEmpty;
+      return (_onboardingData.holidayPlanType?.isNotEmpty ?? false);
     if (currentPageWidget is SummaryPage) return _onboardingData.isConfirmed;
 
     return false;
@@ -843,7 +900,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             color: isActive
                 ? AppTheme.primaryColor
                 : isPast
-                    ? AppTheme.primaryColor.withOpacity(0.5)
+                    ? AppTheme.primaryColor.withValues(alpha: 0.5)
                     : Theme.of(context).dividerColor,
           ),
         );
@@ -891,7 +948,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 color: Theme.of(context).scaffoldBackgroundColor,
                 boxShadow: [
                   BoxShadow(
-                    color: Theme.of(context).shadowColor.withOpacity(0.05),
+                    color:
+                        Theme.of(context).shadowColor.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -5),
                   ),

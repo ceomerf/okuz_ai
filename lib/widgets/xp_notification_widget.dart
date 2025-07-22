@@ -43,7 +43,7 @@ class XPNotificationWidget extends StatefulWidget {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.primaryColor.withOpacity(0.3),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -54,7 +54,7 @@ class XPNotificationWidget extends StatefulWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -80,7 +80,7 @@ class XPNotificationWidget extends StatefulWidget {
                       Text(
                         message,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 14,
                         ),
                       ),
@@ -308,7 +308,7 @@ class _XPNotificationWidgetState extends State<XPNotificationWidget>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: AppTheme.accentColor.withOpacity(0.1),
+                          color: AppTheme.accentColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
@@ -369,8 +369,8 @@ class _XPNotificationWidgetState extends State<XPNotificationWidget>
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white.withOpacity(0.05)
-                              : Colors.black.withOpacity(0.05),
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.black.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -411,14 +411,14 @@ class _XPNotificationWidgetState extends State<XPNotificationWidget>
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  AppTheme.accentColor.withOpacity(0.8),
-                                  AppTheme.primaryColor.withOpacity(0.8),
+                                  AppTheme.accentColor.withValues(alpha: 0.8),
+                                  AppTheme.primaryColor.withValues(alpha: 0.8),
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppTheme.accentColor.withOpacity(0.3),
+                                  color: AppTheme.accentColor.withValues(alpha: 0.3),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -503,7 +503,7 @@ class ConfettiPainter extends CustomPainter {
       final color = colors[i % colors.length];
 
       if (y > -20 && y < size.height + 20) {
-        paint.color = color.withOpacity(0.8);
+        paint.color = color.withValues(alpha: 0.8);
 
         // Draw different shapes
         if (i % 3 == 0) {
@@ -547,7 +547,7 @@ void showXPNotification(
   showDialog(
     context: context,
     barrierDismissible: false,
-    barrierColor: Colors.black.withOpacity(0.7),
+    barrierColor: Colors.black.withValues(alpha: 0.7),
     builder: (context) => XPNotificationWidget(
       xpGained: xpGained,
       totalXP: totalXP,

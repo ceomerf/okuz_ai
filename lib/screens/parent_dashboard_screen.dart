@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../services/family_account_service.dart';
+import '../services/mock_auth_service.dart';
+import '../services/mock_database_service.dart';
 import '../models/student_profile.dart';
 import '../theme/app_theme.dart';
 import 'family_portal_screen.dart';
@@ -29,7 +28,7 @@ class ParentDashboardScreen extends StatefulWidget {
 class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   Map<String, dynamic>? _dashboardData;
   bool _isLoading = true;
-  Stream<DocumentSnapshot>? _statusStream;
+  Stream<Map<String, dynamic>?>? _statusStream;
   Map<String, dynamic>? _weeklyAIReport;
   bool _isLoadingAIReport = false;
 
@@ -70,25 +69,24 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   }
 
   void _setupStatusStream() {
-    // Öğrencinin real-time status'unu dinle
-    _statusStream =
-        FirebaseFirestore.instance.doc('users/${widget.profileId}').snapshots();
+    // Mock implementation - gerçek uygulamada real-time stream dinlenecek
+    _statusStream = Stream.value(null);
   }
 
   Future<void> _loadWeeklyAIReport() async {
     setState(() => _isLoadingAIReport = true);
 
     try {
-      final functions = FirebaseFunctions.instance;
-      final callable = functions.httpsCallable('getWeeklyParentReport');
-
-      final result = await callable.call({
+      final dbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      final result =
+          await dbService.callCloudFunction('getWeeklyParentReport', {
         'studentId': widget.profileId,
       });
 
       if (mounted) {
         setState(() {
-          _weeklyAIReport = result.data;
+          _weeklyAIReport = result;
           _isLoadingAIReport = false;
         });
       }
@@ -155,7 +153,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
           Container(
             margin: const EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
+              color: Colors.blue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
@@ -210,13 +208,11 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
           children: [
             // "Şu An Ne Yapıyor?" Kartı - Real-time güncellemeli
             _statusStream != null
-                ? StreamBuilder<DocumentSnapshot>(
+                ? StreamBuilder<Map<String, dynamic>?>(
                     stream: _statusStream,
                     builder: (context, snapshot) {
                       final liveProfile =
-                          snapshot.hasData && snapshot.data!.exists
-                              ? snapshot.data!.data() as Map<String, dynamic>?
-                              : profile ?? {};
+                          snapshot.hasData ? snapshot.data! : profile ?? {};
                       return _buildCurrentStatusCard(liveProfile);
                     },
                   )
@@ -279,7 +275,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: statusColor.withOpacity(0.3), width: 2),
+          side: BorderSide(color: statusColor.withValues(alpha: 0.3), width: 2),
         ),
         child: Container(
           padding: const EdgeInsets.all(20),
@@ -287,8 +283,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(
               colors: [
-                statusColor.withOpacity(0.05),
-                statusColor.withOpacity(0.02),
+                statusColor.withValues(alpha: 0.05),
+                statusColor.withValues(alpha: 0.02),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -301,7 +297,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                 height: 60,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: statusColor.withOpacity(0.2),
+                  color: statusColor.withValues(alpha: 0.2),
                 ),
                 child: Icon(
                   statusIcon,
@@ -433,8 +429,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: color.withOpacity(0.1),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withValues(alpha: 0.1),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -473,7 +469,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-              color: AppTheme.primaryColor.withOpacity(0.3), width: 1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.3), width: 1),
         ),
         child: Container(
           padding: const EdgeInsets.all(20),
@@ -481,8 +477,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(
               colors: [
-                AppTheme.primaryColor.withOpacity(0.05),
-                AppTheme.primaryColor.withOpacity(0.02),
+                AppTheme.primaryColor.withValues(alpha: 0.05),
+                AppTheme.primaryColor.withValues(alpha: 0.02),
               ],
             ),
           ),
@@ -495,7 +491,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppTheme.primaryColor.withOpacity(0.2),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.2),
                     ),
                     child: Icon(
                       Icons.psychology,
@@ -535,7 +531,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                       Text(
                         'AI raporu hazırlanıyor...',
                         style: GoogleFonts.poppins(
-                          color: AppTheme.textColor.withOpacity(0.7),
+                          color: AppTheme.textColor.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
@@ -550,8 +546,9 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    color: Colors.orange.withOpacity(0.1),
-                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    border:
+                        Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
@@ -601,7 +598,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     if (aiReport == null) {
       return Text(
         'Rapor verileri bulunamadı.',
-        style: GoogleFonts.poppins(color: AppTheme.textColor.withOpacity(0.7)),
+        style: GoogleFonts.poppins(
+            color: AppTheme.textColor.withValues(alpha: 0.7)),
       );
     }
 
@@ -621,7 +619,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              color: Colors.blue.withOpacity(0.1),
+              color: Colors.blue.withValues(alpha: 0.1),
             ),
             child: Text(
               summary,
@@ -678,11 +676,12 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
               borderRadius: BorderRadius.circular(8),
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.primaryColor.withOpacity(0.1),
-                  AppTheme.primaryColor.withOpacity(0.05),
+                  AppTheme.primaryColor.withValues(alpha: 0.1),
+                  AppTheme.primaryColor.withValues(alpha: 0.05),
                 ],
               ),
-              border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+              border: Border.all(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
@@ -711,13 +710,13 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              color: AppTheme.textColor.withOpacity(0.1),
+              color: AppTheme.textColor.withValues(alpha: 0.1),
             ),
             child: Text(
               'Haftalık rapor • ${_formatWeekPeriod(weekPeriod)}',
               style: GoogleFonts.poppins(
                 fontSize: 12,
-                color: AppTheme.textColor.withOpacity(0.7),
+                color: AppTheme.textColor.withValues(alpha: 0.7),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -733,8 +732,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        color: color.withOpacity(0.1),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withValues(alpha: 0.1),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -860,8 +859,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         color: Theme.of(context).cardColor,
-        border:
-            Border.all(color: Theme.of(context).dividerColor.withOpacity(0.5)),
+        border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
@@ -870,7 +869,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
             ),
             child: Icon(
               Icons.book_outlined,

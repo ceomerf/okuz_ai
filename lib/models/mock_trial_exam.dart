@@ -1,61 +1,47 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// JWT Backend için Mock Trial Exam Modeli
+// Firebase bağımlılığı tamamen kaldırıldı
 
-/// Deneme sınavı sonuçlarını temsil eden sınıf
 class MockTrialExam {
   final String id;
   final String title;
-  final DateTime examDate;
-  final String examType; // YKS, TYT, AYT, LGS, vb.
-  final String publisher; // Yayınevi
-  final double score; // Puan
-  final int correctCount; // Doğru sayısı
-  final int incorrectCount; // Yanlış sayısı
-  final int emptyCount; // Boş sayısı
-  final int totalQuestions; // Toplam soru sayısı
-  final Map<String, SubjectResult> subjectResults; // Ders bazında sonuçlar
-  final List<WrongQuestion> wrongQuestions; // Yanlış yapılan sorular
-  final String userId;
+  final String description;
+  final List<String> subjects;
+  final int totalQuestions;
+  final int durationInMinutes;
   final DateTime createdAt;
+  final DateTime scheduledAt;
+  final bool isCompleted;
+  final Map<String, dynamic>? results;
 
   MockTrialExam({
     required this.id,
     required this.title,
-    required this.examDate,
-    required this.examType,
-    required this.publisher,
-    required this.score,
-    required this.correctCount,
-    required this.incorrectCount,
-    required this.emptyCount,
+    required this.description,
+    required this.subjects,
     required this.totalQuestions,
-    required this.subjectResults,
-    required this.wrongQuestions,
-    required this.userId,
+    required this.durationInMinutes,
     required this.createdAt,
+    required this.scheduledAt,
+    this.isCompleted = false,
+    this.results,
   });
 
   factory MockTrialExam.fromJson(Map<String, dynamic> json) {
     return MockTrialExam(
       id: json['id'] ?? '',
       title: json['title'] ?? '',
-      examDate: (json['examDate'] as Timestamp).toDate(),
-      examType: json['examType'] ?? '',
-      publisher: json['publisher'] ?? '',
-      score: (json['score'] ?? 0.0).toDouble(),
-      correctCount: json['correctCount'] ?? 0,
-      incorrectCount: json['incorrectCount'] ?? 0,
-      emptyCount: json['emptyCount'] ?? 0,
+      description: json['description'] ?? '',
+      subjects: List<String>.from(json['subjects'] ?? []),
       totalQuestions: json['totalQuestions'] ?? 0,
-      subjectResults: (json['subjectResults'] as Map<String, dynamic>?)?.map(
-            (key, value) => MapEntry(key, SubjectResult.fromJson(value)),
-          ) ??
-          {},
-      wrongQuestions: (json['wrongQuestions'] as List?)
-              ?.map((e) => WrongQuestion.fromJson(e))
-              .toList() ??
-          [],
-      userId: json['userId'] ?? '',
-      createdAt: (json['createdAt'] as Timestamp).toDate(),
+      durationInMinutes: json['durationInMinutes'] ?? 0,
+      createdAt: json['createdAt'] is String
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
+      scheduledAt: json['scheduledAt'] is String
+          ? DateTime.parse(json['scheduledAt'])
+          : DateTime.now(),
+      isCompleted: json['isCompleted'] ?? false,
+      results: json['results'],
     );
   }
 
@@ -63,18 +49,14 @@ class MockTrialExam {
     return {
       'id': id,
       'title': title,
-      'examDate': examDate,
-      'examType': examType,
-      'publisher': publisher,
-      'score': score,
-      'correctCount': correctCount,
-      'incorrectCount': incorrectCount,
-      'emptyCount': emptyCount,
+      'description': description,
+      'subjects': subjects,
       'totalQuestions': totalQuestions,
-      'subjectResults': subjectResults.map((key, value) => MapEntry(key, value.toJson())),
-      'wrongQuestions': wrongQuestions.map((e) => e.toJson()).toList(),
-      'userId': userId,
-      'createdAt': createdAt,
+      'durationInMinutes': durationInMinutes,
+      'createdAt': createdAt.toIso8601String(),
+      'scheduledAt': scheduledAt.toIso8601String(),
+      'isCompleted': isCompleted,
+      'results': results,
     };
   }
 }
@@ -122,7 +104,8 @@ class SubjectResult {
       'emptyCount': emptyCount,
       'totalQuestions': totalQuestions,
       'netScore': netScore,
-      'topicResults': topicResults.map((key, value) => MapEntry(key, value.toJson())),
+      'topicResults':
+          topicResults.map((key, value) => MapEntry(key, value.toJson())),
     };
   }
 }
@@ -231,4 +214,4 @@ class WrongQuestion {
       'imageUrl': imageUrl,
     };
   }
-} 
+}

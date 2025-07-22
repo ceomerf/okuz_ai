@@ -97,7 +97,7 @@ class _MainLayoutState extends State<MainLayout> {
           BoxShadow(
             color: isDark
                 ? const Color(0xFF2C3E50).withOpacity(0.4) // Lacivert shadow
-                : Colors.grey.withOpacity(0.1),
+                : Colors.grey.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),

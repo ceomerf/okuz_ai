@@ -47,7 +47,7 @@ class PremiumFeatureLock extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   child: ColorFiltered(
                     colorFilter: ColorFilter.mode(
-                      Colors.grey.withOpacity(0.3),
+                      Colors.grey.withValues(alpha: 0.3),
                       BlendMode.saturation,
                     ),
                     child: child,
@@ -57,7 +57,7 @@ class PremiumFeatureLock extends StatelessWidget {
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                   ),
                   child: Center(
                     child: Column(

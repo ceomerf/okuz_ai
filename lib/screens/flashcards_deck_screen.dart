@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_theme.dart';
 
 class FlashcardsDeckScreen extends StatefulWidget {
@@ -158,7 +157,7 @@ class _FlashcardsDeckScreenState extends State<FlashcardsDeckScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -183,7 +182,7 @@ class _FlashcardsDeckScreenState extends State<FlashcardsDeckScreen>
               color: AppTheme.getCardColor(context),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 width: 1,
               ),
             ),
@@ -236,7 +235,7 @@ class _FlashcardsDeckScreenState extends State<FlashcardsDeckScreen>
                     side: BorderSide(
                       color: isSelected
                           ? AppTheme.primaryColor
-                          : AppTheme.primaryColor.withOpacity(0.3),
+                          : AppTheme.primaryColor.withValues(alpha: 0.3),
                     ),
                   ),
                 );
@@ -311,8 +310,8 @@ class _FlashcardsDeckScreenState extends State<FlashcardsDeckScreen>
           boxShadow: [
             BoxShadow(
               color: isDark
-                  ? Colors.black.withOpacity(0.3)
-                  : Colors.grey.withOpacity(0.1),
+                  ? Colors.black.withValues(alpha: 0.3)
+                  : Colors.grey.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -430,7 +429,8 @@ class _FlashcardsDeckScreenState extends State<FlashcardsDeckScreen>
                   const SizedBox(height: 6),
                   LinearProgressIndicator(
                     value: deck['studiedCards'] / deck['totalCards'],
-                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                    backgroundColor:
+                        AppTheme.primaryColor.withValues(alpha: 0.1),
                     valueColor:
                         AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                     minHeight: 4,
@@ -475,7 +475,7 @@ class _FlashcardsDeckScreenState extends State<FlashcardsDeckScreen>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Icon(
@@ -827,7 +827,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -853,7 +853,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: LinearProgressIndicator(
         value: (_currentCardIndex + 1) / _cards.length,
-        backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+        backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
         valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
         minHeight: 6,
       ),
@@ -899,14 +899,14 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                 color: AppTheme.getCardColor(context),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: AppTheme.primaryColor.withOpacity(0.2),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.2),
                   width: 2,
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: isDark
-                        ? Colors.black.withOpacity(0.3)
-                        : Colors.grey.withOpacity(0.2),
+                        ? Colors.black.withValues(alpha: 0.3)
+                        : Colors.grey.withValues(alpha: 0.2),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
                   ),
@@ -925,7 +925,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                           decoration: BoxDecoration(
                             color: isShowingFront
                                 ? const Color(0xFF3B82F6).withOpacity(0.1)
-                                : AppTheme.primaryColor.withOpacity(0.1),
+                                : AppTheme.primaryColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -993,7 +993,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -1232,7 +1232,7 @@ class CreateDeckDialog extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(

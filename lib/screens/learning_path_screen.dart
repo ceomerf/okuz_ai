@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import '../theme/app_theme.dart';
 import '../widgets/xp_notification_widget.dart';
+import '../services/mock_database_service.dart';
 
 class LearningPathScreen extends StatefulWidget {
   final String subject;
@@ -85,9 +86,10 @@ class _LearningPathScreenState extends State<LearningPathScreen>
     });
 
     try {
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('getPersonalizedPath');
-      final result = await callable.call({
+      final mockDbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      final result =
+          await mockDbService.callCloudFunction('getPersonalizedPath', {
         'subject': widget.subject,
         'topic': widget.topic,
         'preferredDuration': widget.preferredDuration,
@@ -96,86 +98,55 @@ class _LearningPathScreenState extends State<LearningPathScreen>
         'validateResources': true,
       });
 
-      if (result.data['success'] == true) {
+      if (result['success'] == true) {
         setState(() {
-          // Safe casting for Firebase data
-          final rawLearningPath = result.data['learningPath'];
-          _learningPath = rawLearningPath is Map
-              ? Map<String, dynamic>.from(rawLearningPath)
-              : null;
-          _pathId = result.data['pathId']?.toString();
+          _learningPath = Map<String, dynamic>.from(result['path'] ?? {});
+          _pathId = result['pathId']?.toString();
           _isLoading = false;
         });
 
         _startAnimations();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content:
-                  Text(result.data['message'] ?? 'Öğrenme rotası hazırlandı'),
-              backgroundColor: AppTheme.successColor,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+      } else {
+        throw Exception(result['error'] ?? 'Öğrenme yolu oluşturulamadı');
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Öğrenme rotası oluşturulamadı: $e'),
-            backgroundColor: AppTheme.errorColor,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Öğrenme yolu oluşturulamadı: $e'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
     }
   }
 
-  Future<void> _completeStep(int stepNumber, Map<String, dynamic> step) async {
-    final rating = await _showStepCompletionDialog(step);
-    if (rating == null) return;
+  Future<void> _completeStep(int stepIndex) async {
+    if (_learningPath == null || _pathId == null) return;
 
     try {
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('completePathStep');
-      final result = await callable.call({
+      final mockDbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      final result = await mockDbService.callCloudFunction('completePathStep', {
         'pathId': _pathId,
-        'stepNumber': stepNumber,
-        'rating': rating,
+        'stepIndex': stepIndex,
       });
 
-      if (result.data['success'] == true) {
+      if (result['success'] == true) {
         setState(() {
-          // Safe updates for learning path data
-          if (_learningPath != null) {
-            _learningPath!['progress'] = result.data['progress'];
-            final currentCompleted = _learningPath!['completedSteps'];
-            final completedList = currentCompleted is List
-                ? List<dynamic>.from(currentCompleted)
-                : <dynamic>[];
-            completedList.add(stepNumber);
-            _learningPath!['completedSteps'] = completedList;
-          }
+          _learningPath =
+              Map<String, dynamic>.from(result['updatedPath'] ?? {});
         });
 
-        // XP bildirimi göster
+        // Show XP notification
         if (mounted) {
           XPNotificationWidget.show(
             context,
-            result.data['xpRewarded'] ?? 0,
-            result.data['message'] ?? 'Adım tamamlandı!',
+            result['xpRewarded'] ?? 0,
+            'Adım tamamlandı! +${result['xpRewarded'] ?? 0} XP',
           );
-        }
-
-        // Rota tamamlandı mı?
-        if (result.data['pathCompleted'] == true) {
-          _showPathCompletionDialog();
         }
       }
     } catch (e) {
@@ -219,7 +190,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
                   Text(
                     'Bu adımı nasıl değerlendiriyorsun?',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.7),
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -247,7 +218,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
                   child: Text(
                     'İptal',
                     style: TextStyle(
-                        color: colorScheme.onSurface.withOpacity(0.7)),
+                        color: colorScheme.onSurface.withValues(alpha: 0.7)),
                   ),
                 ),
                 ElevatedButton(
@@ -303,7 +274,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
                 _learningPath!['nextTopicSuggestion'] ?? '',
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontStyle: FontStyle.italic,
-                  color: colorScheme.onSurface.withOpacity(0.7),
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -317,7 +288,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
               },
               child: Text(
                 'Ana Sayfa',
-                style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
+                style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7)),
               ),
             ),
             ElevatedButton(
@@ -412,7 +383,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
             Text(
               '${widget.subject} • ${widget.topic}',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
               ),
             ),
           ],
@@ -435,7 +406,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppTheme.primaryColor.withOpacity(0.05),
+              AppTheme.primaryColor.withValues(alpha: 0.05),
               theme.scaffoldBackgroundColor,
             ],
           ),
@@ -466,7 +437,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
           Text(
             'Bu birkaç saniye sürebilir',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
         ],
@@ -572,7 +543,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.3),
+            color: AppTheme.primaryColor.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -642,7 +613,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
           LinearPercentIndicator(
             lineHeight: 8.0,
             percent: progress / 100,
-            backgroundColor: Colors.white.withOpacity(0.3),
+            backgroundColor: Colors.white.withValues(alpha: 0.3),
             progressColor: Colors.white,
             barRadius: const Radius.circular(4),
             animation: true,
@@ -657,19 +628,19 @@ class _LearningPathScreenState extends State<LearningPathScreen>
               _buildStatChip(
                 Icons.schedule,
                 '${_learningPath!['totalDuration']} dk',
-                Colors.white.withOpacity(0.2),
+                Colors.white.withValues(alpha: 0.2),
               ),
               const SizedBox(width: 12),
               _buildStatChip(
                 Icons.bar_chart,
                 _getDifficultyText(_learningPath!['difficultyLevel']),
-                Colors.white.withOpacity(0.2),
+                Colors.white.withValues(alpha: 0.2),
               ),
               const SizedBox(width: 12),
               _buildStatChip(
                 Icons.emoji_events,
                 '${_learningPath!['estimatedXP']} XP',
-                Colors.white.withOpacity(0.2),
+                Colors.white.withValues(alpha: 0.2),
               ),
             ],
           ),
@@ -765,13 +736,13 @@ class _LearningPathScreenState extends State<LearningPathScreen>
           color: isCompleted
               ? AppTheme.successColor
               : isAccessible
-                  ? AppTheme.primaryColor.withOpacity(0.3)
+                  ? AppTheme.primaryColor.withValues(alpha: 0.3)
                   : theme.dividerColor,
           width: isCompleted ? 2 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.1),
+            color: colorScheme.shadow.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -838,13 +809,13 @@ class _LearningPathScreenState extends State<LearningPathScreen>
                           Icon(
                             Icons.schedule,
                             size: 16,
-                            color: colorScheme.onSurface.withOpacity(0.6),
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             '${step['duration']} dakika',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurface.withOpacity(0.6),
+                              color: colorScheme.onSurface.withValues(alpha: 0.6),
                             ),
                           ),
                         ],
@@ -887,7 +858,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppTheme.infoColor.withOpacity(0.1),
+                          color: AppTheme.infoColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Column(
@@ -915,7 +886,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
                                 '💡 ${step['specificGuidance']}',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontStyle: FontStyle.italic,
-                                  color: colorScheme.onSurface.withOpacity(0.7),
+                                  color: colorScheme.onSurface.withValues(alpha: 0.7),
                                 ),
                               ),
                             ],
@@ -961,7 +932,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
                             child: ElevatedButton.icon(
                               onPressed: isCompleted
                                   ? null
-                                  : () => _completeStep(stepNumber, step),
+                                  : () => _completeStep(stepNumber),
                               icon:
                                   Icon(isCompleted ? Icons.check : Icons.done),
                               label:
@@ -983,7 +954,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppTheme.successColor.withOpacity(0.1),
+                            color: AppTheme.successColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
@@ -1025,7 +996,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.warningColor.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.warningColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1083,7 +1054,7 @@ class _LearningPathScreenState extends State<LearningPathScreen>
                             child: Text(
                               resource.toString(),
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurface.withOpacity(0.8),
+                                color: colorScheme.onSurface.withValues(alpha: 0.8),
                               ),
                             ),
                           ),
@@ -1107,12 +1078,12 @@ class _LearningPathScreenState extends State<LearningPathScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.successColor.withOpacity(0.1),
-            AppTheme.accentColor.withOpacity(0.1),
+            AppTheme.successColor.withValues(alpha: 0.1),
+            AppTheme.accentColor.withValues(alpha: 0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.successColor.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.successColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

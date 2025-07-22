@@ -1,49 +1,60 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// JWT Backend için basit Invite Token modeli
+// Firebase bağımlılıkları tamamen kaldırıldı
 
 class InviteToken {
+  final String id;
   final String token;
-  final String parentId;
+  final String type; // 'student' veya 'parent'
+  final String createdBy;
+  final String? usedBy;
   final DateTime createdAt;
-  final bool isUsed;
   final DateTime? usedAt;
-  final String? studentId; // Davet edilen öğrencinin ID'si (kullanıldıysa)
+  final bool isUsed;
+  final String? parentId; // Added parentId field
+  final Map<String, dynamic>? metadata;
 
   InviteToken({
+    required this.id,
     required this.token,
-    required this.parentId,
+    required this.type,
+    required this.createdBy,
+    this.usedBy,
     required this.createdAt,
-    this.isUsed = false,
     this.usedAt,
-    this.studentId,
+    required this.isUsed,
+    this.parentId, // Added parentId to constructor
+    this.metadata,
   });
 
   factory InviteToken.fromJson(Map<String, dynamic> json) {
     return InviteToken(
+      id: json['id'] ?? '',
       token: json['token'] ?? '',
-      parentId: json['parentId'] ?? '',
-      createdAt: json['createdAt'] != null
-          ? (json['createdAt'] is Timestamp
-              ? (json['createdAt'] as Timestamp).toDate()
-              : DateTime.parse(json['createdAt']))
+      type: json['type'] ?? 'student',
+      createdBy: json['createdBy'] ?? '',
+      usedBy: json['usedBy'],
+      createdAt: json['createdAt'] is String
+          ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
+      usedAt: json['usedAt'] is String ? DateTime.parse(json['usedAt']) : null,
       isUsed: json['isUsed'] ?? false,
-      usedAt: json['usedAt'] != null
-          ? (json['usedAt'] is Timestamp
-              ? (json['usedAt'] as Timestamp).toDate()
-              : DateTime.parse(json['usedAt']))
-          : null,
-      studentId: json['studentId'],
+      parentId: json['parentId'], // Added parentId from json
+      metadata: json['metadata'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'token': token,
-      'parentId': parentId,
+      'type': type,
+      'createdBy': createdBy,
+      'usedBy': usedBy,
       'createdAt': createdAt.toIso8601String(),
-      'isUsed': isUsed,
       'usedAt': usedAt?.toIso8601String(),
-      'studentId': studentId,
+      'isUsed': isUsed,
+      'parentId': parentId, // Added parentId to json
+      'metadata': metadata,
     };
   }
 }

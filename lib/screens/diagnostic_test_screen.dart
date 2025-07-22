@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:okuz_ai/models/diagnostic_test.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:okuz_ai/screens/test_result_screen.dart';
+import 'package:okuz_ai/services/mock_auth_service.dart';
+import 'package:okuz_ai/services/mock_database_service.dart';
 
 class DiagnosticTestScreen extends StatefulWidget {
   final List<DiagnosticTest> tests;
@@ -114,23 +115,24 @@ class _DiagnosticTestScreenState extends State<DiagnosticTestScreen> {
     });
 
     try {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId == null) {
+      final authService = Provider.of<MockAuthService>(context, listen: false);
+      final user = authService.currentUser;
+      if (user == null) {
         throw Exception('Kullanıcı oturum açmamış');
       }
 
       final testResult = TestResult(
         testId: 'diagnostic_test_${DateTime.now().millisecondsSinceEpoch}',
-        userId: userId,
+        userId: user.id,
         completedAt: DateTime.now(),
         questions: _results,
         totalTimeSpent: _totalTimeSpent,
       );
 
-      // Cloud Functions'a gönder
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('createAdvancedProfile');
-      await callable.call({
+      // Mock Database Service'e gönder
+      final dbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      await dbService.callCloudFunction('createAdvancedProfile', {
         'diagnosticTestResults': {
           'testId': testResult.testId,
           'completedAt': testResult.completedAt.toIso8601String(),

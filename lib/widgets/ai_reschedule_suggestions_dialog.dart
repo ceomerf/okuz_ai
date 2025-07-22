@@ -79,7 +79,7 @@ class _AIRescheduleSuggestionsDialogState
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 20,
               spreadRadius: 5,
             ),
@@ -156,7 +156,7 @@ class _AIRescheduleSuggestionsDialogState
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -186,7 +186,7 @@ class _AIRescheduleSuggestionsDialogState
                   '${widget.task.subject} - ${widget.task.topic}',
                   style: GoogleFonts.lato(
                     fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                 ),
               ],
@@ -320,7 +320,7 @@ class _AIRescheduleSuggestionsDialogState
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             spreadRadius: 1,
           ),

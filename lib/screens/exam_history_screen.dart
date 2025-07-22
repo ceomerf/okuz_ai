@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 
@@ -156,7 +155,7 @@ class _ExamHistoryScreenState extends State<ExamHistoryScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -181,7 +180,7 @@ class _ExamHistoryScreenState extends State<ExamHistoryScreen>
               color: AppTheme.getCardColor(context),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 width: 1,
               ),
             ),
@@ -233,7 +232,7 @@ class _ExamHistoryScreenState extends State<ExamHistoryScreen>
                     side: BorderSide(
                       color: isSelected
                           ? AppTheme.primaryColor
-                          : AppTheme.primaryColor.withOpacity(0.3),
+                          : AppTheme.primaryColor.withValues(alpha: 0.3),
                     ),
                   ),
                 );
@@ -291,7 +290,7 @@ class _ExamHistoryScreenState extends State<ExamHistoryScreen>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Icon(
@@ -345,14 +344,14 @@ class _ExamHistoryScreenState extends State<ExamHistoryScreen>
             color: AppTheme.getCardColor(context),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
                 color: isDark
-                    ? Colors.black.withOpacity(0.3)
-                    : Colors.grey.withOpacity(0.1),
+                    ? Colors.black.withValues(alpha: 0.3)
+                    : Colors.grey.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -477,7 +476,8 @@ class _ExamHistoryScreenState extends State<ExamHistoryScreen>
                     const SizedBox(height: 8),
                     LinearProgressIndicator(
                       value: exam['successRate'] / 100,
-                      backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                      backgroundColor:
+                          AppTheme.primaryColor.withValues(alpha: 0.1),
                       valueColor:
                           AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                       minHeight: 6,
@@ -524,7 +524,7 @@ class _ExamHistoryScreenState extends State<ExamHistoryScreen>
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
@@ -784,7 +784,7 @@ class AddExamDialog extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(

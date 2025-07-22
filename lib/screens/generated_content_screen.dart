@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:provider/provider.dart';
 import 'package:graphview/GraphView.dart';
 import '../theme/app_theme.dart';
+import '../services/mock_database_service.dart';
 
 class GeneratedContentScreen extends StatefulWidget {
   final String? text;
@@ -113,25 +114,25 @@ class _GeneratedContentScreenState extends State<GeneratedContentScreen>
 
   Future<Map<String, dynamic>?> _processContent() async {
     try {
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('processAndStructureText');
-      final result = await callable.call({
+      final mockDbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      final result =
+          await mockDbService.callCloudFunction('processAndStructureText', {
         'text': widget.text,
         'url': widget.url,
       });
 
-      // TODO: Firebase App Check kurulumunu tamamla. Bu, gelecekteki 403 (attestation failed) hatalarını önleyecektir.
-      // Firebase Console -> App Check -> Uygulamanı seçip SHA-256 parmak izlerini ekle.
+      // Mock implementation - no Firebase App Check needed
 
-      if (result.data == null) {
-        // Hata durumu: Firebase'den veri gelmedi
-        print('Hata: Cloud Function\'dan null veri döndü.');
-        throw Exception('Cloud Function\'dan geçersiz veri döndü');
+      if (result == null) {
+        // Hata durumu: Mock servis'den veri gelmedi
+        print('Hata: Mock servis\'den null veri döndü.');
+        throw Exception('Mock servis\'den geçersiz veri döndü');
       }
 
       // GÜVENLİ DÖNÜŞÜM: Gelen dynamic veriden yeni ve doğru tiplenmiş bir Map oluştur.
       final Map<String, dynamic> responseData =
-          Map<String, dynamic>.from(result.data);
+          Map<String, dynamic>.from(result);
 
       if (responseData['success'] == true) {
         final Map<String, dynamic> data =
@@ -219,7 +220,7 @@ class _GeneratedContentScreenState extends State<GeneratedContentScreen>
       width: size + 40,
       height: size,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(size / 2),
         border: Border.all(
           color: color,
@@ -227,7 +228,7 @@ class _GeneratedContentScreenState extends State<GeneratedContentScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
+            color: color.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -307,8 +308,8 @@ class _GeneratedContentScreenState extends State<GeneratedContentScreen>
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppTheme.primaryColor.withOpacity(0.1),
-            AppTheme.accentColor.withOpacity(0.05),
+            AppTheme.primaryColor.withValues(alpha: 0.1),
+            AppTheme.accentColor.withValues(alpha: 0.05),
           ],
         ),
       ),
@@ -516,13 +517,13 @@ class _GeneratedContentScreenState extends State<GeneratedContentScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.primaryColor.withOpacity(0.1),
-                  AppTheme.primaryColor.withOpacity(0.05),
+                  AppTheme.primaryColor.withValues(alpha: 0.1),
+                  AppTheme.primaryColor.withValues(alpha: 0.05),
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppTheme.primaryColor.withOpacity(0.2),
+                color: AppTheme.primaryColor.withValues(alpha: 0.2),
               ),
             ),
             child: Column(
@@ -567,7 +568,7 @@ class _GeneratedContentScreenState extends State<GeneratedContentScreen>
                   leading: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -684,8 +685,8 @@ class _GeneratedContentScreenState extends State<GeneratedContentScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.infoColor.withOpacity(0.1),
-                  AppTheme.infoColor.withOpacity(0.05),
+                  AppTheme.infoColor.withValues(alpha: 0.1),
+                  AppTheme.infoColor.withValues(alpha: 0.05),
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
@@ -726,7 +727,7 @@ class _GeneratedContentScreenState extends State<GeneratedContentScreen>
               color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppTheme.infoColor.withOpacity(0.2),
+                color: AppTheme.infoColor.withValues(alpha: 0.2),
               ),
             ),
             child: ClipRRect(
@@ -783,10 +784,10 @@ class _GeneratedContentScreenState extends State<GeneratedContentScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.successColor.withOpacity(0.1),
+              color: AppTheme.successColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppTheme.successColor.withOpacity(0.2),
+                color: AppTheme.successColor.withValues(alpha: 0.2),
               ),
             ),
             child: Column(

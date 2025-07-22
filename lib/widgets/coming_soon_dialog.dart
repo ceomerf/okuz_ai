@@ -31,7 +31,7 @@ class ComingSoonDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: primaryColor.withOpacity(0.1),
+              color: primaryColor.withValues(alpha: 0.1),
               blurRadius: 20,
               spreadRadius: 5,
               offset: const Offset(0, 10),
@@ -48,7 +48,7 @@ class ComingSoonDialog extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    primaryColor.withOpacity(0.8),
+                    primaryColor.withValues(alpha: 0.8),
                     primaryColor,
                   ],
                   begin: Alignment.topLeft,
@@ -57,7 +57,7 @@ class ComingSoonDialog extends StatelessWidget {
                 borderRadius: BorderRadius.circular(40),
                 boxShadow: [
                   BoxShadow(
-                    color: primaryColor.withOpacity(0.3),
+                    color: primaryColor.withValues(alpha: 0.3),
                     blurRadius: 15,
                     offset: const Offset(0, 5),
                   ),
@@ -93,10 +93,10 @@ class ComingSoonDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: primaryColor.withOpacity(0.1),
+                color: primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: primaryColor.withOpacity(0.3),
+                  color: primaryColor.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -122,7 +122,7 @@ class ComingSoonDialog extends StatelessWidget {
               style: GoogleFonts.figtree(
                 fontSize: 16,
                 color: isDark
-                    ? Colors.white.withOpacity(0.8)
+                    ? Colors.white.withValues(alpha: 0.8)
                     : const Color(0xFF64748B),
                 height: 1.5,
               ),
@@ -190,7 +190,7 @@ class ComingSoonDialog extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       side: BorderSide(
-                        color: primaryColor.withOpacity(0.3),
+                        color: primaryColor.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Text(
@@ -199,7 +199,7 @@ class ComingSoonDialog extends StatelessWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: isDark
-                            ? Colors.white.withOpacity(0.7)
+                            ? Colors.white.withValues(alpha: 0.7)
                             : const Color(0xFF64748B),
                       ),
                     ),
@@ -292,7 +292,7 @@ class ComingSoonDialog extends StatelessWidget {
                 style: GoogleFonts.figtree(
                   fontSize: 12,
                   color: isDark
-                      ? Colors.white.withOpacity(0.6)
+                      ? Colors.white.withValues(alpha: 0.6)
                       : const Color(0xFF64748B),
                 ),
               ),

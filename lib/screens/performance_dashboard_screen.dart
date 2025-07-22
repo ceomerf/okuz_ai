@@ -4,11 +4,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../providers/study_data_provider.dart';
-import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
+import '../services/mock_auth_service.dart';
 import 'dart:async';
 
 class PerformanceDashboardScreen extends StatefulWidget {
@@ -76,10 +73,11 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
     setState(() => _isLoading = true);
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final authService = Provider.of<MockAuthService>(context, listen: false);
+      final user = authService.currentUser;
       if (user != null) {
-        await _loadAnalyticsData(user.uid);
-        await _loadActivityLogs(user.uid);
+        await _loadAnalyticsData(user.id);
+        await _loadActivityLogs(user.id);
       }
     } catch (e) {
       debugPrint('Performans verisi yükleme hatası: $e');
@@ -91,34 +89,34 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
   }
 
   Future<void> _loadAnalyticsData(String userId) async {
-    final docRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('analytics')
-        .doc('performance');
-
-    final snapshot = await docRef.get();
-    if (snapshot.exists) {
-      setState(() {
-        _performanceData = snapshot.data() ?? {};
-      });
-    }
+    // Mock implementation - gerçek uygulamada veri yüklenecek
+    await Future.delayed(Duration(milliseconds: 500));
+    _performanceData = {
+      'totalStudyTime': 120,
+      'averageScore': 85,
+      'streak': 7,
+      'completedTasks': 45,
+    };
   }
 
   Future<void> _loadActivityLogs(String userId) async {
-    final query = FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('analytics')
-        .doc('daily_logs')
-        .collection('logs')
-        .orderBy('timestamp', descending: true)
-        .limit(20);
-
-    final snapshot = await query.get();
+    // Mock implementation - gerçek uygulamada veri yüklenecek
+    await Future.delayed(Duration(milliseconds: 300));
     setState(() {
-      _activityLogs =
-          snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+      _activityLogs = [
+        {
+          'id': '1',
+          'activity': 'Matematik çalışması',
+          'duration': 45,
+          'timestamp': DateTime.now().subtract(Duration(hours: 2)),
+        },
+        {
+          'id': '2',
+          'activity': 'Fizik testi',
+          'duration': 30,
+          'timestamp': DateTime.now().subtract(Duration(hours: 4)),
+        },
+      ];
     });
   }
 
@@ -198,7 +196,7 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
               end: Alignment.bottomRight,
               colors: [
                 AppTheme.primaryColor,
-                AppTheme.primaryColor.withOpacity(0.8),
+                AppTheme.primaryColor.withValues(alpha: 0.8),
               ],
             ),
           ),
@@ -286,13 +284,13 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            color.withOpacity(0.1),
-            color.withOpacity(0.05),
+            color.withValues(alpha: 0.1),
+            color.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: color.withOpacity(0.2),
+          color: color.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -306,7 +304,7 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
+                    color: color.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: color, size: 20),
@@ -354,7 +352,7 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -481,7 +479,7 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -617,7 +615,7 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -646,8 +644,16 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
   }
 
   Widget _buildActivityLogTile(Map<String, dynamic> log) {
-    final timestamp = log['timestamp'] as Timestamp?;
-    final date = timestamp?.toDate() ?? DateTime.now();
+    final timestamp = log['timestamp'];
+    DateTime date;
+
+    if (timestamp is String) {
+      date = DateTime.parse(timestamp);
+    } else if (timestamp is DateTime) {
+      date = timestamp;
+    } else {
+      date = DateTime.now();
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -656,7 +662,7 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.grey.withOpacity(0.2),
+          color: Colors.grey.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -665,7 +671,7 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(

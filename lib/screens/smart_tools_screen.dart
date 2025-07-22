@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'focus_mode_screen.dart';
@@ -7,21 +6,13 @@ import 'manual_study_log_screen.dart';
 import 'study_history_screen.dart';
 import 'sos_question_solver_screen.dart';
 import 'live_quiz_screen.dart';
-import 'socratic_evaluation_screen.dart';
-import 'pathfinder_selection_screen.dart';
 import 'exam_simulator_screen.dart';
 import 'weekly_story_screen.dart';
 import 'summary_generator_screen.dart';
-import 'concept_map_screen.dart';
-import 'exam_history_screen.dart';
 import 'leaderboard_screen.dart';
-import 'flashcards_deck_screen.dart';
 import '../theme/app_theme.dart';
 import '../providers/study_data_provider.dart';
-import '../widgets/energy_effect_widget.dart';
-import '../widgets/weekly_report_card.dart';
 import '../widgets/premium_feature_lock.dart';
-import 'generated_content_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/coming_soon_dialog.dart'; // 🚀 YENİ: Coming Soon Dialog
 
@@ -175,8 +166,8 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
           margin: const EdgeInsets.only(right: 16),
           decoration: BoxDecoration(
             color: isDark
-                ? Colors.white.withOpacity(0.1)
-                : AppTheme.primaryColor.withOpacity(0.1),
+                ? Colors.white.withValues(alpha: 0.1)
+                : AppTheme.primaryColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: IconButton(
@@ -230,8 +221,8 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        AppTheme.primaryColor.withOpacity(0.15),
-                        AppTheme.primaryColor.withOpacity(0.05),
+                        AppTheme.primaryColor.withValues(alpha: 0.15),
+                        AppTheme.primaryColor.withValues(alpha: 0.05),
                         Colors.transparent,
                       ],
                     ),
@@ -245,11 +236,11 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.white.withOpacity(0.1)
-                        : AppTheme.primaryColor.withOpacity(0.1),
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: AppTheme.primaryColor.withOpacity(0.2),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.2),
                       width: 1,
                     ),
                   ),
@@ -269,7 +260,7 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
                   height: 8,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppTheme.primaryColor.withOpacity(0.6),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.6),
                   ),
                 ),
               ),
@@ -281,7 +272,7 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
                   height: 4,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppTheme.primaryColor.withOpacity(0.4),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.4),
                   ),
                 ),
               ),
@@ -297,18 +288,18 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.white.withOpacity(0.7),
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.1),
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withOpacity(0.3)
-                : AppTheme.primaryColor.withOpacity(0.1),
+                ? Colors.black.withValues(alpha: 0.3)
+                : AppTheme.primaryColor.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
             spreadRadius: 0,
@@ -326,13 +317,13 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
                   gradient: LinearGradient(
                     colors: [
                       AppTheme.primaryColor,
-                      AppTheme.primaryColor.withOpacity(0.8),
+                      AppTheme.primaryColor.withValues(alpha: 0.8),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.primaryColor.withOpacity(0.3),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -378,13 +369,13 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppTheme.primaryColor.withOpacity(0.1),
-                    AppTheme.primaryColor.withOpacity(0.05),
+                    AppTheme.primaryColor.withValues(alpha: 0.1),
+                    AppTheme.primaryColor.withValues(alpha: 0.05),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppTheme.primaryColor.withOpacity(0.2),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -763,18 +754,18 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
             width: cardWidth,
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withOpacity(0.05)
-                  : Colors.white.withOpacity(0.8),
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.white.withValues(alpha: 0.8),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: color.withOpacity(0.2),
+                color: color.withValues(alpha: 0.2),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
                   color: isDark
-                      ? Colors.black.withOpacity(0.2)
-                      : color.withOpacity(0.1),
+                      ? Colors.black.withValues(alpha: 0.2)
+                      : color.withValues(alpha: 0.1),
                   blurRadius: 15,
                   offset: const Offset(0, 5),
                   spreadRadius: 0,
@@ -794,13 +785,13 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              color.withOpacity(0.2),
-                              color.withOpacity(0.1),
+                              color.withValues(alpha: 0.2),
+                              color.withValues(alpha: 0.1),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: color.withOpacity(0.3),
+                            color: color.withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),
@@ -813,7 +804,7 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
+                          color: color.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
@@ -882,18 +873,18 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
         width: double.infinity,
         decoration: BoxDecoration(
           color: isDark
-              ? Colors.white.withOpacity(0.05)
-              : Colors.white.withOpacity(0.8),
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.white.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
               color: isDark
-                  ? Colors.black.withOpacity(0.2)
-                  : color.withOpacity(0.1),
+                  ? Colors.black.withValues(alpha: 0.2)
+                  : color.withValues(alpha: 0.1),
               blurRadius: 15,
               offset: const Offset(0, 5),
               spreadRadius: 0,
@@ -909,13 +900,13 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      color.withOpacity(0.2),
-                      color.withOpacity(0.1),
+                      color.withValues(alpha: 0.2),
+                      color.withValues(alpha: 0.1),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: color.withOpacity(0.3),
+                    color: color.withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
@@ -951,7 +942,7 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -984,8 +975,8 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppTheme.primaryColor.withOpacity(0.2),
-                    AppTheme.primaryColor.withOpacity(0.1),
+                    AppTheme.primaryColor.withValues(alpha: 0.2),
+                    AppTheme.primaryColor.withValues(alpha: 0.1),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -1043,13 +1034,13 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                AppTheme.primaryColor.withOpacity(0.15),
-                                AppTheme.primaryColor.withOpacity(0.05),
+                                AppTheme.primaryColor.withValues(alpha: 0.15),
+                                AppTheme.primaryColor.withValues(alpha: 0.05),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: AppTheme.primaryColor.withOpacity(0.3),
+                              color: AppTheme.primaryColor.withValues(alpha: 0.3),
                               width: 1,
                             ),
                           ),
@@ -1207,8 +1198,8 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppTheme.primaryColor.withOpacity(0.2),
-                    AppTheme.primaryColor.withOpacity(0.1),
+                    AppTheme.primaryColor.withValues(alpha: 0.2),
+                    AppTheme.primaryColor.withValues(alpha: 0.1),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -1273,14 +1264,14 @@ class _SmartToolsScreenState extends State<SmartToolsScreen>
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      AppTheme.primaryColor.withOpacity(0.15),
-                                      AppTheme.primaryColor.withOpacity(0.05),
+                                      AppTheme.primaryColor.withValues(alpha: 0.15),
+                                      AppTheme.primaryColor.withValues(alpha: 0.05),
                                     ],
                                   ),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
                                     color:
-                                        AppTheme.primaryColor.withOpacity(0.3),
+                                        AppTheme.primaryColor.withValues(alpha: 0.3),
                                     width: 1,
                                   ),
                                 ),

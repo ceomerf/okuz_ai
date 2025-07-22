@@ -33,10 +33,10 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
   }
 
   Future<void> _checkPremiumStatus() async {
-    final isPremium = await _premiumService.isPremiumUser();
+    // Mock implementation
     if (mounted) {
       setState(() {
-        _isPremium = isPremium;
+        _isPremium = false; // Mock değer
       });
     }
   }
@@ -45,7 +45,7 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
     try {
       final planData = await _planService.getUserPlan();
       if (planData != null) {
-        _currentPlan = LongTermPlan.fromMap(planData, 'user_plan');
+        _currentPlan = LongTermPlan.fromJson(planData);
         return _currentPlan;
       }
       return null;
@@ -227,7 +227,7 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
 
               // KİLİTLEME MANTIĞI: Premium değilse ve 3. günden sonrasıysa kilitli göster
               final bool isLocked =
-                  _premiumService.isDayLocked(index, _isPremium);
+                  !_isPremium && index >= 3; // Mock implementation
 
               if (isLocked) {
                 // Kilitli gün kartını göster
@@ -252,7 +252,7 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
   }
 
   Widget _buildPremiumBanner() {
-    final remainingDays = _premiumService.getRemainingFreeDays(0, false);
+    final remainingDays = 7; // Mock implementation
 
     return Container(
       margin: const EdgeInsets.all(16.0),
@@ -260,13 +260,13 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.primaryColor.withOpacity(0.1),
-            AppTheme.primaryColor.withOpacity(0.05),
+            AppTheme.primaryColor.withValues(alpha: 0.1),
+            AppTheme.primaryColor.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.3),
+          color: AppTheme.primaryColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -327,29 +327,22 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
   }
 
   void _handleUpgrade() {
-    // Test amaçlı premium upgrade
-    _premiumService.upgradeToPremium().then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('🎉 Premium üyeliğiniz aktif edildi!'),
-          backgroundColor: AppTheme.primaryColor,
-          action: SnackBarAction(
-            label: 'Harika!',
-            textColor: Colors.white,
-            onPressed: () {},
-          ),
+    // Mock implementation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('🎉 Premium üyeliğiniz aktif edildi!'),
+        backgroundColor: AppTheme.primaryColor,
+        action: SnackBarAction(
+          label: 'Harika!',
+          textColor: Colors.white,
+          onPressed: () {},
         ),
-      );
+      ),
+    );
 
-      // Premium durumunu güncelle
-      _checkPremiumStatus();
-    }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hata: $error'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    // Premium durumunu güncelle
+    setState(() {
+      _isPremium = true;
     });
   }
 
@@ -397,10 +390,10 @@ class _PlanDisplayScreenState extends State<PlanDisplayScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Text(

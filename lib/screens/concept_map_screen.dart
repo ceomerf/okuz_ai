@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../services/mock_database_service.dart';
 import '../widgets/energy_effect_widget.dart';
 import 'generated_content_screen.dart';
 
@@ -66,8 +67,8 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
             end: Alignment.bottomRight,
             colors: [
               Theme.of(context).brightness == Brightness.dark
-                  ? AppTheme.primaryColor.withOpacity(0.1)
-                  : AppTheme.primaryLightColor.withOpacity(0.3),
+                  ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                  : AppTheme.primaryLightColor.withValues(alpha: 0.3),
               AppTheme.getBackgroundColor(context),
             ],
           ),
@@ -148,7 +149,7 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(50),
                   ),
                   child: const Text(
@@ -196,10 +197,10 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppTheme.primaryColor.withOpacity(0.2),
+                color: AppTheme.primaryColor.withValues(alpha: 0.2),
               ),
             ),
             child: Column(
@@ -227,10 +228,10 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.accentColor.withOpacity(0.1),
+              color: AppTheme.accentColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppTheme.accentColor.withOpacity(0.2),
+                color: AppTheme.accentColor.withValues(alpha: 0.2),
               ),
             ),
             child: Column(
@@ -258,10 +259,10 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.successColor.withOpacity(0.1),
+              color: AppTheme.successColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppTheme.successColor.withOpacity(0.2),
+                color: AppTheme.successColor.withValues(alpha: 0.2),
               ),
             ),
             child: Column(
@@ -297,7 +298,7 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.accentColor.withOpacity(0.1),
+              color: AppTheme.accentColor.withValues(alpha: 0.1),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -313,7 +314,7 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppTheme.accentColor.withOpacity(0.1),
+                      color: AppTheme.accentColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -342,7 +343,7 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
                       : Colors.grey[50],
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: AppTheme.accentColor.withOpacity(0.2),
+                    color: AppTheme.accentColor.withValues(alpha: 0.2),
                   ),
                 ),
                 child: TextField(
@@ -395,7 +396,7 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
                       : Colors.grey[50],
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: AppTheme.accentColor.withOpacity(0.2),
+                    color: AppTheme.accentColor.withValues(alpha: 0.2),
                   ),
                 ),
                 child: TextField(
@@ -426,10 +427,10 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.infoColor.withOpacity(0.1),
+                  color: AppTheme.infoColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppTheme.infoColor.withOpacity(0.2),
+                    color: AppTheme.infoColor.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Row(
@@ -473,7 +474,7 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 0,
-          shadowColor: AppTheme.accentColor.withOpacity(0.3),
+          shadowColor: AppTheme.accentColor.withValues(alpha: 0.3),
         ),
         child: _isGeneratingConceptMap
             ? Row(
@@ -524,7 +525,7 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.successColor.withOpacity(0.1),
+              color: AppTheme.successColor.withValues(alpha: 0.1),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -540,7 +541,7 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppTheme.successColor.withOpacity(0.1),
+                      color: AppTheme.successColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -607,64 +608,59 @@ class _ConceptMapScreenState extends State<ConceptMapScreen>
   }
 
   Future<void> _generateConceptMap() async {
-    final text = _textController.text.trim();
-    final url = _urlController.text.trim();
-
-    if (text.isEmpty && url.isEmpty) {
+    if (_textController.text.trim().isEmpty &&
+        _urlController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Lütfen metin veya URL girin'),
-          backgroundColor: AppTheme.errorColor,
-        ),
+        const SnackBar(content: Text('Lütfen metin veya URL girin')),
       );
       return;
     }
 
     setState(() {
       _isGeneratingConceptMap = true;
-      _conceptMapResult = '';
-      _conceptMapData = null;
     });
 
     try {
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('generateConceptMap');
-      final result = await callable.call({
-        'text': text.isNotEmpty ? text : null,
-        'url': url.isNotEmpty ? url : null,
-        'type': 'concept_map',
+      final mockDbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      final result =
+          await mockDbService.callCloudFunction('generateConceptMap', {
+        'text': _textController.text.trim(),
+        'url': _urlController.text.trim(),
       });
 
-      if (result.data['success'] == true) {
-        final data = result.data['data'];
+      if (result['success'] == true) {
         setState(() {
-          _conceptMapResult = data.toString();
-          _conceptMapData =
-              data is Map ? Map<String, dynamic>.from(data) : null;
+          _conceptMapResult = result['conceptMap'] ?? '';
+          _conceptMapData = result['data'];
+          _isGeneratingConceptMap = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.data['sourceType'] == 'url'
-                ? 'Web sayfası başarıyla analiz edildi!'
-                : 'Metin başarıyla analiz edildi!'),
-            backgroundColor: AppTheme.successColor,
+        // Navigate to generated content screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GeneratedContentScreen(
+              text: _textController.text.trim(),
+              url: _urlController.text.trim(),
+              conceptMapData: _conceptMapData,
+            ),
           ),
         );
       } else {
-        throw Exception('Kavram haritası oluşturulamadı');
+        throw Exception(result['error'] ?? 'Kavram haritası oluşturulamadı');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Kavram haritası oluşturma hatası: $e'),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
-    } finally {
       setState(() {
         _isGeneratingConceptMap = false;
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hata: $e'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
     }
   }
 }

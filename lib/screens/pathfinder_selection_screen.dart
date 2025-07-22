@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../services/mock_database_service.dart';
 import 'learning_path_screen.dart';
 
 class PathfinderSelectionScreen extends StatefulWidget {
@@ -60,17 +61,18 @@ class _PathfinderSelectionScreenState extends State<PathfinderSelectionScreen>
 
   Future<void> _loadActivePaths() async {
     try {
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('getUserLearningPaths');
-      final result = await callable.call({
+      final mockDbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      final result =
+          await mockDbService.callCloudFunction('getUserLearningPaths', {
         'limit': 5,
         'status': 'active',
       });
 
-      if (result.data['success'] == true) {
+      if (result['success'] == true) {
         setState(() {
-          // Safe casting ile Firebase data'sını handle et
-          final rawPaths = result.data['paths'] as List? ?? [];
+          // Safe casting ile mock data'sını handle et
+          final rawPaths = result['paths'] as List? ?? [];
           _activePaths = rawPaths.map((path) {
             if (path is Map) {
               // Map<Object?, Object?> to Map<String, dynamic> safe conversion
@@ -81,19 +83,13 @@ class _PathfinderSelectionScreenState extends State<PathfinderSelectionScreen>
         });
       }
     } catch (e) {
-      // Firebase index hatası veya diğer hatalar için sessiz handle
+      // Mock service hatası veya diğer hatalar için sessiz handle
       setState(() {
         _activePaths = []; // Boş liste göster
       });
 
       // Sadece debug modunda log göster
-      if (e.toString().contains('requires an index')) {
-        // Firestore index hatası - normal durum, kullanıcıya gösterme
-        debugPrint('Firestore index gerekiyor - aktif rotalar gösterilemiyor');
-      } else {
-        // Diğer beklenmeyen hatalar
-        debugPrint('Aktif rotalar yüklenemedi: $e');
-      }
+      debugPrint('Aktif rotalar yüklenemedi: $e');
     }
   }
 
@@ -146,7 +142,7 @@ class _PathfinderSelectionScreenState extends State<PathfinderSelectionScreen>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppTheme.primaryColor.withOpacity(0.05),
+              AppTheme.primaryColor.withValues(alpha: 0.05),
               theme.scaffoldBackgroundColor,
             ],
           ),
@@ -189,13 +185,13 @@ class _PathfinderSelectionScreenState extends State<PathfinderSelectionScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.primaryColor.withOpacity(0.1),
-            AppTheme.accentColor.withOpacity(0.1),
+            AppTheme.primaryColor.withValues(alpha: 0.1),
+            AppTheme.accentColor.withValues(alpha: 0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.2),
+          color: AppTheme.primaryColor.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -203,7 +199,7 @@ class _PathfinderSelectionScreenState extends State<PathfinderSelectionScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -227,7 +223,7 @@ class _PathfinderSelectionScreenState extends State<PathfinderSelectionScreen>
             'İnternetteki milyonlarca kaynak arasından en uygun olanları seçip, '
             'adım adım yol gösterecek.',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               height: 1.5,
             ),
             textAlign: TextAlign.center,
@@ -263,7 +259,7 @@ class _PathfinderSelectionScreenState extends State<PathfinderSelectionScreen>
                     color: theme.cardColor,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: theme.colorScheme.outline.withOpacity(0.2),
+                      color: theme.colorScheme.outline.withValues(alpha: 0.2),
                     ),
                   ),
                   child: Column(
@@ -271,14 +267,14 @@ class _PathfinderSelectionScreenState extends State<PathfinderSelectionScreen>
                     children: [
                       Icon(
                         Icons.explore_off,
-                        color: theme.colorScheme.onSurface.withOpacity(0.4),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                         size: 32,
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Henüz aktif rotanız bulunmuyor',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -317,10 +313,10 @@ class _PathfinderSelectionScreenState extends State<PathfinderSelectionScreen>
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -394,7 +390,7 @@ class _PathfinderSelectionScreenState extends State<PathfinderSelectionScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -444,10 +440,10 @@ class _PathfinderSelectionScreenState extends State<PathfinderSelectionScreen>
                   decoration: BoxDecoration(
                     color: _subjectController.text == subject
                         ? AppTheme.primaryColor
-                        : AppTheme.primaryColor.withOpacity(0.1),
+                        : AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: AppTheme.primaryColor.withOpacity(0.3),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Text(
@@ -576,7 +572,7 @@ class _PathfinderSelectionScreenState extends State<PathfinderSelectionScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.infoColor.withOpacity(0.1),
+              color: AppTheme.infoColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(

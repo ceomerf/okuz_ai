@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_theme.dart';
 
 class LeaderboardScreen extends StatefulWidget {
@@ -156,7 +155,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -219,7 +218,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                       side: BorderSide(
                         color: isSelected
                             ? AppTheme.primaryColor
-                            : AppTheme.primaryColor.withOpacity(0.3),
+                            : AppTheme.primaryColor.withValues(alpha: 0.3),
                       ),
                     ),
                   );
@@ -239,7 +238,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         color: AppTheme.getCardColor(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.1),
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
         ),
       ),
       child: TabBar(
@@ -394,7 +393,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
               height: 60,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [color, color.withOpacity(0.8)],
+                  colors: [color, color.withValues(alpha: 0.8)],
                 ),
                 shape: BoxShape.circle,
                 border: Border.all(
@@ -403,7 +402,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: color.withOpacity(0.3),
+                    color: color.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -449,7 +448,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [color, color.withOpacity(0.8)],
+              colors: [color, color.withValues(alpha: 0.8)],
             ),
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(8),
@@ -512,21 +511,21 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isCurrentUser
-            ? AppTheme.primaryColor.withOpacity(0.1)
+            ? AppTheme.primaryColor.withValues(alpha: 0.1)
             : AppTheme.getCardColor(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isCurrentUser
-              ? AppTheme.primaryColor.withOpacity(0.3)
-              : AppTheme.primaryColor.withOpacity(0.1),
+              ? AppTheme.primaryColor.withValues(alpha: 0.3)
+              : AppTheme.primaryColor.withValues(alpha: 0.1),
           width: isCurrentUser ? 2 : 1,
         ),
         boxShadow: [
           if (!isCurrentUser)
             BoxShadow(
               color: isDark
-                  ? Colors.black.withOpacity(0.2)
-                  : Colors.grey.withOpacity(0.1),
+                  ? Colors.black.withValues(alpha: 0.2)
+                  : Colors.grey.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -562,7 +561,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
               gradient: LinearGradient(
                 colors: [
                   AppTheme.primaryColor,
-                  AppTheme.primaryColor.withOpacity(0.8),
+                  AppTheme.primaryColor.withValues(alpha: 0.8),
                 ],
               ),
               shape: BoxShape.circle,
@@ -665,7 +664,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Icon(

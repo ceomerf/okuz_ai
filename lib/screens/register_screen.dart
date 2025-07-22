@@ -3,25 +3,27 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/production_auth_service.dart';
 import '../theme/app_theme.dart';
-import 'register_screen.dart';
 import 'onboarding_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({Key? key}) : super(key: key);
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
+class _RegisterScreenState extends State<RegisterScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _rememberMe = false;
+  bool _obscureConfirmPassword = true;
+  bool _agreeToTerms = false;
   String? _errorMessage;
 
   late AnimationController _animationController;
@@ -58,13 +60,21 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void dispose() {
     _animationController.dispose();
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
+  Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_agreeToTerms) {
+      setState(() {
+        _errorMessage = 'Kullanım şartlarını kabul etmelisiniz';
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -73,20 +83,21 @@ class _LoginScreenState extends State<LoginScreen>
 
     try {
       final authService = context.read<ProductionAuthService>();
-      final result = await authService.login(
+      final result = await authService.register(
         _emailController.text.trim(),
         _passwordController.text,
+        _nameController.text.trim(),
       );
 
       if (mounted) {
         if (result['success'] == true) {
-          // Başarılı giriş - Onboarding'e yönlendir
+          // Başarılı kayıt - Onboarding'e yönlendir
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const OnboardingScreen()),
           );
         } else {
           setState(() {
-            _errorMessage = result['message'] ?? 'Giriş başarısız';
+            _errorMessage = result['message'] ?? 'Kayıt başarısız';
           });
         }
       }
@@ -105,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  Future<void> _loginWithGoogle() async {
+  Future<void> _registerWithGoogle() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -122,14 +133,14 @@ class _LoginScreenState extends State<LoginScreen>
           );
         } else {
           setState(() {
-            _errorMessage = result['message'] ?? 'Google ile giriş başarısız';
+            _errorMessage = result['message'] ?? 'Google ile kayıt başarısız';
           });
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Google ile giriş hatası: $e';
+          _errorMessage = 'Google ile kayıt hatası: $e';
         });
       }
     } finally {
@@ -148,47 +159,69 @@ class _LoginScreenState extends State<LoginScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: isDark
+                ? AppTheme.darkTextPrimaryColor
+                : AppTheme.lightTextPrimaryColor,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          child: Container(
-            height: size.height - MediaQuery.of(context).padding.top,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: size.height -
+                      MediaQuery.of(context).padding.top -
+                      kToolbarHeight -
+                      100,
+                ),
                 child: Column(
                   children: [
-                    const SizedBox(height: 60),
+                    const SizedBox(height: 20),
 
                     // Logo ve Başlık
                     _buildHeader(isDark),
-                    const SizedBox(height: 60),
-
-                    // Giriş Formu
-                    _buildLoginForm(isDark),
                     const SizedBox(height: 30),
 
-                    // Giriş Butonu
-                    _buildLoginButton(isDark),
-                    const SizedBox(height: 20),
+                    // Kayıt Formu
+                    _buildRegisterForm(isDark),
+                    const SizedBox(height: 16),
+
+                    // Kullanım Şartları
+                    _buildTermsCheckbox(isDark),
+                    const SizedBox(height: 24),
+
+                    // Kayıt Butonu
+                    _buildRegisterButton(isDark),
+                    const SizedBox(height: 16),
 
                     // Hata Mesajı
                     if (_errorMessage != null) _buildErrorMessage(),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 24),
 
                     // Ayırıcı
                     _buildDivider(isDark),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 24),
 
-                    // Google ile Giriş
-                    _buildGoogleLoginButton(isDark),
-                    const Spacer(),
+                    // Google ile Kayıt
+                    _buildGoogleRegisterButton(isDark),
+                    const SizedBox(height: 24),
 
-                    // Kayıt Ol Linki
-                    _buildRegisterLink(isDark),
-                    const SizedBox(height: 30),
+                    // Giriş Yap Linki
+                    _buildLoginLink(isDark),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -204,8 +237,8 @@ class _LoginScreenState extends State<LoginScreen>
       children: [
         // Logo
         Container(
-          width: 120,
-          height: 120,
+          width: 100,
+          height: 100,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -215,28 +248,28 @@ class _LoginScreenState extends State<LoginScreen>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(25),
             boxShadow: [
               BoxShadow(
                 color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: const Icon(
-            Icons.school,
-            size: 60,
+            Icons.person_add,
+            size: 50,
             color: Colors.white,
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
 
         // Başlık
         Text(
-          'Okuz AI\'ya Hoş Geldiniz',
+          'Hesap Oluşturun',
           style: GoogleFonts.figtree(
-            fontSize: 28,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: isDark
                 ? AppTheme.darkTextPrimaryColor
@@ -248,9 +281,9 @@ class _LoginScreenState extends State<LoginScreen>
 
         // Alt başlık
         Text(
-          'Akıllı çalışma asistanınızla tanışın',
+          'Okuz AI ile akıllı çalışmaya başlayın',
           style: GoogleFonts.figtree(
-            fontSize: 16,
+            fontSize: 14,
             color: isDark
                 ? AppTheme.darkTextSecondaryColor
                 : AppTheme.lightTextSecondaryColor,
@@ -261,11 +294,66 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildLoginForm(bool isDark) {
+  Widget _buildRegisterForm(bool isDark) {
     return Form(
       key: _formKey,
       child: Column(
         children: [
+          // Ad Soyad Alanı
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkCardColor : AppTheme.lightCardColor,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: TextFormField(
+              controller: _nameController,
+              keyboardType: TextInputType.name,
+              style: GoogleFonts.figtree(
+                fontSize: 16,
+                color: isDark
+                    ? AppTheme.darkTextPrimaryColor
+                    : AppTheme.lightTextPrimaryColor,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Ad Soyad',
+                hintStyle: GoogleFonts.figtree(
+                  color: isDark
+                      ? AppTheme.darkTextSecondaryColor
+                      : AppTheme.lightTextSecondaryColor,
+                ),
+                prefixIcon: Icon(
+                  Icons.person_outline,
+                  color: AppTheme.primaryColor,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Colors.transparent,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Ad soyad gerekli';
+                }
+                if (value.length < 2) {
+                  return 'Ad soyad en az 2 karakter olmalı';
+                }
+                return null;
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // Email Alanı
           Container(
             decoration: BoxDecoration(
@@ -388,58 +476,122 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           const SizedBox(height: 16),
 
-          // Beni Hatırla ve Şifremi Unuttum
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Checkbox(
-                    value: _rememberMe,
-                    onChanged: (value) {
-                      setState(() {
-                        _rememberMe = value ?? false;
-                      });
-                    },
-                    activeColor: AppTheme.primaryColor,
-                  ),
-                  Text(
-                    'Beni hatırla',
-                    style: GoogleFonts.figtree(
-                      fontSize: 14,
-                      color: isDark
-                          ? AppTheme.darkTextSecondaryColor
-                          : AppTheme.lightTextSecondaryColor,
-                    ),
-                  ),
-                ],
-              ),
-              TextButton(
-                onPressed: () {
-                  // Şifremi unuttum sayfasına git
-                },
-                child: Text(
-                  'Şifremi unuttum',
-                  style: GoogleFonts.figtree(
-                    fontSize: 14,
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.w600,
-                  ),
+          // Şifre Tekrar Alanı
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkCardColor : AppTheme.lightCardColor,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
+              ],
+            ),
+            child: TextFormField(
+              controller: _confirmPasswordController,
+              obscureText: _obscureConfirmPassword,
+              style: GoogleFonts.figtree(
+                fontSize: 16,
+                color: isDark
+                    ? AppTheme.darkTextPrimaryColor
+                    : AppTheme.lightTextPrimaryColor,
               ),
-            ],
+              decoration: InputDecoration(
+                hintText: 'Şifrenizi tekrar girin',
+                hintStyle: GoogleFonts.figtree(
+                  color: isDark
+                      ? AppTheme.darkTextSecondaryColor
+                      : AppTheme.lightTextSecondaryColor,
+                ),
+                prefixIcon: Icon(
+                  Icons.lock_outlined,
+                  color: AppTheme.primaryColor,
+                ),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureConfirmPassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    color: AppTheme.primaryColor,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscureConfirmPassword = !_obscureConfirmPassword;
+                    });
+                  },
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Colors.transparent,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Şifre tekrarı gerekli';
+                }
+                if (value != _passwordController.text) {
+                  return 'Şifreler eşleşmiyor';
+                }
+                return null;
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLoginButton(bool isDark) {
+  Widget _buildTermsCheckbox(bool isDark) {
+    return Row(
+      children: [
+        Checkbox(
+          value: _agreeToTerms,
+          onChanged: (value) {
+            setState(() {
+              _agreeToTerms = value ?? false;
+            });
+          },
+          activeColor: AppTheme.primaryColor,
+        ),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: GoogleFonts.figtree(
+                fontSize: 14,
+                color: isDark
+                    ? AppTheme.darkTextSecondaryColor
+                    : AppTheme.lightTextSecondaryColor,
+              ),
+              children: [
+                const TextSpan(text: 'Kullanım şartlarını ve '),
+                TextSpan(
+                  text: 'Gizlilik Politikası\'nı',
+                  style: GoogleFonts.figtree(
+                    color: AppTheme.primaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const TextSpan(text: ' kabul ediyorum'),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRegisterButton(bool isDark) {
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _login,
+        onPressed: _isLoading ? null : _register,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.white,
@@ -458,7 +610,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               )
             : Text(
-                'Giriş Yap',
+                'Kayıt Ol',
                 style: GoogleFonts.figtree(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -531,12 +683,12 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildGoogleLoginButton(bool isDark) {
+  Widget _buildGoogleRegisterButton(bool isDark) {
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: OutlinedButton.icon(
-        onPressed: _isLoading ? null : _loginWithGoogle,
+        onPressed: _isLoading ? null : _registerWithGoogle,
         icon: Container(
           width: 24,
           height: 24,
@@ -560,7 +712,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
         label: Text(
-          'Google ile Giriş Yap',
+          'Google ile Kayıt Ol',
           style: GoogleFonts.figtree(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -582,12 +734,12 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildRegisterLink(bool isDark) {
+  Widget _buildLoginLink(bool isDark) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          'Hesabınız yok mu? ',
+          'Zaten hesabınız var mı? ',
           style: GoogleFonts.figtree(
             fontSize: 14,
             color: isDark
@@ -597,12 +749,10 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         TextButton(
           onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const RegisterScreen()),
-            );
+            Navigator.of(context).pop();
           },
           child: Text(
-            'Kayıt Ol',
+            'Giriş Yap',
             style: GoogleFonts.figtree(
               fontSize: 14,
               color: AppTheme.primaryColor,

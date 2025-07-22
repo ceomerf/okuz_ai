@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:okuz_ai/screens/plan_generation_screen.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
+import 'package:okuz_ai/services/mock_auth_service.dart';
+import 'package:okuz_ai/services/mock_database_service.dart';
 
 class HolidayPlanChoiceScreen extends StatelessWidget {
   final String holidayName;
@@ -232,13 +233,17 @@ class HolidayPlanChoiceScreen extends StatelessWidget {
 
   void _selectHolidayPlanType(BuildContext context, String planType) async {
     try {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId == null) return;
+      final authService = Provider.of<MockAuthService>(context, listen: false);
+      final user = authService.currentUser;
+      if (user == null) return;
 
-      // Kullanıcı profil belgesine planType'ı ekle
-      await FirebaseFirestore.instance
-          .doc('users/$userId/privateProfile/profile')
-          .update({'holidayPlanType': planType});
+      // Mock implementation - gerçek uygulamada veri güncellenecek
+      final dbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      await dbService.callCloudFunction('updateUserProfile', {
+        'userId': user.id,
+        'data': {'holidayPlanType': planType},
+      });
 
       // Eğer dinlenme seçildiyse ana ekrana dön
       if (planType == 'holiday_rest') {
@@ -253,10 +258,7 @@ class HolidayPlanChoiceScreen extends StatelessWidget {
         // Plan oluşturma ekranına yönlendir
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => PlanGenerationScreen(
-              isHolidayPlan: true,
-              holidayPlanType: planType,
-            ),
+            builder: (context) => PlanGenerationScreen(),
           ),
         );
       }

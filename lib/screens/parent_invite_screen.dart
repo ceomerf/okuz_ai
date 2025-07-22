@@ -214,7 +214,7 @@ class _ParentInviteScreenState extends State<ParentInviteScreen> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.orange.withOpacity(0.3),
+                color: Colors.orange.withValues(alpha: 0.3),
                 blurRadius: 30,
                 offset: const Offset(0, 15),
               ),
@@ -266,7 +266,7 @@ class _ParentInviteScreenState extends State<ParentInviteScreen> {
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: Card(
         elevation: 4,
-        shadowColor: color.withOpacity(0.2),
+        shadowColor: color.withValues(alpha: 0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
@@ -281,8 +281,8 @@ class _ParentInviteScreenState extends State<ParentInviteScreen> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  color.withOpacity(0.1),
-                  color.withOpacity(0.05),
+                  color.withValues(alpha: 0.1),
+                  color.withValues(alpha: 0.05),
                 ],
               ),
             ),
@@ -292,10 +292,10 @@ class _ParentInviteScreenState extends State<ParentInviteScreen> {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: color.withOpacity(0.3),
+                      color: color.withValues(alpha: 0.3),
                       width: 2,
                     ),
                   ),
@@ -331,7 +331,7 @@ class _ParentInviteScreenState extends State<ParentInviteScreen> {
                 ),
                 Icon(
                   Icons.arrow_forward_ios,
-                  color: color.withOpacity(0.7),
+                  color: color.withValues(alpha: 0.7),
                   size: 20,
                 ),
               ],
@@ -389,10 +389,10 @@ class _ParentInviteScreenState extends State<ParentInviteScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
+              color: Colors.orange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.orange.withOpacity(0.2),
+                color: Colors.orange.withValues(alpha: 0.2),
               ),
             ),
             child: Row(

@@ -159,7 +159,7 @@ class _HolidayPlanTypePageState extends State<HolidayPlanTypePage> {
           color: isSelected ? color : Colors.grey.shade300,
           width: isSelected ? 2 : 1,
         ),
-        color: isSelected ? color.withOpacity(0.1) : Colors.white,
+        color: isSelected ? color.withValues(alpha: 0.1) : Colors.white,
       ),
       child: InkWell(
         onTap: () => _selectPlanType(value),
@@ -171,7 +171,7 @@ class _HolidayPlanTypePageState extends State<HolidayPlanTypePage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
+                  color: color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -306,7 +306,7 @@ class _HolidayPlanTypePageState extends State<HolidayPlanTypePage> {
           color: isSelected ? color : Colors.grey.shade300,
           width: isSelected ? 2 : 1,
         ),
-        color: isSelected ? color.withOpacity(0.1) : Colors.white,
+        color: isSelected ? color.withValues(alpha: 0.1) : Colors.white,
       ),
       child: InkWell(
         onTap: () => _selectPlanType(value),
@@ -318,7 +318,7 @@ class _HolidayPlanTypePageState extends State<HolidayPlanTypePage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
+                  color: color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(

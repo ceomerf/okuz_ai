@@ -1,70 +1,58 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Firebase bağımlılığı kaldırıldı - JWT backend kullanılıyor
 
 class LongTermPlan {
-  final String? id;
-  final String planTitle;
-  final List<Week> weeks;
-  final String userId;
-  final String grade;
-  final String? targetExam;
-  final int dailyHours;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final String id;
+  final String title;
+  final String description;
+  final DateTime startDate;
+  final DateTime endDate;
+  final List<String> goals;
+  final List<Week>? _weeks;
 
   LongTermPlan({
-    this.id,
-    required this.planTitle,
-    required this.weeks,
-    required this.userId,
-    required this.grade,
-    this.targetExam,
-    required this.dailyHours,
-    required this.createdAt,
-    required this.updatedAt,
-  });
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.startDate,
+    required this.endDate,
+    required this.goals,
+    List<Week>? weeks,
+  }) : _weeks = weeks;
+
+  List<Week> get weeks => _weeks ?? [];
 
   factory LongTermPlan.fromJson(Map<String, dynamic> json) {
-    return LongTermPlan.fromMap(json, ''); // documentId is not available here
-  }
-
-  factory LongTermPlan.fromMap(Map<String, dynamic> map, String documentId) {
     return LongTermPlan(
-      id: documentId,
-      planTitle: map['planTitle'] ?? 'Aylık Plan',
-      weeks: (map['weeks'] as List<dynamic>?)
-              ?.map((weekMap) => Week.fromMap(weekMap as Map<String, dynamic>))
-              .toList() ??
-          [],
-      userId: map['userId'] ?? '',
-      grade: map['grade'] ?? '',
-      targetExam: map['targetExam'],
-      dailyHours: map['dailyHours'] ?? 0,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      startDate: json['startDate'] is String
+          ? DateTime.parse(json['startDate'])
+          : DateTime.now(),
+      endDate: json['endDate'] is String
+          ? DateTime.parse(json['endDate'])
+          : DateTime.now(),
+      goals: List<String>.from(json['goals'] ?? []),
+      weeks: (json['weeks'] as List<dynamic>?)
+          ?.map((weekMap) => Week.fromMap(weekMap as Map<String, dynamic>))
+          .toList(),
     );
   }
 
-  // Helper method to get the plan for a specific day of the year
-  Day? getPlanForDay(int dayOfYear) {
-    for (var week in weeks) {
-      for (var day in week.days) {
-        try {
-          final date = DateTime.parse(day.date);
-          final dateDayOfYear = _dayOfYear(date);
-          if (dateDayOfYear == dayOfYear) {
-            return day;
-          }
-        } catch (e) {
-          // Tarih formatı yanlışsa bu günü atla
-          print("Geçersiz tarih formatı: ${day.date}");
-        }
-      }
-    }
-    return null;
+  factory LongTermPlan.fromMap(Map<String, dynamic> map) {
+    return LongTermPlan.fromJson(map);
   }
 
-  static int _dayOfYear(DateTime date) {
-    return date.difference(DateTime(date.year, 1, 1)).inDays + 1;
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'goals': goals,
+      'weeks': weeks.map((week) => week.toMap()).toList(),
+    };
   }
 }
 
@@ -85,6 +73,13 @@ class Week {
               .toList() ??
           [],
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'weekNumber': weekNumber,
+      'days': days.map((day) => day.toMap()).toList(),
+    };
   }
 }
 
@@ -112,6 +107,15 @@ class Day {
               .toList() ??
           [],
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'day': day,
+      'date': date,
+      'isRestDay': isRestDay,
+      'dailyTasks': dailyTasks.map((task) => task.toMap()).toList(),
+    };
   }
 }
 

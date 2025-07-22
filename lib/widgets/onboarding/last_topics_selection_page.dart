@@ -297,7 +297,7 @@ class _LastTopicsSelectionPageState extends State<LastTopicsSelectionPage> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).shadowColor.withOpacity(0.05),
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -311,8 +311,8 @@ class _LastTopicsSelectionPageState extends State<LastTopicsSelectionPage> {
                 height: 40,
                 decoration: BoxDecoration(
                   color: hasSelection
-                      ? AppTheme.primaryColor.withOpacity(0.1)
-                      : Theme.of(context).dividerColor.withOpacity(0.1),
+                      ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                      : Theme.of(context).dividerColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -341,7 +341,7 @@ class _LastTopicsSelectionPageState extends State<LastTopicsSelectionPage> {
                       Text(
                         selectedTopic,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.primaryColor.withOpacity(0.8),
+                              color: AppTheme.primaryColor.withValues(alpha: 0.8),
                               fontWeight: FontWeight.w500,
                             ),
                       )
@@ -399,7 +399,7 @@ class _LastTopicsSelectionPageState extends State<LastTopicsSelectionPage> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? AppTheme.primaryColor.withOpacity(0.1)
+                              ? AppTheme.primaryColor.withValues(alpha: 0.1)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(

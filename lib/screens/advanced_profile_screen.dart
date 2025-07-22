@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
 import 'package:okuz_ai/screens/diagnostic_test_screen.dart';
 import 'package:okuz_ai/screens/learning_habits_screen.dart';
 import 'package:okuz_ai/models/diagnostic_test.dart';
 import 'package:okuz_ai/screens/user_plan_screen.dart';
 import 'package:okuz_ai/services/plan_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:okuz_ai/services/mock_auth_service.dart';
 
 class AdvancedProfileScreen extends StatelessWidget {
   const AdvancedProfileScreen({Key? key}) : super(key: key);
 
   // Plan var mı kontrol et
-  Future<bool> _checkUserHasPlan() async {
-    final user = FirebaseAuth.instance.currentUser;
+  Future<bool> _checkUserHasPlan(BuildContext context) async {
+    final authService = Provider.of<MockAuthService>(context, listen: false);
+    final user = authService.currentUser;
     if (user == null) return false;
 
     try {
@@ -28,7 +30,7 @@ class AdvancedProfileScreen extends StatelessWidget {
   // UserPlanScreen'e yönlendir
   Future<void> _navigateToUserPlan(BuildContext context) async {
     // Plan kontrolü yap
-    final hasPlan = await _checkUserHasPlan();
+    final hasPlan = await _checkUserHasPlan(context);
 
     if (hasPlan) {
       // Plan varsa direkt UserPlanScreen'e git

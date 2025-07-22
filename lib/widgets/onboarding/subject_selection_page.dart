@@ -25,7 +25,7 @@ class _SubjectSelectionPageState extends State<SubjectSelectionPage> {
   void initState() {
     super.initState();
     _selectedSubjects = widget.onboardingData.selectedSubjects.toSet();
-    _curriculum = _getCurriculumForGrade(widget.onboardingData.grade);
+    _curriculum = _getCurriculumForGrade(widget.onboardingData.grade ?? '11');
   }
 
   Map<String, List<String>> _getCurriculumForGrade(String grade) {

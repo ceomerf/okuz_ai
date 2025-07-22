@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/xp_notification_widget.dart';
+import '../services/mock_database_service.dart';
 
 class ExamSimulatorScreen extends StatefulWidget {
   const ExamSimulatorScreen({Key? key}) : super(key: key);
@@ -89,18 +90,19 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
     });
 
     try {
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('getPreExamStrategy');
-      final result = await callable.call({
+      final mockDbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      final result =
+          await mockDbService.callCloudFunction('getPreExamStrategy', {
         'examType': _selectedExamType,
         'duration': _duration,
         'subjects': _selectedSubjects,
       });
 
-      if (result.data['success'] == true) {
+      if (result['success'] == true) {
         setState(() {
-          _strategy = result.data['strategy'];
-          _strategyId = result.data['strategyId'];
+          _strategy = result['strategy'];
+          _strategyId = result['strategyId'];
           _isLoadingStrategy = false;
         });
 
@@ -108,7 +110,7 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result.data['message']),
+            content: Text(result['message']),
             backgroundColor: AppTheme.successColor,
             behavior: SnackBarBehavior.floating,
           ),
@@ -166,9 +168,10 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
     });
 
     try {
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('analyzeExamResult');
-      final result = await callable.call({
+      final mockDbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      final result =
+          await mockDbService.callCloudFunction('analyzeExamResult', {
         'strategyId': _strategyId,
         'results': results,
         'examType': _selectedExamType,
@@ -177,7 +180,7 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
         'timeSpent': timeSpent,
       });
 
-      if (result.data['success'] == true) {
+      if (result['success'] == true) {
         setState(() {
           _isLoadingStrategy = false;
         });
@@ -186,8 +189,8 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
         if (mounted) {
           XPNotificationWidget.show(
             context,
-            result.data['xpRewarded'] ?? 0,
-            result.data['message'] ?? 'Sınav analizi tamamlandı!',
+            result['xpRewarded'] ?? 0,
+            result['message'] ?? 'Sınav analizi tamamlandı!',
           );
         }
 
@@ -196,10 +199,10 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
           context,
           MaterialPageRoute(
             builder: (context) => ExamAnalysisScreen(
-              analysis: result.data['analysis'],
-              overallScore: result.data['overallScore'],
+              analysis: result['analysis'],
+              overallScore: result['overallScore'],
               examType: _selectedExamType,
-              xpRewarded: result.data['xpRewarded'],
+              xpRewarded: result['xpRewarded'],
             ),
           ),
         );
@@ -244,7 +247,7 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppTheme.primaryColor.withOpacity(0.05),
+              AppTheme.primaryColor.withValues(alpha: 0.05),
               theme.scaffoldBackgroundColor,
             ],
           ),
@@ -298,13 +301,13 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.primaryColor.withOpacity(0.1),
-            AppTheme.accentColor.withOpacity(0.1),
+            AppTheme.primaryColor.withValues(alpha: 0.1),
+            AppTheme.accentColor.withValues(alpha: 0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.2),
+          color: AppTheme.primaryColor.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -312,7 +315,7 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -335,7 +338,7 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
             'Sınav öncesi kişisel strateji al, sınav sonrası detaylı analiz ile '
             'performansını artır. Koçun gibi yanında!',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               height: 1.5,
             ),
             textAlign: TextAlign.center,
@@ -353,7 +356,7 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -417,7 +420,7 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.infoColor.withOpacity(0.1),
+              color: AppTheme.infoColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -518,13 +521,13 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
             gradient: LinearGradient(
               colors: [
                 AppTheme.successColor,
-                AppTheme.successColor.withOpacity(0.8),
+                AppTheme.successColor.withValues(alpha: 0.8),
               ],
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.successColor.withOpacity(0.3),
+                color: AppTheme.successColor.withValues(alpha: 0.3),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -598,9 +601,9 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppTheme.accentColor.withOpacity(0.1),
+            color: AppTheme.accentColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.accentColor.withOpacity(0.3)),
+            border: Border.all(color: AppTheme.accentColor.withValues(alpha: 0.3)),
           ),
           child: Column(
             children: [
@@ -635,7 +638,7 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -790,7 +793,7 @@ class _ExamSimulatorScreenState extends State<ExamSimulatorScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1012,12 +1015,12 @@ class ExamAnalysisScreen extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [color, color.withOpacity(0.8)],
+          colors: [color, color.withValues(alpha: 0.8)],
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
+            color: color.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -1030,7 +1033,7 @@ class ExamAnalysisScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -1073,7 +1076,7 @@ class ExamAnalysisScreen extends StatelessWidget {
                   Text(
                     'XP',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                     ),
                   ),
                 ],
@@ -1092,7 +1095,7 @@ class ExamAnalysisScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
       ),
       child: Text(
         analysis['openingStatement'] ?? '',
@@ -1246,12 +1249,12 @@ class ExamAnalysisScreen extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.accentColor.withOpacity(0.1),
-            AppTheme.successColor.withOpacity(0.1),
+            AppTheme.accentColor.withValues(alpha: 0.1),
+            AppTheme.successColor.withValues(alpha: 0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.accentColor.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.accentColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:okuz_ai/models/student_profile.dart';
+import 'package:okuz_ai/models/user_account.dart';
+import 'package:okuz_ai/models/account_type.dart';
 import 'package:okuz_ai/screens/settings_screen.dart';
 import 'package:okuz_ai/screens/parent_dashboard_screen.dart';
 import 'package:okuz_ai/screens/realtime_monitoring_screen.dart';
@@ -12,8 +14,8 @@ import 'package:okuz_ai/services/family_account_service.dart';
 import 'package:okuz_ai/services/subscription_service.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:okuz_ai/services/mock_auth_service.dart';
+import 'package:okuz_ai/services/mock_database_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:okuz_ai/services/invite_link_service.dart';
@@ -130,7 +132,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppTheme.primaryColor.withOpacity(0.1),
+            AppTheme.primaryColor.withValues(alpha: 0.1),
             Theme.of(context).scaffoldBackgroundColor,
           ],
         ),
@@ -146,7 +148,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.2),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.2),
                     blurRadius: 40,
                     offset: const Offset(0, 8),
                   ),
@@ -161,7 +163,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
                       gradient: LinearGradient(
                         colors: [
                           AppTheme.primaryColor,
-                          AppTheme.primaryColor.withOpacity(0.7),
+                          AppTheme.primaryColor.withValues(alpha: 0.7),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(20),
@@ -220,7 +222,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
@@ -254,13 +256,13 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
                 gradient: LinearGradient(
                   colors: [
                     AppTheme.primaryColor,
-                    AppTheme.primaryColor.withOpacity(0.8)
+                    AppTheme.primaryColor.withValues(alpha: 0.8)
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.3),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -355,7 +357,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
                 gradient: LinearGradient(
                   colors: [
                     AppTheme.primaryColor,
-                    AppTheme.primaryColor.withOpacity(0.7)
+                    AppTheme.primaryColor.withValues(alpha: 0.7)
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -383,7 +385,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                AppTheme.primaryColor.withOpacity(0.05),
+                AppTheme.primaryColor.withValues(alpha: 0.05),
                 Colors.transparent,
               ],
             ),
@@ -398,7 +400,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -435,14 +437,14 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
                   end: Alignment.bottomRight,
                   colors: [
                     AppTheme.primaryColor,
-                    AppTheme.primaryColor.withOpacity(0.8),
-                    AppTheme.primaryColor.withOpacity(0.9),
+                    AppTheme.primaryColor.withValues(alpha: 0.8),
+                    AppTheme.primaryColor.withValues(alpha: 0.9),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.4),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.4),
                     blurRadius: 30,
                     offset: const Offset(0, 15),
                   ),
@@ -456,7 +458,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Icon(
@@ -475,7 +477,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
                               style: GoogleFonts.figtree(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
-                                color: Colors.white.withOpacity(0.9),
+                                color: Colors.white.withValues(alpha: 0.9),
                               ),
                             ),
                             Text(
@@ -495,10 +497,10 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),
@@ -629,13 +631,13 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
         border: Border.all(
-          color: color.withOpacity(0.2),
+          color: color.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -644,7 +646,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 24),
@@ -685,7 +687,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -1031,7 +1033,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
             : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.2),
+          color: AppTheme.primaryColor.withValues(alpha: 0.2),
           width: 2,
           style: BorderStyle.solid,
         ),
@@ -1041,7 +1043,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Icon(
@@ -1074,7 +1076,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
               gradient: LinearGradient(
                 colors: [
                   AppTheme.primaryColor,
-                  AppTheme.primaryColor.withOpacity(0.8)
+                  AppTheme.primaryColor.withValues(alpha: 0.8)
                 ],
               ),
               borderRadius: BorderRadius.circular(12),
@@ -1131,7 +1133,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1156,7 +1158,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
                         gradient: LinearGradient(
                           colors: [
                             AppTheme.primaryColor,
-                            AppTheme.primaryColor.withOpacity(0.7),
+                            AppTheme.primaryColor.withValues(alpha: 0.7),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(16),
@@ -1250,7 +1252,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 16),
@@ -1285,7 +1287,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1306,7 +1308,7 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
                   padding:
                       const EdgeInsets.all(12), // Icon container'ı küçülttüm
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon,
@@ -1447,10 +1449,10 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppTheme.primaryColor.withOpacity(0.3),
+                color: AppTheme.primaryColor.withValues(alpha: 0.3),
               ),
             ),
             child: Column(
@@ -1622,10 +1624,10 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.1),
+                color: Colors.amber.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Colors.amber.withOpacity(0.3),
+                  color: Colors.amber.withValues(alpha: 0.3),
                 ),
               ),
               child: Column(
@@ -1890,26 +1892,15 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
       setState(() => _isLoading = true);
 
       // Mevcut kullanıcı bilgilerini kaydet
-      final currentUser = FirebaseAuth.instance.currentUser;
+      final currentUser = MockAuthService.instance.currentUser;
       if (currentUser == null) {
         throw Exception('Oturum açık değil');
       }
 
-      // Firestore'a direkt olarak yeni öğrenci profili ekle
-      final userRef =
-          FirebaseFirestore.instance.collection('users').doc(currentUser.uid);
+      // Mock implementation - Firebase yerine basit mock
+      final newProfileId = DateTime.now().millisecondsSinceEpoch.toString();
 
-      // Kullanıcı dokümanını kontrol et
-      final userDoc = await userRef.get();
-      if (!userDoc.exists) {
-        throw Exception('Kullanıcı profili bulunamadı');
-      }
-
-      // Yeni profil ID'si oluştur
-      final newProfileId =
-          FirebaseFirestore.instance.collection('temp').doc().id;
-
-      // Öğrenci profil verisi
+      // Mock profile data
       final profileData = {
         'profileId': newProfileId,
         'profileName': name,
@@ -1922,26 +1913,11 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
         'dailyHours': 2,
         'preferredSessionDuration': 45,
         'isActive': true,
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': DateTime.now().toIso8601String(),
       };
 
-      // Batch işlemi başlat
-      final batch = FirebaseFirestore.instance.batch();
-
-      // Profili kaydet
-      final profileRef = userRef.collection('profiles').doc(newProfileId);
-      batch.set(profileRef, profileData);
-
-      // Kullanıcı dokümanını güncelle
-      final currentProfileCount = userDoc.data()?['profileCount'] ?? 0;
-      batch.update(userRef, {
-        'profileCount': currentProfileCount + 1,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'selectedProfileId': newProfileId,
-      });
-
-      // Batch işlemini çalıştır
-      await batch.commit();
+      // Mock implementation - no actual database operations
+      print('Mock: Student profile created with ID: $newProfileId');
 
       // Hesap verilerini yeniden yükle
       await _loadAccountData();
@@ -2012,10 +1988,10 @@ class _FamilyPortalScreenState extends State<FamilyPortalScreen>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppTheme.primaryColor.withOpacity(0.3),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.3),
                 ),
               ),
               child: Column(

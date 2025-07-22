@@ -1,115 +1,80 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+// JWT Backend için Premium Service
+// Firebase bağımlılığı tamamen kaldırıldı
 
-/// Premium abonelik durumunu yöneten servis sınıfı
+import 'package:flutter/material.dart';
+import 'api_client.dart';
+
 class PremiumService {
-  static final PremiumService _instance = PremiumService._internal();
-  factory PremiumService() => _instance;
-  PremiumService._internal();
+  final ApiClient _apiClient = ApiClient();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  /// Kullanıcının premium durumunu kontrol eder
+  // Premium kullanıcı kontrolü
   Future<bool> isPremiumUser() async {
     try {
-      final user = _auth.currentUser;
-      if (user == null) return false;
-
-      // Firestore'dan kullanıcının premium durumunu çek
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-
-      if (userDoc.exists) {
-        final data = userDoc.data();
-        return data?['isPremium'] ?? false;
-      }
-
-      return false;
+      final response = await _apiClient.get('/subscription/status');
+      return response['isPremium'] ?? false;
     } catch (e) {
-      print('Premium durum kontrolü hatası: $e');
+      debugPrint('Premium kullanıcı kontrol hatası: $e');
       return false;
     }
   }
 
-  /// Kullanıcının premium durumunu Stream olarak dinler (real-time updates için)
-  Stream<bool> premiumStatusStream() {
-    final user = _auth.currentUser;
-    if (user == null) {
-      return Stream.value(false);
-    }
-
-    return _firestore.collection('users').doc(user.uid).snapshots().map((doc) {
-      if (doc.exists) {
-        final data = doc.data();
-        return data?['isPremium'] ?? false;
-      }
-      return false;
-    });
-  }
-
-  /// Kullanıcıyı premium yapar (test amaçlı)
-  Future<void> upgradeToPremium() async {
+  // Premium'a yükselt
+  Future<bool> upgradeToPremium() async {
     try {
-      final user = _auth.currentUser;
-      if (user == null) throw Exception('Kullanıcı bulunamadı');
-
-      await _firestore.collection('users').doc(user.uid).set({
-        'isPremium': true,
-        'premiumUpgradeDate': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      print('Kullanıcı premium yapıldı');
+      final response = await _apiClient.post('/subscription/upgrade', {});
+      return response['success'] ?? false;
     } catch (e) {
-      print('Premium upgrade hatası: $e');
-      rethrow;
+      debugPrint('Premium yükseltme hatası: $e');
+      return false;
     }
   }
 
-  /// Premium aboneliği iptal eder (test amaçlı)
-  Future<void> cancelPremium() async {
+  // Günün kilitli olup olmadığını kontrol et
+  Future<bool> isDayLocked(DateTime date) async {
     try {
-      final user = _auth.currentUser;
-      if (user == null) throw Exception('Kullanıcı bulunamadı');
-
-      await _firestore.collection('users').doc(user.uid).set({
-        'isPremium': false,
-        'premiumCancelDate': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      print('Premium abonelik iptal edildi');
+      final response = await _apiClient.get('/subscription/day-locked',
+          queryParameters: {'date': date.toIso8601String()});
+      return response['isLocked'] ?? false;
     } catch (e) {
-      print('Premium iptal hatası: $e');
-      rethrow;
+      debugPrint('Gün kilit kontrolü hatası: $e');
+      return false;
     }
   }
 
-  /// Kullanıcının premium olmayan durumda erişebileceği gün sayısını döndürür
-  int getFreeDaysLimit() {
-    return 3; // İlk 3 gün ücretsiz
+  // Premium erişim kontrolü
+  Future<bool> checkPremiumAccess({String? feature}) async {
+    try {
+      final response = await _apiClient.get('/subscription/premium-access');
+      return response['hasAccess'] ?? false;
+    } catch (e) {
+      debugPrint('Premium erişim kontrol hatası: $e');
+      return false;
+    }
   }
 
-  /// Belirtilen gün indeksinin kilitli olup olmadığını kontrol eder
-  bool isDayLocked(int dayIndex, bool isPremium) {
-    if (isPremium)
-      return false; // Premium kullanıcılar için hiçbir gün kilitli değil
-    return dayIndex >= getFreeDaysLimit(); // 3. günden sonrası kilitli
+  // Premium özelliği ekle
+  Future<bool> addPremiumFeature(String feature) async {
+    try {
+      await _apiClient.post('/subscription/add-feature', {
+        'feature': feature,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Premium özellik ekleme hatası: $e');
+      return false;
+    }
   }
 
-  /// Kullanıcının kaç gün kalan ücretsiz erişimi olduğunu hesaplar
-  int getRemainingFreeDays(int currentDayIndex, bool isPremium) {
-    if (isPremium) return -1; // Premium kullanıcılar için sınırsız
-    final freeDaysLimit = getFreeDaysLimit();
-    final remaining = freeDaysLimit - currentDayIndex;
-    return remaining > 0 ? remaining : 0;
-  }
-
-  /// Premium olmayan kullanıcı için uyarı mesajı oluşturur
-  String getUpgradeMessage(int dayIndex) {
-    final remainingDays = getRemainingFreeDays(dayIndex, false);
-    if (remainingDays > 0) {
-      return 'Ücretsiz deneme sürenizin $remainingDays günü kaldı. Premium\'a geçerek tüm plana erişebilirsiniz.';
-    } else {
-      return 'Tüm çalışma planınıza erişmek için Premium\'a geçin. İlk 3 gün ücretsizdir!';
+  // Premium özelliği kaldır
+  Future<bool> removePremiumFeature(String feature) async {
+    try {
+      await _apiClient.post('/subscription/remove-feature', {
+        'feature': feature,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Premium özellik kaldırma hatası: $e');
+      return false;
     }
   }
 }

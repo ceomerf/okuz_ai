@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:okuz_ai/models/learning_habits.dart';
 import 'package:okuz_ai/theme/app_theme.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:okuz_ai/screens/learning_habits_result_screen.dart';
 import 'package:okuz_ai/screens/advanced_profile_screen.dart';
+import 'package:okuz_ai/services/mock_auth_service.dart';
+import 'package:okuz_ai/services/mock_database_service.dart';
 
 class LearningHabitsScreen extends StatefulWidget {
   const LearningHabitsScreen({Key? key}) : super(key: key);
@@ -83,8 +84,9 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
     });
 
     try {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId == null) {
+      final authService = Provider.of<MockAuthService>(context, listen: false);
+      final user = authService.currentUser;
+      if (user == null) {
         throw Exception('Kullanıcı oturum açmamış');
       }
 
@@ -92,10 +94,10 @@ class _LearningHabitsScreenState extends State<LearningHabitsScreen> {
       final processedAnswers =
           LearningHabitsQuestionnaire.processAnswers(_answers);
 
-      // Cloud Functions'a gönder
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('createAdvancedProfile');
-      await callable.call({
+      // Mock Database Service'e gönder
+      final dbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      await dbService.callCloudFunction('createAdvancedProfile', {
         'learningHabits': processedAnswers,
       });
 

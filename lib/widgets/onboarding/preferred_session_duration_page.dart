@@ -65,7 +65,7 @@ class _PreferredSessionDurationPageState
     );
 
     // Mevcut değeri al
-    _selectedDuration = widget.onboardingData.preferredSessionDuration;
+    _selectedDuration = widget.onboardingData.preferredSessionDuration ?? 45;
   }
 
   @override
@@ -136,10 +136,10 @@ class _PreferredSessionDurationPageState
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppTheme.primaryColor.withOpacity(0.2),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Row(
@@ -155,7 +155,7 @@ class _PreferredSessionDurationPageState
                         'Bu bilgi AI\'nın senin için daha kişisel Pomodoro seansları planlamasını sağlar',
                         style: GoogleFonts.figtree(
                           fontSize: 13,
-                          color: AppTheme.primaryColor.withOpacity(0.8),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.8),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -323,7 +323,7 @@ class _PreferredSessionDurationPageState
                   color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Theme.of(context).dividerColor.withOpacity(0.5),
+                    color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
                   ),
                 ),
                 child: Row(

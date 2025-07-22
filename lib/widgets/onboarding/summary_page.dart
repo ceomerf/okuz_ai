@@ -104,17 +104,17 @@ class _SummaryPageState extends State<SummaryPage> {
                     _buildSummaryCard(
                       icon: Icons.class_outlined,
                       title: 'Sınıf',
-                      value: _formatGrade(widget.onboardingData.grade),
+                      value: _formatGrade(widget.onboardingData.grade ?? ''),
                       pageType: OnboardingPageType.grade,
                     ),
-                    if (widget.onboardingData.targetExam.isNotEmpty)
+                    if (widget.onboardingData.targetExam?.isNotEmpty == true)
                       _buildSummaryCard(
                         icon: Icons.work_outline,
                         title: 'Alan',
-                        value: _formatField(widget.onboardingData.targetExam),
+                        value: _formatField(widget.onboardingData.targetExam!),
                         pageType: OnboardingPageType.field,
                       ),
-                    if (widget.onboardingData.startPoint.isNotEmpty)
+                    if (widget.onboardingData.startPoint?.isNotEmpty == true)
                       _buildSummaryCard(
                         icon: Icons.flag_outlined,
                         title: 'Başlangıç Noktası',
@@ -138,14 +138,14 @@ class _SummaryPageState extends State<SummaryPage> {
                       icon: Icons.watch_later_outlined,
                       title: 'Günlük Hedef',
                       value: _formatDuration(
-                          widget.onboardingData.dailyGoalInHours),
+                          widget.onboardingData.dailyGoalInHours ?? 0.0),
                       pageType: OnboardingPageType.dailyGoal,
                     ),
                     _buildSummaryCard(
                       icon: Icons.psychology_outlined,
                       title: 'Öğrenme Stili',
                       value: _formatLearningStyle(
-                          widget.onboardingData.learningStyle),
+                          widget.onboardingData.learningStyle ?? ''),
                       pageType: OnboardingPageType.learningStyle,
                     ),
                     _buildSummaryCard(
@@ -168,7 +168,7 @@ class _SummaryPageState extends State<SummaryPage> {
                     _buildSummaryCard(
                       icon: Icons.person_outline,
                       title: 'Veli Adı',
-                      value: widget.onboardingData.fullName,
+                      value: widget.onboardingData.fullName ?? '',
                       pageType: OnboardingPageType.nameAndTarget,
                     ),
                   ] else ...[
@@ -176,13 +176,13 @@ class _SummaryPageState extends State<SummaryPage> {
                     _buildSummaryCard(
                       icon: Icons.person_outline,
                       title: 'Ad Soyad',
-                      value: widget.onboardingData.fullName,
+                      value: widget.onboardingData.fullName ?? '',
                       pageType: OnboardingPageType.nameAndTarget,
                     ),
                     _buildSummaryCard(
                       icon: Icons.school_outlined,
                       title: 'Hedef Üniversite',
-                      value: widget.onboardingData.targetUniversity,
+                      value: widget.onboardingData.targetUniversity ?? '',
                       pageType: OnboardingPageType.nameAndTarget,
                     ),
                   ],
@@ -295,7 +295,7 @@ class _SummaryPageState extends State<SummaryPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.2),
+                  color: Colors.grey.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(

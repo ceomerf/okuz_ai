@@ -1,49 +1,52 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// JWT Backend için basit Parent Invite Token modeli
+// Firebase bağımlılıkları tamamen kaldırıldı
 
 class ParentInviteToken {
+  final String id;
   final String token;
   final String studentId;
+  final String? parentId; // null ise henüz kullanılmamış
   final DateTime createdAt;
-  final bool isUsed;
   final DateTime? usedAt;
-  final String? parentId; // Davet edilen velinin ID'si (kullanıldıysa)
+  final bool isUsed;
+  final Map<String, dynamic>? metadata;
 
   ParentInviteToken({
+    required this.id,
     required this.token,
     required this.studentId,
-    required this.createdAt,
-    this.isUsed = false,
-    this.usedAt,
     this.parentId,
+    required this.createdAt,
+    this.usedAt,
+    required this.isUsed,
+    this.metadata,
   });
 
   factory ParentInviteToken.fromJson(Map<String, dynamic> json) {
     return ParentInviteToken(
+      id: json['id'] ?? '',
       token: json['token'] ?? '',
       studentId: json['studentId'] ?? '',
-      createdAt: json['createdAt'] != null
-          ? (json['createdAt'] is Timestamp
-              ? (json['createdAt'] as Timestamp).toDate()
-              : DateTime.parse(json['createdAt']))
-          : DateTime.now(),
-      isUsed: json['isUsed'] ?? false,
-      usedAt: json['usedAt'] != null
-          ? (json['usedAt'] is Timestamp
-              ? (json['usedAt'] as Timestamp).toDate()
-              : DateTime.parse(json['usedAt']))
-          : null,
       parentId: json['parentId'],
+      createdAt: json['createdAt'] is String
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
+      usedAt: json['usedAt'] is String ? DateTime.parse(json['usedAt']) : null,
+      isUsed: json['isUsed'] ?? false,
+      metadata: json['metadata'] as Map<String, dynamic>?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'token': token,
       'studentId': studentId,
-      'createdAt': createdAt.toIso8601String(),
-      'isUsed': isUsed,
-      'usedAt': usedAt?.toIso8601String(),
       'parentId': parentId,
+      'createdAt': createdAt.toIso8601String(),
+      'usedAt': usedAt?.toIso8601String(),
+      'isUsed': isUsed,
+      'metadata': metadata,
     };
   }
 }

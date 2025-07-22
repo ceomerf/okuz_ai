@@ -313,7 +313,7 @@ class _HelpAndFAQScreenState extends State<HelpAndFAQScreen>
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Icon(
@@ -337,14 +337,14 @@ class _HelpAndFAQScreenState extends State<HelpAndFAQScreen>
         color: AppTheme.getCardColor(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.1),
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withOpacity(0.3)
-                : Colors.grey.withOpacity(0.1),
+                ? Colors.black.withValues(alpha: 0.3)
+                : Colors.grey.withValues(alpha: 0.1),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -396,14 +396,14 @@ class _HelpAndFAQScreenState extends State<HelpAndFAQScreen>
         color: AppTheme.getCardColor(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.2),
+          color: AppTheme.primaryColor.withValues(alpha: 0.2),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withOpacity(0.3)
-                : Colors.grey.withOpacity(0.1),
+                ? Colors.black.withValues(alpha: 0.3)
+                : Colors.grey.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -493,14 +493,14 @@ class _HelpAndFAQScreenState extends State<HelpAndFAQScreen>
           color: AppTheme.getCardColor(context),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
               color: isDark
-                  ? Colors.black.withOpacity(0.3)
-                  : Colors.grey.withOpacity(0.1),
+                  ? Colors.black.withValues(alpha: 0.3)
+                  : Colors.grey.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -511,7 +511,7 @@ class _HelpAndFAQScreenState extends State<HelpAndFAQScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -626,14 +626,14 @@ class _HelpAndFAQScreenState extends State<HelpAndFAQScreen>
         color: AppTheme.getCardColor(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: category.color.withOpacity(0.2),
+          color: category.color.withValues(alpha: 0.2),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withOpacity(0.3)
-                : Colors.grey.withOpacity(0.1),
+                ? Colors.black.withValues(alpha: 0.3)
+                : Colors.grey.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -644,7 +644,7 @@ class _HelpAndFAQScreenState extends State<HelpAndFAQScreen>
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: category.color.withOpacity(0.05),
+              color: category.color.withValues(alpha: 0.05),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(16)),
             ),
@@ -653,7 +653,7 @@ class _HelpAndFAQScreenState extends State<HelpAndFAQScreen>
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: category.color.withOpacity(0.1),
+                    color: category.color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -685,7 +685,7 @@ class _HelpAndFAQScreenState extends State<HelpAndFAQScreen>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: category.color.withOpacity(0.1),
+                    color: category.color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -708,7 +708,7 @@ class _HelpAndFAQScreenState extends State<HelpAndFAQScreen>
               height: 1,
               indent: 20,
               endIndent: 20,
-              color: category.color.withOpacity(0.1),
+              color: category.color.withValues(alpha: 0.1),
             ),
             itemBuilder: (context, index) {
               final faq = category.faqs[index];
@@ -743,8 +743,8 @@ class _HelpAndFAQScreenState extends State<HelpAndFAQScreen>
           height: 40,
           decoration: BoxDecoration(
             color: isExpanded
-                ? categoryColor.withOpacity(0.1)
-                : Colors.grey.withOpacity(0.1),
+                ? categoryColor.withValues(alpha: 0.1)
+                : Colors.grey.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Icon(
@@ -771,7 +771,7 @@ class _HelpAndFAQScreenState extends State<HelpAndFAQScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: categoryColor.withOpacity(0.05),
+              color: categoryColor.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(

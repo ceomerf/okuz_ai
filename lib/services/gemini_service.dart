@@ -29,7 +29,7 @@ Sen bir eğitim danışmanısın ve kullanıcılara okul dersleriyle paralel ile
 
 KULLANICI BİLGİLERİ:
 - Sınıf: ${data.grade}. sınıf
-- Alan: ${data.targetExam.isNotEmpty ? data.targetExam : 'Belirtilmemiş'}
+- Alan: ${data.targetExam?.isNotEmpty == true ? data.targetExam : 'Belirtilmemiş'}
 - Odaklanılacak Dersler: [$selectedSubjects]
 - Günlük Ortalama Çalışma Süresi: ${data.dailyGoalInHours} saat
 - Plan Başlangıç Tarihi: [$currentDate]

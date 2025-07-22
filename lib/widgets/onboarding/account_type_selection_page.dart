@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/onboarding_data.dart';
 import '../../models/student_profile.dart';
+import '../../models/account_type.dart';
 import '../../theme/app_theme.dart';
 
 class AccountTypeSelectionPage extends StatefulWidget {
@@ -121,7 +122,7 @@ class _AccountTypeSelectionPageState extends State<AccountTypeSelectionPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -195,7 +196,7 @@ class _AccountTypeSelectionPageState extends State<AccountTypeSelectionPage> {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: isSelected
-              ? color.withOpacity(0.1)
+              ? color.withValues(alpha: 0.1)
               : (isDark ? const Color(0xFF2D3748) : Colors.white),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
@@ -207,8 +208,8 @@ class _AccountTypeSelectionPageState extends State<AccountTypeSelectionPage> {
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? color.withOpacity(0.2)
-                  : (isDark ? Colors.black26 : Colors.black.withOpacity(0.1)),
+                  ? color.withValues(alpha: 0.2)
+                  : (isDark ? Colors.black26 : Colors.black.withValues(alpha: 0.1)),
               blurRadius: isSelected ? 20 : 10,
               offset: const Offset(0, 8),
             ),
@@ -222,7 +223,7 @@ class _AccountTypeSelectionPageState extends State<AccountTypeSelectionPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
@@ -288,10 +289,10 @@ class _AccountTypeSelectionPageState extends State<AccountTypeSelectionPage> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
+                          color: color.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: color.withOpacity(0.3),
+                            color: color.withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(

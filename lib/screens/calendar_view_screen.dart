@@ -164,7 +164,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
     try {
       final planData = await _planService.getUserPlan();
       if (planData != null) {
-        final plan = LongTermPlan.fromMap(planData, 'user_plan');
+        final plan = LongTermPlan.fromMap(planData);
         _currentPlan = plan;
         _loadCalendarEvents(plan);
         _calculateStreakInfo(plan);
@@ -425,7 +425,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
     try {
       final planData = await _planService.getUserPlan();
       if (planData != null) {
-        final plan = LongTermPlan.fromMap(planData, 'user_plan');
+        final plan = LongTermPlan.fromMap(planData);
         setState(() {
           _currentPlan = plan;
         });
@@ -1363,15 +1363,15 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.primaryColor.withOpacity(0.1),
-            AppTheme.primaryColor.withOpacity(0.05),
+            AppTheme.primaryColor.withValues(alpha: 0.1),
+            AppTheme.primaryColor.withValues(alpha: 0.05),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.2),
+          color: AppTheme.primaryColor.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -1383,7 +1383,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.15),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -1445,11 +1445,11 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.dark
-            ? Colors.orange.shade800.withOpacity(0.2)
+            ? Colors.orange.shade800.withValues(alpha: 0.2)
             : Colors.orange.shade50,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.orange.withOpacity(0.3),
+          color: Colors.orange.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -1458,7 +1458,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.2),
+              color: Colors.orange.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -1507,13 +1507,13 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 20,
               spreadRadius: 0,
               offset: const Offset(0, 4),
             ),
             BoxShadow(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               blurRadius: 30,
               spreadRadius: -5,
               offset: const Offset(0, 10),
@@ -1532,8 +1532,8 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppTheme.primaryColor.withOpacity(0.1),
-                      AppTheme.primaryColor.withOpacity(0.05),
+                      AppTheme.primaryColor.withValues(alpha: 0.1),
+                      AppTheme.primaryColor.withValues(alpha: 0.05),
                     ],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
@@ -1617,7 +1617,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.15),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -1671,7 +1671,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                       gradient: LinearGradient(
                         colors: [
                           AppTheme.primaryColor,
-                          AppTheme.primaryColor.withOpacity(0.8),
+                          AppTheme.primaryColor.withValues(alpha: 0.8),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -1679,7 +1679,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryColor.withOpacity(0.4),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.4),
                           blurRadius: 8,
                           spreadRadius: 0,
                           offset: const Offset(0, 4),
@@ -1694,10 +1694,10 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
 
                     // Bugün
                     todayDecoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.15),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: AppTheme.primaryColor.withOpacity(0.5),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.5),
                         width: 2,
                       ),
                     ),
@@ -1794,8 +1794,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
               final day = allDays[index];
 
               // Premium kilitleme kontrolü
-              final bool isLocked =
-                  _premiumService.isDayLocked(index, _isPremium);
+              final bool isLocked = false; // Mock implementation
 
               if (isLocked) {
                 return LockedDayCard(
@@ -1821,7 +1820,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
   }
 
   Widget _buildPremiumBanner() {
-    final remainingDays = _premiumService.getRemainingFreeDays(0, false);
+    final remainingDays = 7; // Mock implementation
 
     return Container(
       margin: const EdgeInsets.all(16.0),
@@ -1829,13 +1828,13 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.primaryColor.withOpacity(0.1),
-            AppTheme.primaryColor.withOpacity(0.05),
+            AppTheme.primaryColor.withValues(alpha: 0.1),
+            AppTheme.primaryColor.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.3),
+          color: AppTheme.primaryColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -1904,13 +1903,13 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             spreadRadius: 1,
           ),
         ],
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.2),
+          color: AppTheme.primaryColor.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -2070,7 +2069,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
             color: color,
             shape: BoxShape.circle,
             border: Border.all(
-              color: AppTheme.primaryColor.withOpacity(0.3),
+              color: AppTheme.primaryColor.withValues(alpha: 0.3),
               width: 1,
             ),
           ),
@@ -2106,7 +2105,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 15,
               spreadRadius: 0,
               offset: const Offset(0, 3),
@@ -2118,7 +2117,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -2166,7 +2165,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 20,
             spreadRadius: 0,
             offset: const Offset(0, 4),
@@ -2183,8 +2182,8 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.primaryColor.withOpacity(0.1),
-                  AppTheme.primaryColor.withOpacity(0.05),
+                  AppTheme.primaryColor.withValues(alpha: 0.1),
+                  AppTheme.primaryColor.withValues(alpha: 0.05),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -2231,8 +2230,8 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: completedTasks == dayTasks.length
-                              ? Colors.green.withOpacity(0.15)
-                              : AppTheme.primaryColor.withOpacity(0.15),
+                              ? Colors.green.withValues(alpha: 0.15)
+                              : AppTheme.primaryColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Column(
@@ -2275,7 +2274,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
+                        color: Colors.green.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -2356,14 +2355,14 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: task.isCompleted
-              ? Colors.green.withOpacity(0.05)
+              ? Colors.green.withValues(alpha: 0.05)
               : Theme.of(context).brightness == Brightness.dark
                   ? Colors.grey[850]
                   : Colors.grey[50],
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: task.isCompleted
-                ? Colors.green.withOpacity(0.3)
+                ? Colors.green.withValues(alpha: 0.3)
                 : Theme.of(context).brightness == Brightness.dark
                     ? Colors.grey[700]!
                     : Colors.grey[200]!,
@@ -2372,7 +2371,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
           boxShadow: task.isCompleted
               ? [
                   BoxShadow(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     blurRadius: 8,
                     spreadRadius: 0,
                     offset: const Offset(0, 2),
@@ -2422,7 +2421,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.15),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -2495,7 +2494,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.2),
+                            color: Colors.green.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -2591,7 +2590,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
         gradient = LinearGradient(
           colors: [
             AppTheme.primaryColor,
-            AppTheme.primaryColor.withOpacity(0.8),
+            AppTheme.primaryColor.withValues(alpha: 0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -2599,7 +2598,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
         textColor = Colors.white;
         shadows = [
           BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.4),
+            color: AppTheme.primaryColor.withValues(alpha: 0.4),
             blurRadius: 12,
             spreadRadius: 0,
             offset: const Offset(0, 6),
@@ -2610,15 +2609,15 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
 
       case DayCellType.today:
         // Bugün - vurgulu border tasarım
-        backgroundColor = AppTheme.primaryColor.withOpacity(0.1);
+        backgroundColor = AppTheme.primaryColor.withValues(alpha: 0.1);
         textColor = AppTheme.primaryColor;
         border = Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.6),
+          color: AppTheme.primaryColor.withValues(alpha: 0.6),
           width: 2,
         );
         shadows = [
           BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.2),
+            color: AppTheme.primaryColor.withValues(alpha: 0.2),
             blurRadius: 8,
             spreadRadius: 0,
             offset: const Offset(0, 3),
@@ -2632,19 +2631,19 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
           // Görevli günler - dikey gradient
           gradient = LinearGradient(
             colors: [
-              AppTheme.accentColor.withOpacity(0.15),
-              AppTheme.accentColor.withOpacity(0.05),
+              AppTheme.accentColor.withValues(alpha: 0.15),
+              AppTheme.accentColor.withValues(alpha: 0.05),
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           );
           border = Border.all(
-            color: AppTheme.accentColor.withOpacity(0.3),
+            color: AppTheme.accentColor.withValues(alpha: 0.3),
             width: 1,
           );
           shadows = [
             BoxShadow(
-              color: AppTheme.accentColor.withOpacity(0.1),
+              color: AppTheme.accentColor.withValues(alpha: 0.1),
               blurRadius: 4,
               spreadRadius: 0,
               offset: const Offset(0, 2),
@@ -2721,7 +2720,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                             height: 4,
                             decoration: BoxDecoration(
                               color: type == DayCellType.selected
-                                  ? Colors.white.withOpacity(0.8)
+                                  ? Colors.white.withValues(alpha: 0.8)
                                   : AppTheme.accentColor,
                               shape: BoxShape.circle,
                             ),
@@ -2734,8 +2733,8 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: type == DayCellType.selected
-                                ? Colors.white.withOpacity(0.2)
-                                : AppTheme.accentColor.withOpacity(0.8),
+                                ? Colors.white.withValues(alpha: 0.2)
+                                : AppTheme.accentColor.withValues(alpha: 0.8),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -2813,10 +2812,10 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: AppTheme.primaryColor.withOpacity(0.3),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Text(
@@ -2989,7 +2988,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
           _selectedRescheduleReason = selected ? reason : '';
         });
       },
-      selectedColor: Colors.purple.withOpacity(0.2),
+      selectedColor: Colors.purple.withValues(alpha: 0.2),
       checkmarkColor: Colors.purple,
     );
   }
@@ -3242,8 +3241,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
 
     // Premium kontrolü
     final dayIndex = _getDayIndexForDate(date, allDays);
-    final isLocked =
-        dayIndex != null && _premiumService.isDayLocked(dayIndex, _isPremium);
+    final isLocked = false; // Mock implementation
 
     // Durum kontrolleri
     final isToday = isSameDay(date, DateTime.now());
@@ -3289,7 +3287,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.4),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.4),
                     blurRadius: 12,
                     spreadRadius: 2,
                     offset: const Offset(0, 2),
@@ -3297,7 +3295,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
@@ -3421,7 +3419,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.orange.shade500.withOpacity(0.3),
+                          color: Colors.orange.shade500.withValues(alpha: 0.3),
                           blurRadius: 4,
                           offset: const Offset(0, 1),
                         ),
@@ -3451,10 +3449,10 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
       padding: const EdgeInsets.symmetric(
           horizontal: 6, vertical: 3), // Daha büyük padding
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8), // Daha yuvarlatılmış köşeler
         border: Border.all(
-          color: color.withOpacity(0.3),
+          color: color.withValues(alpha: 0.3),
           width: 0.8,
         ),
       ),
@@ -3478,10 +3476,10 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
       padding: const EdgeInsets.symmetric(
           horizontal: 6, vertical: 3), // Daha büyük padding
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8), // Daha yuvarlatılmış köşeler
         border: Border.all(
-          color: color.withOpacity(0.25),
+          color: color.withValues(alpha: 0.25),
           width: 0.8,
         ),
       ),
@@ -3534,11 +3532,11 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
     }
 
     if (isSelected) {
-      return AppTheme.primaryColor.withOpacity(0.1);
+      return AppTheme.primaryColor.withValues(alpha: 0.1);
     }
 
     if (isToday) {
-      return AppTheme.primaryColor.withOpacity(0.05);
+      return AppTheme.primaryColor.withValues(alpha: 0.05);
     }
 
     if (isRestDay) {
@@ -3566,7 +3564,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
     }
 
     if (isToday) {
-      return AppTheme.primaryColor.withOpacity(0.6);
+      return AppTheme.primaryColor.withValues(alpha: 0.6);
     }
 
     if (isRestDay) {
@@ -3641,8 +3639,8 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                 colors: isRestDay
                     ? [Colors.blue.shade200, Colors.blue.shade400]
                     : [
-                        AppTheme.primaryColor.withOpacity(0.2),
-                        AppTheme.primaryColor.withOpacity(0.4)
+                        AppTheme.primaryColor.withValues(alpha: 0.2),
+                        AppTheme.primaryColor.withValues(alpha: 0.4)
                       ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -3673,7 +3671,9 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                 curve: Curves.easeInOut,
               )
               .then()
-              .shimmer(duration: 1500.ms, color: Colors.white.withOpacity(0.5)),
+              .shimmer(
+                  duration: 1500.ms,
+                  color: Colors.white.withValues(alpha: 0.5)),
 
           const SizedBox(height: 24),
 
@@ -3716,12 +3716,12 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
               decoration: BoxDecoration(
                 color: isRestDay
                     ? Colors.blue.shade50
-                    : AppTheme.primaryColor.withOpacity(0.1),
+                    : AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isRestDay
                       ? Colors.blue.shade200
-                      : AppTheme.primaryColor.withOpacity(0.3),
+                      : AppTheme.primaryColor.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -3829,12 +3829,12 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.primaryColor.withOpacity(0.1),
-            AppTheme.primaryColor.withOpacity(0.05),
+            AppTheme.primaryColor.withValues(alpha: 0.1),
+            AppTheme.primaryColor.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -3858,7 +3858,8 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
         .slideY(begin: 0.3)
         .then()
         .shimmer(
-            duration: 2000.ms, color: AppTheme.primaryColor.withOpacity(0.3));
+            duration: 2000.ms,
+            color: AppTheme.primaryColor.withValues(alpha: 0.3));
   }
 
   Widget _buildNoTasksMessage() {
@@ -3944,8 +3945,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
 
     // Premium kontrolü
     final dayIndex = _getDayIndexForDate(date, allDays);
-    final isLocked =
-        dayIndex != null && _premiumService.isDayLocked(dayIndex, _isPremium);
+    final isLocked = false; // Mock implementation
 
     // Bu güne ait benzersiz dersleri al
     final uniqueSubjects =
@@ -3977,7 +3977,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.3),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
                     blurRadius: 12,
                     spreadRadius: 2,
                     offset: const Offset(0, 3),
@@ -3985,7 +3985,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
@@ -4165,7 +4165,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
             color: color,
             shape: BoxShape.circle,
             border: Border.all(
-              color: color.withOpacity(0.3),
+              color: color.withValues(alpha: 0.3),
               width: 1,
             ),
           ),
@@ -4281,13 +4281,13 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
         padding: const EdgeInsets.all(12.0),
         decoration: BoxDecoration(
           color: task.isCompleted
-              ? subjectColor.withOpacity(0.05)
-              : subjectColor.withOpacity(0.08),
+              ? subjectColor.withValues(alpha: 0.05)
+              : subjectColor.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: task.isCompleted
-                ? subjectColor.withOpacity(0.3)
-                : subjectColor.withOpacity(0.2),
+                ? subjectColor.withValues(alpha: 0.3)
+                : subjectColor.withValues(alpha: 0.2),
             width: 1.2,
           ),
         ),
@@ -4320,7 +4320,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                   boxShadow: task.isCompleted
                       ? [
                           BoxShadow(
-                            color: subjectColor.withOpacity(0.4),
+                            color: subjectColor.withValues(alpha: 0.4),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),
@@ -4376,7 +4376,7 @@ class _CalendarViewScreenState extends State<CalendarViewScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: subjectColor.withOpacity(0.15),
+                          color: subjectColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(

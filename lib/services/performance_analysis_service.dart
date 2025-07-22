@@ -1,4 +1,5 @@
 import 'api_client.dart';
+import 'package:flutter/material.dart';
 
 class PerformanceAnalysisService {
   final ApiClient _apiClient = ApiClient();
@@ -120,5 +121,26 @@ class PerformanceAnalysisService {
     } catch (e) {
       throw Exception('Öneriler alınamadı: $e');
     }
+  }
+
+  Future<Map<String, dynamic>> getTopicConnection(String topic) async {
+    // Mock implementation
+    debugPrint('Getting topic connection for: $topic');
+    return {
+      'topic': topic,
+      'connections': [
+        {'topic': 'Related Topic 1', 'strength': 0.8},
+        {'topic': 'Related Topic 2', 'strength': 0.6},
+      ],
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> getTopicMap() async {
+    // Mock implementation
+    debugPrint('Getting topic map');
+    return [
+      {'topic': 'Algebra', 'mastery': 0.75, 'subtopics': []},
+      {'topic': 'Geometry', 'mastery': 0.5, 'subtopics': []},
+    ];
   }
 }

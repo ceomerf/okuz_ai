@@ -138,7 +138,7 @@ class _FieldSelectionPageState extends State<FieldSelectionPage> {
                   ]
                 : [
                     BoxShadow(
-                      color: Theme.of(context).shadowColor.withOpacity(0.04),
+                      color: Theme.of(context).shadowColor.withValues(alpha: 0.04),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),

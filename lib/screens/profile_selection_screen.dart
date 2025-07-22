@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../services/family_account_service.dart';
 import '../models/student_profile.dart';
+import '../models/user_account.dart';
 import '../theme/app_theme.dart';
 import 'add_student_profile_screen.dart';
 import '../widgets/main_layout.dart';
@@ -212,7 +213,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
             ),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withAlpha(26),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -229,7 +230,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                   height: 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withAlpha(26),
                     border: Border.all(
                       color: AppTheme.primaryColor,
                       width: 3,
@@ -265,7 +266,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
 
                 // Sınıf
                 Text(
-                  profile.grade,
+                  profile.grade ?? 'Sınıf belirtilmemiş',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppTheme.getSecondaryTextColor(context),
                       ),
@@ -280,8 +281,8 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     color: profile.isActive
-                        ? AppTheme.primaryColor.withOpacity(0.1)
-                        : Colors.grey.withOpacity(0.1),
+                        ? AppTheme.primaryColor.withAlpha(26)
+                        : Colors.grey.withAlpha(26),
                   ),
                   child: Text(
                     profile.isActive ? 'Aktif' : 'Pasif',
@@ -319,7 +320,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
         gradient: LinearGradient(
           colors: [
             AppTheme.primaryColor,
-            AppTheme.primaryColor.withOpacity(0.7),
+            AppTheme.primaryColor.withValues(alpha: 0.7),
           ],
         ),
       ),
@@ -345,7 +346,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
           borderRadius: BorderRadius.circular(20),
           color: Theme.of(context).cardColor,
           border: Border.all(
-            color: AppTheme.primaryColor.withOpacity(0.3),
+            color: AppTheme.primaryColor.withValues(alpha: 0.3),
             width: 2,
             style: BorderStyle.solid,
           ),
@@ -357,7 +358,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
               height: 60,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withAlpha(179),
               ),
               child: Icon(
                 Icons.add,

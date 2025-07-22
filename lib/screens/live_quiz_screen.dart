@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 import '../theme/app_theme.dart';
+import '../services/mock_database_service.dart';
 
 class LiveQuizScreen extends StatefulWidget {
   final String subject;
@@ -99,98 +100,95 @@ class _LiveQuizScreenState extends State<LiveQuizScreen>
     _typingAnimationController.repeat(reverse: true);
 
     try {
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('startSocraticDialogue');
-      final result = await callable.call({
+      final mockDbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      final result =
+          await mockDbService.callCloudFunction('startSocraticDialogue', {
         'subject': widget.subject,
         'topic': widget.topic,
-        'conversationHistory': [],
       });
 
-      if (result.data['success'] == true) {
-        final aiResponse = result.data['aiResponse'] as String;
-        final dialogueId = result.data['dialogueId'] as String;
-
+      if (result['success'] == true) {
         setState(() {
-          _dialogueId = dialogueId;
+          _dialogueId = result['dialogueId'];
           _dialogueStarted = true;
-          _messages.add(ChatMessage(
-            content: aiResponse,
-            isUser: false,
-            timestamp: DateTime.now(),
-          ));
           _isLoading = false;
         });
 
         _typingAnimationController.stop();
-        _scrollToBottom();
+        _pulseAnimationController.repeat(reverse: true);
+
+        // Add initial message
+        _addMessage(
+          'AI',
+          result['initialMessage'] ??
+              'Merhaba! ${widget.topic} konusunda size yardımcı olmaya hazırım. Hangi konuda zorlanıyorsunuz?',
+          false,
+        );
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
       _typingAnimationController.stop();
-      _showErrorSnackBar('Diyalog başlatılamadı: $e');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Diyalog başlatılamadı: $e'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
     }
   }
 
-  Future<void> _sendMessage(String message) async {
-    if (message.trim().isEmpty) return;
+  Future<void> _sendMessage() async {
+    if (_messageController.text.trim().isEmpty) return;
 
-    final userMessage = ChatMessage(
-      content: message.trim(),
-      isUser: true,
-      timestamp: DateTime.now(),
-    );
+    final message = _messageController.text.trim();
+    _messageController.clear();
+
+    _addMessage('Sen', message, true);
 
     setState(() {
-      _messages.add(userMessage);
       _isLoading = true;
-      _messageController.clear();
     });
 
-    _scrollToBottom();
     _typingAnimationController.repeat(reverse: true);
 
     try {
-      final conversationHistory = _messages
-          .map((msg) => {
-                'type': msg.isUser ? 'user' : 'ai',
-                'content': msg.content,
-                'timestamp': msg.timestamp.millisecondsSinceEpoch,
-              })
-          .toList();
-
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('startSocraticDialogue');
-      final result = await callable.call({
-        'subject': widget.subject,
-        'topic': widget.topic,
-        'conversationHistory': conversationHistory,
-        'userMessage': message.trim(),
+      final mockDbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      final result =
+          await mockDbService.callCloudFunction('startSocraticDialogue', {
+        'dialogueId': _dialogueId,
+        'message': message,
       });
 
-      if (result.data['success'] == true) {
-        final aiResponse = result.data['aiResponse'] as String;
-
+      if (result['success'] == true) {
         setState(() {
-          _messages.add(ChatMessage(
-            content: aiResponse,
-            isUser: false,
-            timestamp: DateTime.now(),
-          ));
           _isLoading = false;
         });
 
         _typingAnimationController.stop();
-        _scrollToBottom();
+
+        _addMessage(
+          'AI',
+          result['response'] ??
+              'Anlıyorum. Bu konuda daha detaylı açıklama yapabilirim.',
+          false,
+        );
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
       _typingAnimationController.stop();
-      _showErrorSnackBar('Mesaj gönderilemedi: $e');
+
+      _addMessage(
+        'AI',
+        'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.',
+        false,
+      );
     }
   }
 
@@ -221,46 +219,35 @@ class _LiveQuizScreenState extends State<LiveQuizScreen>
   }
 
   Future<void> _endDialogue() async {
-    if (_dialogueId == null || _messages.isEmpty) {
-      Navigator.pop(context);
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
+    if (_dialogueId == null) return;
 
     try {
-      final conversationHistory = _messages
-          .map((msg) => {
-                'type': msg.isUser ? 'user' : 'ai',
-                'content': msg.content,
-                'timestamp': msg.timestamp.millisecondsSinceEpoch,
-              })
-          .toList();
-
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('endSocraticDialogue');
-      final result = await callable.call({
+      final mockDbService =
+          Provider.of<MockDatabaseService>(context, listen: false);
+      await mockDbService.callCloudFunction('endSocraticDialogue', {
         'dialogueId': _dialogueId,
-        'conversationHistory': conversationHistory,
       });
 
-      if (result.data['success'] == true) {
-        final evaluation = result.data['evaluation'];
-        final xpRewarded = result.data['xpRewarded'];
-
-        Navigator.pop(context, {
-          'evaluation': evaluation,
-          'xpRewarded': xpRewarded,
-        });
-      }
+      _addMessage(
+        'AI',
+        'Diyalog sonlandırıldı. Öğrendiklerinizi pekiştirmek için pratik yapmayı unutmayın!',
+        false,
+      );
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      _showErrorSnackBar('Diyalog sonlandırılamadı: $e');
+      print('Error ending dialogue: $e');
     }
+  }
+
+  void _addMessage(String sender, String content, bool isUser) {
+    final message = ChatMessage(
+      content: content,
+      isUser: isUser,
+      timestamp: DateTime.now(),
+    );
+    setState(() {
+      _messages.add(message);
+    });
+    _scrollToBottom();
   }
 
   void _scrollToBottom() {
@@ -309,7 +296,7 @@ class _LiveQuizScreenState extends State<LiveQuizScreen>
             Text(
               '${widget.subject} • ${widget.topic}',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -331,7 +318,7 @@ class _LiveQuizScreenState extends State<LiveQuizScreen>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppTheme.primaryColor.withOpacity(0.05),
+              AppTheme.primaryColor.withValues(alpha: 0.05),
               theme.scaffoldBackgroundColor,
             ],
           ),
@@ -363,7 +350,7 @@ class _LiveQuizScreenState extends State<LiveQuizScreen>
                 color: theme.cardColor,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -2),
                   ),
@@ -416,7 +403,7 @@ class _LiveQuizScreenState extends State<LiveQuizScreen>
                         maxLines: 3,
                         minLines: 1,
                         textInputAction: TextInputAction.send,
-                        onSubmitted: _sendMessage,
+                        onSubmitted: (text) => _sendMessage(),
                         enabled: !_isLoading && _dialogueStarted,
                       ),
                     ),
@@ -433,7 +420,7 @@ class _LiveQuizScreenState extends State<LiveQuizScreen>
                     child: IconButton(
                       icon: const Icon(Icons.send, color: Colors.white),
                       onPressed: (!_isLoading && _dialogueStarted)
-                          ? () => _sendMessage(_messageController.text)
+                          ? () => _sendMessage()
                           : null,
                     ),
                   ),
@@ -477,7 +464,7 @@ class _LiveQuizScreenState extends State<LiveQuizScreen>
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 5,
                     offset: const Offset(0, 2),
                   ),
@@ -498,8 +485,8 @@ class _LiveQuizScreenState extends State<LiveQuizScreen>
                     _formatTime(message.timestamp),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: isUser
-                          ? Colors.white.withOpacity(0.7)
-                          : theme.colorScheme.onSurface.withOpacity(0.5),
+                          ? Colors.white.withValues(alpha: 0.7)
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                 ],
@@ -573,7 +560,7 @@ class _LiveQuizScreenState extends State<LiveQuizScreen>
       width: 8,
       height: 8,
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(opacity),
+        color: AppTheme.primaryColor.withValues(alpha: opacity),
         shape: BoxShape.circle,
       ),
     );

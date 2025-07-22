@@ -49,7 +49,7 @@ class _LearningStylePageState extends State<LearningStylePage> {
   @override
   void initState() {
     super.initState();
-    _selectedStyle = widget.onboardingData.learningStyle.isNotEmpty
+    _selectedStyle = widget.onboardingData.learningStyle?.isNotEmpty == true
         ? widget.onboardingData.learningStyle
         : null;
   }

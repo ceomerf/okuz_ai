@@ -36,7 +36,7 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
   @override
   void initState() {
     super.initState();
-    _dailyGoal = widget.onboardingData.dailyGoalInHours;
+    _dailyGoal = widget.onboardingData.dailyGoalInHours ?? 2.0;
     _selectedDays = widget.onboardingData.workDays.toSet();
   }
 

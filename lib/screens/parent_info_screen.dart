@@ -91,13 +91,13 @@ class _ParentInfoScreenState extends State<ParentInfoScreen> {
               end: Alignment.bottomRight,
               colors: [
                 primaryColor,
-                primaryColor.withOpacity(0.8),
+                primaryColor.withValues(alpha: 0.8),
               ],
             ),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: primaryColor.withOpacity(0.3),
+                color: primaryColor.withValues(alpha: 0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -137,7 +137,7 @@ class _ParentInfoScreenState extends State<ParentInfoScreen> {
 
     return Card(
       elevation: isDark ? 8 : 4,
-      shadowColor: primaryColor.withOpacity(0.2),
+      shadowColor: primaryColor.withValues(alpha: 0.2),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
@@ -146,7 +146,7 @@ class _ParentInfoScreenState extends State<ParentInfoScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: primaryColor.withOpacity(0.1),
+            color: primaryColor.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
@@ -231,7 +231,7 @@ class _ParentInfoScreenState extends State<ParentInfoScreen> {
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 8,
-          shadowColor: primaryColor.withOpacity(0.4),
+          shadowColor: primaryColor.withValues(alpha: 0.4),
         ),
         child: _isLoading
             ? const CircularProgressIndicator(color: Colors.white)

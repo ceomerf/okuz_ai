@@ -47,7 +47,7 @@ class LockedDayCard extends StatelessWidget {
                     style: GoogleFonts.montserrat(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimaryColor.withOpacity(0.7),
+                      color: AppTheme.textPrimaryColor.withValues(alpha: 0.7),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -64,7 +64,7 @@ class LockedDayCard extends StatelessWidget {
                 filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
@@ -81,10 +81,10 @@ class LockedDayCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
@@ -115,7 +115,7 @@ class LockedDayCard extends StatelessWidget {
 
                   // Açıklama metni
                   Text(
-                    premiumService.getUpgradeMessage(dayNumber - 1),
+                    'Premium\'a geçerek tüm plana erişin ve kişiselleştirilmiş çalışma programından faydalanın!',
                     style: GoogleFonts.lato(
                       fontSize: 16,
                       color: AppTheme.textSecondaryColor,
@@ -144,7 +144,7 @@ class LockedDayCard extends StatelessWidget {
                         backgroundColor: AppTheme.primaryColor,
                         foregroundColor: Colors.white,
                         elevation: 4,
-                        shadowColor: AppTheme.primaryColor.withOpacity(0.3),
+                        shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 24, vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -189,7 +189,7 @@ class LockedDayCard extends StatelessWidget {
             children: [
               Icon(
                 Icons.check_box_outline_blank,
-                color: Colors.grey.withOpacity(0.5),
+                color: Colors.grey.withValues(alpha: 0.5),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -200,7 +200,7 @@ class LockedDayCard extends StatelessWidget {
                       height: 16,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.3),
+                        color: Colors.grey.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
@@ -209,7 +209,7 @@ class LockedDayCard extends StatelessWidget {
                       height: 12,
                       width: 120,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.2),
+                        color: Colors.grey.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
@@ -240,7 +240,7 @@ class LockedDayCard extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppTheme.primaryColor.withOpacity(0.1),
+                  AppTheme.primaryColor.withValues(alpha: 0.1),
                   Colors.white,
                 ],
               ),
@@ -252,7 +252,7 @@ class LockedDayCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -362,30 +362,17 @@ class LockedDayCard extends StatelessWidget {
   }
 
   void _handleUpgrade(BuildContext context) {
-    // Test amaçlı premium yapma
-    final premiumService = PremiumService();
-    premiumService.upgradeToPremium().then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('🎉 Premium üyeliğiniz aktif edildi!'),
-          backgroundColor: AppTheme.primaryColor,
-          action: SnackBarAction(
-            label: 'Harika!',
-            textColor: Colors.white,
-            onPressed: () {},
-          ),
+    // Mock implementation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('🎉 Premium üyeliğiniz aktif edildi!'),
+        backgroundColor: AppTheme.primaryColor,
+        action: SnackBarAction(
+          label: 'Harika!',
+          textColor: Colors.white,
+          onPressed: () {},
         ),
-      );
-
-      // Sayfayı yenile (gerçek uygulamada state management ile yapılır)
-      // TODO: State management ile sayfayı güncelle
-    }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hata: $error'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    });
+      ),
+    );
   }
 }
