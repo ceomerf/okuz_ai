@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { SmartToolsController } from './controllers/smart-tools.controller';
 import { SmartToolsService } from './services/smart-tools.service';
+import { HealthController } from './controllers/health.controller';
 
 @Module({
   imports: [
@@ -10,7 +11,7 @@ import { SmartToolsService } from './services/smart-tools.service';
       envFilePath: '.env',
     }),
   ],
-  controllers: [SmartToolsController],
+  controllers: [SmartToolsController, HealthController],
   providers: [SmartToolsService],
 })
 export class AppModule {}

@@ -35,6 +35,7 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`🚀 Okuz AI Backend running on port ${port}`);
   console.log(`📚 Swagger documentation available at http://localhost:${port}/api`);
+  console.log(`🏥 Health check available at http://localhost:${port}/health`);
 }
 
 bootstrap();
