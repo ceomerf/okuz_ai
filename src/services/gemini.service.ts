@@ -8,8 +8,13 @@ export class GeminiService {
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY || 'your-gemini-api-key';
+    console.log('🔑 Gemini API Key Debug:');
+    console.log(`   API Key exists: ${apiKey !== 'your-gemini-api-key'}`);
+    console.log(`   API Key length: ${apiKey.length}`);
+    console.log(`   API Key preview: ${apiKey.substring(0, 20)}...`);
+    
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
   }
 
   async generateContent(prompt: string): Promise<string> {
@@ -20,6 +25,26 @@ export class GeminiService {
     } catch (error) {
       console.error('Gemini API Error:', error);
       return 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
+    }
+  }
+
+  async generateContentStream(prompt: string): Promise<AsyncGenerator<string>> {
+    try {
+      const result = await this.model.generateContentStream(prompt);
+      
+      return (async function* () {
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          if (chunkText) {
+            yield chunkText;
+          }
+        }
+      })();
+    } catch (error) {
+      console.error('Gemini Stream API Error:', error);
+      return (async function* () {
+        yield 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
+      })();
     }
   }
 

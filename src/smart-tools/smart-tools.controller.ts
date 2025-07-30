@@ -1,7 +1,8 @@
-import { Controller, Post, Get, Body, UseGuards, Request, Param } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, Request, Param, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SmartToolsService } from './smart-tools.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Response } from 'express';
 
 @ApiTags('Smart Tools')
 @Controller('smart-tools')
@@ -9,6 +10,15 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @ApiBearerAuth()
 export class SmartToolsController {
   constructor(private readonly smartToolsService: SmartToolsService) {}
+
+  @Post('quick-chat-stream')
+  @ApiOperation({ summary: 'Quick Chat Stream - Hızlı sohbet akışı' })
+  async quickChatStream(
+    @Body() data: { message: string; subject?: string; grade?: string },
+    @Res() res: Response
+  ) {
+    return this.smartToolsService.quickChatStream(data, res);
+  }
 
   @Post('sos-question-solver')
   @ApiOperation({ summary: 'SOS Question Solver - Acil soru çözümü' })
