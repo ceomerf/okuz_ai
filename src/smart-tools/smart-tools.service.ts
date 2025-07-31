@@ -95,12 +95,16 @@ export class SmartToolsService {
 
   async solveQuestion(data: SolveQuestionData) {
     try {
+      this.logger.log(`Gelen data: ${JSON.stringify(data)}`);
+      
       // userId kontrolü
       if (!data.userId) {
         this.logger.warn('userId parametresi eksik, anonim kullanım olarak işaretleniyor');
         // Anonim kullanım için ToolUsage kaydı oluşturmuyoruz
         return await this._processQuestionWithoutUser(data);
       }
+
+      this.logger.log(`userId bulundu: ${data.userId}`);
 
       // Kullanıcının varlığını kontrol et
       const user = await this.prisma.user.findUnique({
@@ -169,13 +173,18 @@ export class SmartToolsService {
         };
       }
 
-      // ToolUsage kaydını oluştur
-      await this.prisma.toolUsage.create({
-        data: {
-          userId: data.userId,
-          toolName: 'solve-question',
-        },
-      });
+      // ToolUsage kaydını oluştur (sadece userId varsa)
+      if (data.userId) {
+        await this.prisma.toolUsage.create({
+          data: {
+            userId: data.userId,
+            toolName: 'solve-question',
+          },
+        });
+        this.logger.log(`ToolUsage kaydı oluşturuldu - UserId: ${data.userId}`);
+      } else {
+        this.logger.warn('userId olmadığı için ToolUsage kaydı oluşturulmadı');
+      }
 
       this.logger.log(`Soru çözme tamamlandı - Kullanıcı: ${user.email}, Konu: ${data.subject}`);
 
