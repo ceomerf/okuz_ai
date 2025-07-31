@@ -62,16 +62,16 @@ export class SmartToolsService {
         content: { followUpQuestions } 
       })}\n\n`);
 
-      // Save usage statistics
-      await this.prisma.toolUsage.create({
-        data: {
-          toolName: 'quick-chat-stream',
-          userId: 'system', // TODO: Gerçek user ID
-          input: data.message,
-          output: fullResponse,
-          metadata: { subject: data.subject, grade: data.grade }
-        }
-      });
+      // TODO: Save usage statistics - şimdilik kaldırıldı
+      // await this.prisma.toolUsage.create({
+      //   data: {
+      //     toolName: 'quick-chat-stream',
+      //     userId: 'system', // TODO: Gerçek user ID
+      //     input: data.message,
+      //     output: fullResponse,
+      //     metadata: { subject: data.subject, grade: data.grade }
+      //   }
+      // });
 
       res.write(`data: ${JSON.stringify({ type: 'STATUS', content: 'Tamamlandı' })}\n\n`);
       res.end();
@@ -139,16 +139,16 @@ export class SmartToolsService {
         };
       }
       
-      // Kullanım istatistiğini kaydet
-      await this.prisma.toolUsage.create({
-        data: {
-          toolName: 'sos-question-solver',
-          userId: 'system', // TODO: Gerçek user ID
-          input: questionContent,
-          output: response,
-          metadata: { subject: data.subject, grade: grade }
-        }
-      });
+      // TODO: Kullanım istatistiğini kaydet - şimdilik kaldırıldı
+      // await this.prisma.toolUsage.create({
+      //   data: {
+      //     toolName: 'sos-question-solver',
+      //     userId: 'system', // TODO: Gerçek user ID
+      //     input: questionContent,
+      //     output: response,
+      //     metadata: { subject: data.subject, grade: grade }
+      //   }
+      // });
 
       return {
         success: true,
