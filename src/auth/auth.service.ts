@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   async register(registerDto: { email: string; password: string; name: string; accountType?: string }) {
@@ -46,11 +48,14 @@ export class AuthService {
         },
       });
 
+      // Trial başlat
+      await this.subscriptionService.startTrial(user.id);
+
       // JWT token oluşturma
       const payload = { email: user.email, sub: user.id, role: user.role };
       const access_token = this.jwtService.sign(payload);
 
-      console.log('✅ User registered successfully:', email, 'Role:', role);
+      console.log('✅ User registered successfully:', email, 'Role:', role, 'Trial started');
 
       return {
         access_token,

@@ -149,69 +149,126 @@ export class SmartToolsService {
   }
 
   async generateFlashcards(data: { topic: string; count: number }) {
-    const prompt = `
-    "${data.topic}" konusu için ${data.count} adet flashcard oluştur.
-    
-    Her flashcard için:
-    - Ön yüz: Soru/Kavram
-    - Arka yüz: Cevap/Açıklama
-    
-    Format:
-    {
-      "flashcards": [
-        {
-          "front": "Soru/Kavram",
-          "back": "Cevap/Açıklama",
-          "difficulty": "kolay/orta/zor"
-        }
-      ]
-    }
-    `;
+    try {
+      const prompt = `
+      "${data.topic}" konusu için ${data.count} adet flashcard oluştur.
+      
+      Her flashcard için:
+      - Ön yüz: Soru/Kavram
+      - Arka yüz: Cevap/Açıklama
+      
+      Format:
+      {
+        "flashcards": [
+          {
+            "front": "Soru/Kavram",
+            "back": "Cevap/Açıklama",
+            "difficulty": "kolay/orta/zor"
+          }
+        ]
+      }
+      `;
 
-    const response = await this.geminiService.generateContent(prompt);
-    
-    return {
-      success: true,
-      topic: data.topic,
-      count: data.count,
-      flashcards: JSON.parse(response)
-    };
+      const response = await this.geminiService.generateContent(prompt);
+      
+      let flashcards;
+      try {
+        flashcards = JSON.parse(response);
+      } catch (parseError) {
+        console.error('Flashcards JSON parse hatası:', parseError);
+        flashcards = {
+          flashcards: [
+            {
+              front: `${data.topic} nedir?`,
+              back: `${data.topic} konusu hakkında temel bilgi`,
+              difficulty: "kolay"
+            },
+            {
+              front: `${data.topic} nasıl uygulanır?`,
+              back: `${data.topic} konusunun pratik uygulamaları`,
+              difficulty: "orta"
+            }
+          ]
+        };
+      }
+      
+      return {
+        success: true,
+        topic: data.topic,
+        count: data.count,
+        flashcards: flashcards
+      };
+    } catch (error) {
+      console.error('Flashcards oluşturma hatası:', error);
+      throw new Error('Flashcards oluşturulamadı');
+    }
   }
 
   async generateConceptMap(data: { topic: string; connections: string[] }) {
-    const prompt = `
-    "${data.topic}" konusu için kavram haritası oluştur.
-    
-    Bağlantılar: ${data.connections.join(', ')}
-    
-    Format:
-    {
-      "centralConcept": "${data.topic}",
-      "concepts": [
-        {
-          "name": "Kavram adı",
-          "description": "Açıklama",
-          "connections": ["bağlantı1", "bağlantı2"],
-          "importance": "yüksek/orta/düşük"
-        }
-      ],
-      "relationships": [
-        {
-          "from": "kavram1",
-          "to": "kavram2",
-          "type": "bağlantı türü",
-          "description": "açıklama"
-        }
-      ]
-    }
-    `;
+    try {
+      const prompt = `
+      "${data.topic}" konusu için kavram haritası oluştur.
+      
+      Bağlantılar: ${data.connections.join(', ')}
+      
+      Format:
+      {
+        "centralConcept": "${data.topic}",
+        "concepts": [
+          {
+            "name": "Kavram adı",
+            "description": "Açıklama",
+            "connections": ["bağlantı1", "bağlantı2"],
+            "importance": "yüksek/orta/düşük"
+          }
+        ],
+        "relationships": [
+          {
+            "from": "kavram1",
+            "to": "kavram2",
+            "type": "bağlantı türü",
+            "description": "açıklama"
+          }
+        ]
+      }
+      `;
 
-    const response = await this.geminiService.generateContent(prompt);
-    
-    return {
-      success: true,
-      conceptMap: JSON.parse(response)
-    };
+      const response = await this.geminiService.generateContent(prompt);
+      
+      let conceptMap;
+      try {
+        conceptMap = JSON.parse(response);
+      } catch (parseError) {
+        console.error('Concept map JSON parse hatası:', parseError);
+        conceptMap = {
+          centralConcept: data.topic,
+          concepts: [
+            {
+              name: data.topic,
+              description: `${data.topic} konusunun temel kavramları`,
+              connections: data.connections,
+              importance: "yüksek"
+            }
+          ],
+          relationships: [
+            {
+              from: data.topic,
+              to: data.connections[0] || "Temel Kavram",
+              type: "bağlantı",
+              description: "Temel bağlantı"
+            }
+          ]
+        };
+      }
+      
+      return {
+        success: true,
+        conceptMap: conceptMap
+      };
+    } catch (error) {
+      console.error('Concept map oluşturma hatası:', error);
+      throw new Error('Concept map oluşturulamadı');
+    }
   }
 
   async feynmanCycle(data: { topic: string; explanation: string }) {
@@ -275,143 +332,277 @@ export class SmartToolsService {
   }
 
   async generateLiveQuiz(data: { topic: string; difficulty: string; count: number }) {
-    const prompt = `
-    "${data.topic}" konusu için ${data.count} adet ${data.difficulty} zorlukta soru oluştur.
-    
-    Format:
-    {
-      "quiz": {
-        "topic": "${data.topic}",
-        "difficulty": "${data.difficulty}",
-        "questions": [
-          {
-            "question": "Soru metni",
-            "options": ["A", "B", "C", "D"],
-            "correctAnswer": "A",
-            "explanation": "Açıklama",
-            "timeLimit": 60
-          }
-        ]
+    try {
+      const prompt = `
+      "${data.topic}" konusu için ${data.count} adet ${data.difficulty} zorlukta soru oluştur.
+      
+      Format:
+      {
+        "quiz": {
+          "topic": "${data.topic}",
+          "difficulty": "${data.difficulty}",
+          "questions": [
+            {
+              "question": "Soru metni",
+              "options": ["A", "B", "C", "D"],
+              "correctAnswer": "A",
+              "explanation": "Açıklama",
+              "timeLimit": 60
+            }
+          ]
+        }
       }
-    }
-    `;
+      `;
 
-    const response = await this.geminiService.generateContent(prompt);
-    
-    return {
-      success: true,
-      quiz: JSON.parse(response)
-    };
-  }
-
-  async examSimulator(data: { subject: string; grade: number; duration: number }) {
-    const prompt = `
-    ${data.grade}. sınıf ${data.subject} dersi için ${data.duration} dakikalık sınav simülatörü oluştur.
-    
-    Format:
-    {
-      "exam": {
-        "subject": "${data.subject}",
-        "grade": ${data.grade},
-        "duration": ${data.duration},
-        "totalQuestions": 20,
-        "sections": [
-          {
-            "name": "Bölüm 1",
-            "questions": [
+      const response = await this.geminiService.generateContent(prompt);
+      
+      let quiz;
+      try {
+        quiz = JSON.parse(response);
+      } catch (parseError) {
+        console.error('Live quiz JSON parse hatası:', parseError);
+        quiz = {
+          quiz: {
+            topic: data.topic,
+            difficulty: data.difficulty,
+            questions: [
               {
-                "question": "Soru",
-                "options": ["A", "B", "C", "D"],
-                "correctAnswer": "A",
-                "points": 5
+                question: `${data.topic} konusu hakkında temel soru`,
+                options: ["A", "B", "C", "D"],
+                correctAnswer: "A",
+                explanation: "Temel açıklama",
+                timeLimit: 60
               }
             ]
           }
-        ]
+        };
       }
+      
+      return {
+        success: true,
+        quiz: quiz
+      };
+    } catch (error) {
+      console.error('Live quiz oluşturma hatası:', error);
+      throw new Error('Live quiz oluşturulamadı');
     }
-    `;
+  }
 
-    const response = await this.geminiService.generateContent(prompt);
-    
-    return {
-      success: true,
-      exam: JSON.parse(response)
-    };
+  async examSimulator(data: { subject: string; grade: number; duration: number }) {
+    try {
+      const prompt = `
+      ${data.grade}. sınıf ${data.subject} dersi için ${data.duration} dakikalık sınav simülatörü oluştur.
+      
+      Format:
+      {
+        "exam": {
+          "subject": "${data.subject}",
+          "grade": ${data.grade},
+          "duration": ${data.duration},
+          "totalQuestions": 20,
+          "sections": [
+            {
+              "name": "Bölüm 1",
+              "questions": [
+                {
+                  "question": "Soru",
+                  "options": ["A", "B", "C", "D"],
+                  "correctAnswer": "A",
+                  "points": 5
+                }
+              ]
+            }
+          ]
+        }
+      }
+      `;
+
+      const response = await this.geminiService.generateContent(prompt);
+      
+      let exam;
+      try {
+        exam = JSON.parse(response);
+      } catch (parseError) {
+        console.error('Exam simulator JSON parse hatası:', parseError);
+        exam = {
+          exam: {
+            subject: data.subject,
+            grade: data.grade,
+            duration: data.duration,
+            totalQuestions: 20,
+            sections: [
+              {
+                name: "Bölüm 1",
+                questions: [
+                  {
+                    question: `${data.subject} dersi hakkında temel soru`,
+                    options: ["A", "B", "C", "D"],
+                    correctAnswer: "A",
+                    points: 5
+                  }
+                ]
+              }
+            ]
+          }
+        };
+      }
+      
+      return {
+        success: true,
+        exam: exam
+      };
+    } catch (error) {
+      console.error('Exam simulator oluşturma hatası:', error);
+      throw new Error('Exam simulator oluşturulamadı');
+    }
   }
 
   async generateLearningPath(data: { topic: string; level: string; goals: string[] }) {
-    const prompt = `
-    "${data.topic}" konusu için ${data.level} seviyesinde öğrenme yolu oluştur.
-    
-    Hedefler: ${data.goals.join(', ')}
-    
-    Format:
-    {
-      "learningPath": {
-        "topic": "${data.topic}",
-        "level": "${data.level}",
-        "goals": ${JSON.stringify(data.goals)},
-        "steps": [
-          {
-            "step": 1,
-            "title": "Adım başlığı",
-            "description": "Açıklama",
-            "resources": ["kaynak1", "kaynak2"],
-            "estimatedTime": "30 dakika",
-            "prerequisites": []
-          }
-        ],
-        "milestones": [
-          {
-            "milestone": "Kilometre taşı",
-            "description": "Açıklama",
-            "criteria": ["kriter1", "kriter2"]
-          }
-        ]
+    try {
+      const prompt = `
+      "${data.topic}" konusu için ${data.level} seviyesinde öğrenme yolu oluştur.
+      
+      Hedefler: ${data.goals.join(', ')}
+      
+      Format:
+      {
+        "learningPath": {
+          "topic": "${data.topic}",
+          "level": "${data.level}",
+          "goals": ${JSON.stringify(data.goals)},
+          "steps": [
+            {
+              "step": 1,
+              "title": "Adım başlığı",
+              "description": "Açıklama",
+              "resources": ["kaynak1", "kaynak2"],
+              "estimatedTime": "30 dakika",
+              "prerequisites": []
+            }
+          ],
+          "milestones": [
+            {
+              "milestone": "Kilometre taşı",
+              "description": "Açıklama",
+              "criteria": ["kriter1", "kriter2"]
+            }
+          ]
+        }
       }
-    }
-    `;
+      `;
 
-    const response = await this.geminiService.generateContent(prompt);
-    
-    return {
-      success: true,
-      learningPath: JSON.parse(response)
-    };
+      const response = await this.geminiService.generateContent(prompt);
+      
+      // Response'u parse etmeye çalış, hata olursa fallback kullan
+      let learningPath;
+      try {
+        learningPath = JSON.parse(response);
+      } catch (parseError) {
+        console.error('Learning path JSON parse hatası:', parseError);
+        // Fallback response
+        learningPath = {
+          learningPath: {
+            topic: data.topic,
+            level: data.level,
+            goals: data.goals,
+            steps: [
+              {
+                step: 1,
+                title: "Temel Kavramlar",
+                description: `${data.topic} konusunun temel kavramlarını öğrenin`,
+                resources: ["Ders kitabı", "Online kaynaklar"],
+                estimatedTime: "30 dakika",
+                prerequisites: []
+              },
+              {
+                step: 2,
+                title: "Pratik Uygulamalar",
+                description: "Öğrendiğiniz kavramları pratikte uygulayın",
+                resources: ["Alıştırma kitapları", "Video dersler"],
+                estimatedTime: "45 dakika",
+                prerequisites: ["Temel kavramlar"]
+              }
+            ],
+            milestones: [
+              {
+                milestone: "Temel Kavramlar",
+                description: "Konunun temel kavramlarını anlama",
+                criteria: ["Kavramları açıklayabilme", "Temel soruları çözebilme"]
+              }
+            ]
+          }
+        };
+      }
+      
+      return {
+        success: true,
+        learningPath: learningPath
+      };
+    } catch (error) {
+      console.error('Learning path oluşturma hatası:', error);
+      throw new Error('Learning path oluşturulamadı');
+    }
   }
 
   async findTopicConnections(data: { topic: string; subjects: string[] }) {
-    const prompt = `
-    "${data.topic}" konusunun ${data.subjects.join(', ')} dersleriyle bağlantılarını bul.
-    
-    Format:
-    {
-      "connections": [
-        {
-          "subject": "Matematik",
-          "topics": ["Konu1", "Konu2"],
-          "connectionType": "Doğrudan/Dolaylı",
-          "description": "Bağlantı açıklaması",
-          "examples": ["Örnek1", "Örnek2"]
+    try {
+      const prompt = `
+      "${data.topic}" konusunun ${data.subjects.join(', ')} dersleriyle bağlantılarını bul.
+      
+      Format:
+      {
+        "connections": [
+          {
+            "subject": "Matematik",
+            "topics": ["Konu1", "Konu2"],
+            "connectionType": "Doğrudan/Dolaylı",
+            "description": "Bağlantı açıklaması",
+            "examples": ["Örnek1", "Örnek2"]
+          }
+        ],
+        "crossCurricular": {
+          "description": "Disiplinler arası bağlantılar",
+          "benefits": ["Fayda1", "Fayda2"],
+          "applications": ["Uygulama1", "Uygulama2"]
         }
-      ],
-      "crossCurricular": {
-        "description": "Disiplinler arası bağlantılar",
-        "benefits": ["Fayda1", "Fayda2"],
-        "applications": ["Uygulama1", "Uygulama2"]
       }
-    }
-    `;
+      `;
 
-    const response = await this.geminiService.generateContent(prompt);
-    
-    return {
-      success: true,
-      topic: data.topic,
-      subjects: data.subjects,
-      connections: JSON.parse(response)
-    };
+      const response = await this.geminiService.generateContent(prompt);
+      
+      let connections;
+      try {
+        connections = JSON.parse(response);
+      } catch (parseError) {
+        console.error('Topic connections JSON parse hatası:', parseError);
+        connections = {
+          connections: [
+            {
+              subject: data.subjects[0] || "Genel",
+              topics: [data.topic],
+              connectionType: "Doğrudan",
+              description: `${data.topic} konusu ile ilgili bağlantılar`,
+              examples: ["Temel uygulamalar"]
+            }
+          ],
+          crossCurricular: {
+            description: "Disiplinler arası bağlantılar",
+            benefits: ["Bilgi transferi", "Derinlemesine anlayış"],
+            applications: ["Gerçek hayat uygulamaları"]
+          }
+        };
+      }
+      
+      return {
+        success: true,
+        topic: data.topic,
+        subjects: data.subjects,
+        connections: connections
+      };
+    } catch (error) {
+      console.error('Topic connections oluşturma hatası:', error);
+      throw new Error('Topic connections oluşturulamadı');
+    }
   }
 
   async mentalSupport(data: { issue: string; context: string }) {

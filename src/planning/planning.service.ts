@@ -1332,8 +1332,11 @@ KURALLAR:
 
   async generateHolidayPlan(data: { holidayType: string; duration: number; goals: string[] }): Promise<any> {
     // Daha detaylı AI prompt'u
+    // İlk aşamada 3 günlük deneme planı, sonrasında 7 günlük
+    const planDuration = data.duration > 7 ? 7 : (data.duration > 3 ? 3 : data.duration);
+    
     const holidayPlanPrompt = `
-    ${data.duration} günlük ${data.holidayType} tatili için detaylı çalışma planı oluştur.
+    ${planDuration} günlük ${data.holidayType} tatili için detaylı çalışma planı oluştur.
     
     Hedefler: ${data.goals.join(', ')}
     
@@ -1349,7 +1352,7 @@ KURALLAR:
     JSON formatında şu yapıda ver:
     {
       "title": "Tatil Çalışma Planı",
-      "duration": ${data.duration},
+      "duration": ${planDuration},
       "type": "${data.holidayType}",
       "goals": ${JSON.stringify(data.goals)},
       "dailySchedule": [
@@ -1396,6 +1399,9 @@ KURALLAR:
     try {
       const aiResponse = await this.geminiService.generateContent(holidayPlanPrompt);
       
+      console.log('🔍 AI Response Length:', aiResponse.length);
+      console.log('🔍 AI Response Preview:', aiResponse.substring(0, 500));
+      
       // AI yanıtını temizle (markdown formatını kaldır)
       let cleanedResponse = aiResponse;
       if (cleanedResponse.includes('```json')) {
@@ -1405,10 +1411,15 @@ KURALLAR:
         cleanedResponse = cleanedResponse.replace(/```\n?/g, '');
       }
       
+      console.log('🔍 Cleaned Response Length:', cleanedResponse.length);
+      console.log('🔍 Cleaned Response Preview:', cleanedResponse.substring(0, 500));
+      
       // AI yanıtını kontrol et ve JSON'a çevirmeye çalış
       let holidayPlan;
       try {
         holidayPlan = JSON.parse(cleanedResponse);
+        console.log('🔍 Parsed Plan Duration:', holidayPlan.duration);
+        console.log('🔍 Parsed Daily Schedule Length:', holidayPlan.dailySchedule?.length);
       } catch (parseError) {
         console.log('AI response is not valid JSON after cleaning, using default plan');
         console.log('Cleaned response:', cleanedResponse.substring(0, 200));
@@ -1452,7 +1463,10 @@ KURALLAR:
       'Kitap okuma ve özet çıkarma'
     ];
     
-    for (let day = 1; day <= data.duration; day++) {
+    // İlk aşamada 3 günlük deneme planı, sonrasında 7 günlük
+    const planDuration = data.duration > 7 ? 7 : (data.duration > 3 ? 3 : data.duration);
+    
+    for (let day = 1; day <= planDuration; day++) {
       const currentDate = new Date();
       currentDate.setDate(currentDate.getDate() + day - 1);
       
@@ -1544,7 +1558,7 @@ KURALLAR:
     
     return {
       title: `${data.holidayType} Tatil Çalışma Planı`,
-      duration: data.duration,
+      duration: planDuration,
       type: data.holidayType,
       goals: data.goals,
       dailySchedule,

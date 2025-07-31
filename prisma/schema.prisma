@@ -50,6 +50,28 @@ enum NotificationType {
   INVITE
 }
 
+enum SubscriptionStatus {
+  TRIAL
+  FREE
+  PREMIUM
+  FAMILY
+  CANCELLED
+}
+
+enum SubscriptionPlan {
+  MONTHLY_PREMIUM
+  YEARLY_PREMIUM
+  FAMILY_PLAN
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -58,6 +80,11 @@ model User {
   role      UserRole @default(STUDENT)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Subscription fields
+  subscriptionStatus SubscriptionStatus @default(TRIAL)
+  trialEndDate      DateTime?
+  subscriptionEndDate DateTime?
 
   // Profile relations
   studentProfile StudentProfile?
@@ -98,6 +125,7 @@ model User {
   studyGoals StudyGoal[]
   studyHabits StudyHabit[]
   subscriptions Subscription[]
+  payments Payment[]
 }
 
 model StudentProfile {
@@ -359,16 +387,36 @@ model StudyHabit {
 }
 
 model Subscription {
-  id          String   @id @default(cuid())
-  userId      String
-  planType    String   // "free", "premium", "family"
-  startDate   DateTime
-  endDate     DateTime?
-  isActive    Boolean  @default(true)
-  features    String[]
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String            @id @default(cuid())
+  userId            String
+  planType          SubscriptionPlan
+  status            SubscriptionStatus
+  startDate         DateTime
+  endDate           DateTime?
+  isActive          Boolean           @default(true)
+  features          String[]
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  subscriptionId  String?
+  amount          Float
+  currency        String        @default("TRY")
+  status          PaymentStatus @default(PENDING)
+  paymentMethod   String        // "credit_card", "bank_transfer", etc.
+  transactionId   String?       // External payment gateway transaction ID
+  gatewayResponse Json?         // Full response from payment gateway
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
 }
