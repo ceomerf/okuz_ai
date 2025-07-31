@@ -14,7 +14,7 @@ export class GeminiService {
     console.log(`   API Key preview: ${apiKey.substring(0, 20)}...`);
     
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
   }
 
   async generateContent(prompt: string): Promise<string> {
