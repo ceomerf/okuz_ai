@@ -1,10 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { GeminiService } from '../services/gemini.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { Response } from 'express';
 
+interface SolveQuestionData {
+  questionText?: string;
+  subject: string;
+  grade?: number;
+  imageBase64?: string;
+  userId: string;
+}
+
 @Injectable()
 export class SmartToolsService {
+  private readonly logger = new Logger(SmartToolsService.name);
+
   constructor(
     private readonly geminiService: GeminiService,
     private readonly prisma: PrismaService,
@@ -83,8 +93,21 @@ export class SmartToolsService {
     }
   }
 
-  async solveQuestion(data: { questionText?: string; subject: string; grade?: number; imageBase64?: string }) {
+  async solveQuestion(data: SolveQuestionData) {
     try {
+      // Kullanıcının varlığını kontrol et
+      const user = await this.prisma.user.findUnique({
+        where: { id: data.userId },
+        select: { id: true, email: true }
+      });
+
+      if (!user) {
+        this.logger.warn(`Kullanıcı bulunamadı: ${data.userId}`);
+        throw new NotFoundException(`Kullanıcı bulunamadı: ${data.userId}`);
+      }
+
+      this.logger.log(`Soru çözme isteği - Kullanıcı: ${user.email}, Konu: ${data.subject}`);
+
       let questionContent = '';
       
       if (data.imageBase64) {
@@ -138,25 +161,31 @@ export class SmartToolsService {
           tips: ["Çözümü tekrar gözden geçirin", "Benzer sorular çözün", "Formülleri tekrar edin"]
         };
       }
-      
-      // TODO: Kullanım istatistiğini kaydet - şimdilik kaldırıldı
-      // await this.prisma.toolUsage.create({
-      //   data: {
-      //     toolName: 'sos-question-solver',
-      //     userId: 'system', // TODO: Gerçek user ID
-      //     input: questionContent,
-      //     output: response,
-      //     metadata: { subject: data.subject, grade: grade }
-      //   }
-      // });
+
+      // ToolUsage kaydını oluştur
+      await this.prisma.toolUsage.create({
+        data: {
+          userId: data.userId,
+          toolName: 'solve-question',
+        },
+      });
+
+      this.logger.log(`Soru çözme tamamlandı - Kullanıcı: ${user.email}, Konu: ${data.subject}`);
 
       return {
         success: true,
         learningPath: parsedResponse
       };
     } catch (error) {
-      console.error('SOS Question Solver error:', error);
-      throw error;
+      this.logger.error(`SOS Question Solver hatası: ${error.message}`, error.stack);
+      
+      // Eğer NotFoundException ise, onu tekrar fırlat
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      
+      // Diğer hatalar için genel hata fırlat
+      throw new Error(`Soru çözme işlemi başarısız: ${error.message}`);
     }
   }
 
