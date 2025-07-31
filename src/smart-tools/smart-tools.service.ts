@@ -464,7 +464,7 @@ export class SmartToolsService {
       
       Hedefler: ${data.goals.join(', ')}
       
-      Format:
+      SADECE JSON formatında yanıt ver, markdown kullanma:
       {
         "learningPath": {
           "topic": "${data.topic}",
@@ -496,9 +496,22 @@ export class SmartToolsService {
       // Response'u parse etmeye çalış, hata olursa fallback kullan
       let learningPath;
       try {
-        learningPath = JSON.parse(response);
+        // Markdown formatını temizle
+        let cleanResponse = response;
+        
+        // ```json ve ``` bloklarını kaldır
+        cleanResponse = cleanResponse.replace(/```json\s*/g, '');
+        cleanResponse = cleanResponse.replace(/```\s*/g, '');
+        
+        // Başındaki ve sonundaki boşlukları temizle
+        cleanResponse = cleanResponse.trim();
+        
+        console.log('Temizlenmiş response:', cleanResponse);
+        
+        learningPath = JSON.parse(cleanResponse);
       } catch (parseError) {
         console.error('Learning path JSON parse hatası:', parseError);
+        console.error('Orijinal response:', response);
         // Fallback response
         learningPath = {
           learningPath: {
