@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from "../common/prisma/prisma.service"';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { GeminiService } from '../services/gemini.service';
 
 interface PlanGenerationData {
@@ -797,8 +797,8 @@ KURALLAR:
         goals: data.goals || plan.goals,
         endDate: data.endDate ? new Date(data.endDate) : plan.endDate,
         metadata: {
-          ...plan.metadata,
-          ...data.metadata,
+          ...(plan.metadata as any || {}),
+          ...(data.metadata as any || {}),
           lastModified: new Date(),
         },
       },
@@ -1129,7 +1129,7 @@ KURALLAR:
       where: { id: data.sessionId },
       data: {
         metadata: {
-          ...session.metadata,
+          ...(session.metadata as any || {}),
           skipped: true,
           skipReason: data.reason,
           skippedAt: new Date(),
