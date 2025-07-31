@@ -70,7 +70,7 @@ export class SmartToolsController {
 
   @Post('learning-path')
   @ApiOperation({ summary: 'Learning Path Generator - Öğrenme yolu oluşturucu' })
-  async generateLearningPath(@Body() data: { topic: string; level: string; goals: string[] }) {
+  async generateLearningPath(@Body() data: { topic: string; level: string; goals: string[]; subject?: string; grade?: string }) {
     return this.smartToolsService.generateLearningPath(data);
   }
 

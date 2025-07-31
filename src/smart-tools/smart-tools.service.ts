@@ -457,25 +457,32 @@ export class SmartToolsService {
     }
   }
 
-  async generateLearningPath(data: { topic: string; level: string; goals: string[] }) {
+  async generateLearningPath(data: { topic: string; level: string; goals: string[]; subject?: string; grade?: string }) {
     try {
       const prompt = `
       "${data.topic}" konusu için ${data.level} seviyesinde öğrenme yolu oluştur.
       
+      Ders: ${data.subject || 'Matematik'}
+      Sınıf: ${data.grade || '11. Sınıf'}
       Hedefler: ${data.goals.join(', ')}
+      
+      MEB müfredatına uygun, sadece müfredat dahilindeki konuları içeren bir öğrenme yolu oluştur.
+      Kaynaklar MEB ders kitapları, güvenilir yayınevleri ve eğitim platformlarından seçilmeli.
       
       SADECE JSON formatında yanıt ver, markdown kullanma:
       {
         "learningPath": {
           "topic": "${data.topic}",
           "level": "${data.level}",
+          "subject": "${data.subject || 'Matematik'}",
+          "grade": "${data.grade || '11. Sınıf'}",
           "goals": ${JSON.stringify(data.goals)},
           "steps": [
             {
               "step": 1,
               "title": "Adım başlığı",
               "description": "Açıklama",
-              "resources": ["kaynak1", "kaynak2"],
+              "resources": ["MEB Ders Kitabı", "Aydın Yayınları", "Khan Academy"],
               "estimatedTime": "30 dakika",
               "prerequisites": []
             }
