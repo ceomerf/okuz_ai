@@ -8,7 +8,7 @@ interface SolveQuestionData {
   subject: string;
   grade?: number;
   imageBase64?: string;
-  userId: string;
+  userId?: string;
 }
 
 @Injectable()
@@ -95,6 +95,13 @@ export class SmartToolsService {
 
   async solveQuestion(data: SolveQuestionData) {
     try {
+      // userId kontrolü
+      if (!data.userId) {
+        this.logger.warn('userId parametresi eksik, anonim kullanım olarak işaretleniyor');
+        // Anonim kullanım için ToolUsage kaydı oluşturmuyoruz
+        return await this._processQuestionWithoutUser(data);
+      }
+
       // Kullanıcının varlığını kontrol et
       const user = await this.prisma.user.findUnique({
         where: { id: data.userId },
@@ -187,6 +194,69 @@ export class SmartToolsService {
       // Diğer hatalar için genel hata fırlat
       throw new Error(`Soru çözme işlemi başarısız: ${error.message}`);
     }
+  }
+
+  private async _processQuestionWithoutUser(data: SolveQuestionData) {
+    this.logger.log(`Anonim soru çözme isteği - Konu: ${data.subject}`);
+
+    let questionContent = '';
+    
+    if (data.imageBase64) {
+      questionContent = `Resimdeki soru: [Resim analizi]`;
+    } else if (data.questionText) {
+      questionContent = data.questionText;
+    } else {
+      throw new Error('Soru metni veya resim sağlanmalı');
+    }
+
+    const grade = data.grade || 12;
+    
+    const prompt = `
+    Sen bir ${grade}. sınıf ${data.subject} öğretmenisin. 
+    Aşağıdaki soruyu adım adım çöz ve açıkla:
+    
+    Soru: ${questionContent}
+    
+    Lütfen şu formatta cevapla:
+    {
+      "steps": [
+        {
+          "step": 1,
+          "explanation": "Adım açıklaması",
+          "formula": "Kullanılan formül (varsa)"
+        }
+      ],
+      "topic": "Tespit edilen konu",
+      "tips": ["İpucu 1", "İpucu 2", "İpucu 3"]
+    }
+    `;
+
+    const response = await this.geminiService.generateContent(prompt);
+    
+    // JSON response'u parse et
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(response);
+    } catch (e) {
+      parsedResponse = {
+        steps: [
+          {
+            step: 1,
+            explanation: response,
+            formula: null
+          }
+        ],
+        topic: data.subject,
+        tips: ["Çözümü tekrar gözden geçirin", "Benzer sorular çözün", "Formülleri tekrar edin"]
+      };
+    }
+
+    this.logger.log(`Anonim soru çözme tamamlandı - Konu: ${data.subject}`);
+
+    return {
+      success: true,
+      learningPath: parsedResponse
+    };
   }
 
   async generateSummary(data: { content: string; type: string }) {
