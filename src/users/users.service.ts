@@ -26,6 +26,26 @@ export class UsersService {
     console.log('🎯 Onboarding data:', onboardingData);
 
     try {
+      // Önce kullanıcının var olup olmadığını kontrol et
+      const existingUser = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!existingUser) {
+        console.log('❌ User not found, creating new user');
+        // Kullanıcı yoksa oluştur
+        const newUser = await this.prisma.user.create({
+          data: {
+            id: userId,
+            email: onboardingData.email || 'temp@example.com',
+            password: 'temp-password',
+            name: onboardingData.fullName || 'Unknown User',
+            role: 'STUDENT',
+          },
+        });
+        console.log('✅ New user created:', newUser.id);
+      }
+
       // Kullanıcıyı güncelle
       const updatedUser = await this.prisma.user.update({
         where: { id: userId },
@@ -69,7 +89,9 @@ export class UsersService {
       };
     } catch (error) {
       console.error('❌ Error completing onboarding:', error);
-      throw new Error('Failed to complete onboarding');
+      console.error('❌ Error details:', error.message);
+      console.error('❌ Error stack:', error.stack);
+      throw new Error(`Failed to complete onboarding: ${error.message}`);
     }
   }
 }
