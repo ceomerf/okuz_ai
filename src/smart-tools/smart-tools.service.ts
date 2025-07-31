@@ -149,7 +149,7 @@ export class SmartToolsService {
       
       Soru: ${questionContent}
       
-      Lütfen şu formatta cevapla:
+      Lütfen SADECE JSON formatında cevapla, başka hiçbir metin ekleme:
       {
         "steps": [
           {
@@ -168,8 +168,22 @@ export class SmartToolsService {
       // JSON response'u parse et
       let parsedResponse;
       try {
-        parsedResponse = JSON.parse(response);
+        // Response'u temizle - JSON markdown kod bloklarını kaldır
+        let cleanResponse = response.trim();
+        if (cleanResponse.startsWith('```json')) {
+          cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanResponse.startsWith('```')) {
+          cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        
+        parsedResponse = JSON.parse(cleanResponse);
+        
+        // Response formatını doğrula
+        if (!parsedResponse.steps || !Array.isArray(parsedResponse.steps)) {
+          throw new Error('Invalid response format');
+        }
       } catch (e) {
+        this.logger.warn(`JSON parse hatası: ${e.message}`);
         // Eğer JSON parse edilemezse, basit format kullan
         parsedResponse = {
           steps: [
@@ -238,7 +252,7 @@ export class SmartToolsService {
     
     Soru: ${questionContent}
     
-    Lütfen şu formatta cevapla:
+    Lütfen SADECE JSON formatında cevapla, başka hiçbir metin ekleme:
     {
       "steps": [
         {
@@ -257,8 +271,22 @@ export class SmartToolsService {
     // JSON response'u parse et
     let parsedResponse;
     try {
-      parsedResponse = JSON.parse(response);
+      // Response'u temizle - JSON markdown kod bloklarını kaldır
+      let cleanResponse = response.trim();
+      if (cleanResponse.startsWith('```json')) {
+        cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanResponse.startsWith('```')) {
+        cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      parsedResponse = JSON.parse(cleanResponse);
+      
+      // Response formatını doğrula
+      if (!parsedResponse.steps || !Array.isArray(parsedResponse.steps)) {
+        throw new Error('Invalid response format');
+      }
     } catch (e) {
+      this.logger.warn(`JSON parse hatası: ${e.message}`);
       parsedResponse = {
         steps: [
           {
