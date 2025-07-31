@@ -354,6 +354,17 @@ export class SmartToolsService {
 
   async generateFlashcards(data: { topic: string; count: number }) {
     try {
+      this.logger.log(`Flashcards generation başlatıldı - Topic: ${data.topic}, Count: ${data.count}`);
+      
+      // Input validasyonu
+      if (!data.topic || data.topic.trim().length === 0) {
+        throw new Error('Konu belirtilmelidir');
+      }
+      
+      if (!data.count || data.count < 1 || data.count > 20) {
+        throw new Error('Flashcard sayısı 1-20 arasında olmalıdır');
+      }
+
       const prompt = `
       "${data.topic}" konusu için ${data.count} adet flashcard oluştur.
       
@@ -377,9 +388,22 @@ export class SmartToolsService {
       
       let flashcards;
       try {
-        flashcards = JSON.parse(response);
+        // Response'u temizle
+        let cleanResponse = response.trim();
+        if (cleanResponse.startsWith('```json')) {
+          cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanResponse.startsWith('```')) {
+          cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        
+        flashcards = JSON.parse(cleanResponse);
+        
+        // Response formatını doğrula
+        if (!flashcards.flashcards || !Array.isArray(flashcards.flashcards)) {
+          throw new Error('Invalid response format');
+        }
       } catch (parseError) {
-        console.error('Flashcards JSON parse hatası:', parseError);
+        this.logger.warn(`Flashcards JSON parse hatası: ${parseError.message}`);
         flashcards = {
           flashcards: [
             {
@@ -396,6 +420,8 @@ export class SmartToolsService {
         };
       }
       
+      this.logger.log(`Flashcards generation tamamlandı - Topic: ${data.topic}`);
+      
       return {
         success: true,
         topic: data.topic,
@@ -403,8 +429,8 @@ export class SmartToolsService {
         flashcards: flashcards
       };
     } catch (error) {
-      console.error('Flashcards oluşturma hatası:', error);
-      throw new Error('Flashcards oluşturulamadı');
+      this.logger.error(`Flashcards generation hatası: ${error.message}`, error.stack);
+      throw new Error(`Flashcards oluşturma işlemi başarısız: ${error.message}`);
     }
   }
 
