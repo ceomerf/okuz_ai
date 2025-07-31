@@ -116,6 +116,12 @@ export class PlanningController {
     return this.planningService.generateHolidayPlan(data);
   }
 
+  @Post('create-holiday-plan')
+  @ApiOperation({ summary: 'Create holiday study plan' })
+  async createHolidayPlan(@Body() data: any) {
+    return this.planningService.generateHolidayPlan(data);
+  }
+
   @Get('long-term-plan')
   @ApiOperation({ summary: 'Get long term study plan' })
   async getLongTermPlan(@Request() req) {
