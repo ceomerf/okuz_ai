@@ -1331,34 +1331,214 @@ KURALLAR:
   }
 
   async generateHolidayPlan(data: { holidayType: string; duration: number; goals: string[] }): Promise<any> {
+    // Daha detaylı AI prompt'u
     const holidayPlanPrompt = `
-    ${data.duration} günlük ${data.holidayType} tatili için çalışma planı oluştur.
+    ${data.duration} günlük ${data.holidayType} tatili için detaylı çalışma planı oluştur.
     
     Hedefler: ${data.goals.join(', ')}
     
-    Plan şunları içermeli:
-    1. Günlük çalışma programı (tatil modunda)
-    2. Eğlenceli öğrenme aktiviteleri
-    3. Dinlenme ve hobi zamanları
-    4. Proje tabanlı öğrenme
-    5. Sosyal öğrenme aktiviteleri
+    Plan şu özellikleri içermeli:
+    1. Her gün için detaylı zaman çizelgesi
+    2. Farklı dersler için ayrılan süreler
+    3. Eğlenceli öğrenme aktiviteleri ve projeler
+    4. Dinlenme ve hobi zamanları
+    5. Haftalık değerlendirme ve hedef kontrolü
+    6. Motivasyon teknikleri
+    7. Tatil sonrası okula hazırlık
     
-    JSON formatında detaylı plan ver.
+    JSON formatında şu yapıda ver:
+    {
+      "title": "Tatil Çalışma Planı",
+      "duration": ${data.duration},
+      "type": "${data.holidayType}",
+      "goals": ${JSON.stringify(data.goals)},
+      "dailySchedule": [
+        {
+          "day": 1,
+          "date": "2024-01-01",
+          "sessions": [
+            {
+              "time": "09:00-10:30",
+              "subject": "Matematik",
+              "topic": "Temel konular",
+              "activity": "Konu tekrarı ve soru çözümü",
+              "type": "study",
+              "difficulty": "medium"
+            }
+          ],
+          "breaks": [
+            {
+              "time": "10:30-11:00",
+              "activity": "Mola"
+            }
+          ],
+          "evening": {
+            "time": "19:00-20:00",
+            "activity": "Gün değerlendirmesi ve yarın planı"
+          }
+        }
+      ],
+      "weeklyGoals": [
+        {
+          "week": 1,
+          "goals": ["Hedef 1", "Hedef 2"],
+          "assessment": "Hafta sonu değerlendirme"
+        }
+      ],
+      "tips": [
+        "Tatilde düzenli olmaya çalışın",
+        "Kısa ama verimli seanslar yapın",
+        "Öğrenmeyi eğlenceli hale getirin"
+      ]
+    }
     `;
 
-    const aiResponse = await this.geminiService.generateContent(holidayPlanPrompt);
-    
-    let holidayPlan;
     try {
-      holidayPlan = JSON.parse(aiResponse);
-    } catch {
-      holidayPlan = this.createDefaultHolidayPlan(data);
+      const aiResponse = await this.geminiService.generateContent(holidayPlanPrompt);
+      let holidayPlan = JSON.parse(aiResponse);
+      
+      // AI yanıtını doğrula ve gerekirse düzelt
+      if (!holidayPlan.dailySchedule || !Array.isArray(holidayPlan.dailySchedule)) {
+        throw new Error('Invalid AI response structure');
+      }
+      
+      return {
+        success: true,
+        plan: holidayPlan,
+        message: 'Tatil planınız hazır! Keyifli çalışmalar.',
+      };
+    } catch (error) {
+      console.log('AI plan generation failed, using default plan:', error);
+      const holidayPlan = this.createDetailedHolidayPlan(data);
+      
+      return {
+        success: true,
+        plan: holidayPlan,
+        message: 'Tatil planınız hazır! Keyifli çalışmalar.',
+      };
     }
+  }
 
+  private createDetailedHolidayPlan(data: any) {
+    const dailySchedule = [];
+    const subjects = ['Matematik', 'Türkçe', 'Fen Bilgisi', 'Sosyal Bilgiler'];
+    const activities = [
+      'Konu tekrarı ve not alma',
+      'Soru çözümü ve pratik',
+      'Proje çalışması',
+      'Araştırma ve sunum hazırlama',
+      'Grup çalışması',
+      'Eğitici oyunlar',
+      'Deney ve gözlem',
+      'Kitap okuma ve özet çıkarma'
+    ];
+    
+    for (let day = 1; day <= data.duration; day++) {
+      const currentDate = new Date();
+      currentDate.setDate(currentDate.getDate() + day - 1);
+      
+      const sessions = [];
+      const breaks = [];
+      
+      // Sabah seansı (09:00-10:30)
+      sessions.push({
+        time: '09:00-10:30',
+        subject: subjects[day % subjects.length],
+        topic: `${subjects[day % subjects.length]} temel konular`,
+        activity: activities[day % activities.length],
+        type: 'study',
+        difficulty: 'medium'
+      });
+      
+      breaks.push({
+        time: '10:30-11:00',
+        activity: 'Kahvaltı molası'
+      });
+      
+      // Öğle seansı (11:00-12:30)
+      sessions.push({
+        time: '11:00-12:30',
+        subject: subjects[(day + 1) % subjects.length],
+        topic: `${subjects[(day + 1) % subjects.length]} pratik`,
+        activity: 'Soru çözümü ve uygulama',
+        type: 'practice',
+        difficulty: 'medium'
+      });
+      
+      breaks.push({
+        time: '12:30-14:00',
+        activity: 'Öğle yemeği ve dinlenme'
+      });
+      
+      // Öğleden sonra seansı (14:00-15:30)
+      sessions.push({
+        time: '14:00-15:30',
+        subject: subjects[(day + 2) % subjects.length],
+        topic: `${subjects[(day + 2) % subjects.length]} proje`,
+        activity: 'Proje tabanlı öğrenme',
+        type: 'project',
+        difficulty: 'hard'
+      });
+      
+      breaks.push({
+        time: '15:30-16:00',
+        activity: 'Ara öğün molası'
+      });
+      
+      // Akşam seansı (16:00-17:30)
+      sessions.push({
+        time: '16:00-17:30',
+        subject: subjects[(day + 3) % subjects.length],
+        topic: `${subjects[(day + 3) % subjects.length]} değerlendirme`,
+        activity: 'Günlük değerlendirme ve yarın planı',
+        type: 'review',
+        difficulty: 'easy'
+      });
+      
+      dailySchedule.push({
+        day,
+        date: currentDate.toISOString().split('T')[0],
+        sessions,
+        breaks,
+        evening: {
+          time: '19:00-20:00',
+          activity: 'Aile ile paylaşım ve dinlenme'
+        }
+      });
+    }
+    
+    // Haftalık hedefler
+    const weeklyGoals = [];
+    const weeks = Math.ceil(data.duration / 7);
+    
+    for (let week = 1; week <= weeks; week++) {
+      weeklyGoals.push({
+        week,
+        goals: [
+          `${week}. hafta konularını tamamla`,
+          `${week}. hafta projelerini bitir`,
+          `${week}. hafta değerlendirmesini yap`
+        ],
+        assessment: `${week}. hafta sonu genel değerlendirme`
+      });
+    }
+    
     return {
-      success: true,
-      plan: holidayPlan,
-      message: 'Tatil planınız hazır! Keyifli çalışmalar.',
+      title: `${data.holidayType} Tatil Çalışma Planı`,
+      duration: data.duration,
+      type: data.holidayType,
+      goals: data.goals,
+      dailySchedule,
+      weeklyGoals,
+      tips: [
+        'Tatilde düzenli olmaya çalışın',
+        'Kısa ama verimli seanslar yapın',
+        'Öğrenmeyi eğlenceli hale getirin',
+        'Sosyal aktiviteleri ihmal etmeyin',
+        'Her gün hedeflerinizi kontrol edin',
+        'Hafta sonu genel değerlendirme yapın',
+        'Tatil sonrası okula hazırlık için son günleri planlayın'
+      ]
     };
   }
 
