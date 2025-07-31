@@ -1,5 +1,6 @@
-import { Controller, Post, Get, Body, UseGuards, Request, Param, Res } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Get, Body, UseGuards, Request, Param, Res, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { SmartToolsService } from './smart-tools.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Response } from 'express';
@@ -28,9 +29,15 @@ export class SmartToolsController {
 
   @Post('summary-generator')
   @ApiOperation({ summary: 'Summary Generator - Özet oluşturucu' })
-  async generateSummary(@Body() data: any) {
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('sourceFile'))
+  async generateSummary(
+    @Body() data: any,
+    @UploadedFile() file?: any
+  ) {
     // Debug log ekle
     console.log('🔍 Received data:', JSON.stringify(data, null, 2));
+    console.log('🔍 Received file:', file ? file.originalname : 'No file');
     
     // FormData'dan gelen verileri işle
     const processedData = {
