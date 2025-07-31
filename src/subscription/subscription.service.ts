@@ -31,11 +31,16 @@ export class SubscriptionService {
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 3); // 3 günlük trial
 
-      await this.prisma.user.update({
-        where: { id: userId },
+      // Önce subscription oluştur
+      await this.prisma.subscription.create({
         data: {
-          subscriptionStatus: SubscriptionStatus.TRIAL,
-          trialEndDate: trialEndDate,
+          userId: userId,
+          planType: SubscriptionPlan.MONTHLY_PREMIUM,
+          status: SubscriptionStatus.TRIAL,
+          startDate: new Date(),
+          endDate: trialEndDate,
+          isActive: true,
+          features: ['basic_features'],
         },
       });
 
@@ -66,31 +71,38 @@ export class SubscriptionService {
 
       const now = new Date();
       let isTrialActive = false;
-      let trialEndDate = user.trialEndDate;
+      let trialEndDate: Date | undefined;
+      let currentStatus: SubscriptionStatus = SubscriptionStatus.FREE;
 
-      // Trial durumunu kontrol et
-      if (user.subscriptionStatus === SubscriptionStatus.TRIAL && user.trialEndDate) {
-        isTrialActive = user.trialEndDate > now;
+      // En son aktif subscription'ı kontrol et
+      const currentSubscription = user.subscriptions[0];
+      
+      if (currentSubscription) {
+        currentStatus = currentSubscription.status;
         
-        // Trial süresi bittiyse FREE'e geç
-        if (!isTrialActive && user.subscriptionStatus === SubscriptionStatus.TRIAL) {
-          await this.prisma.user.update({
-            where: { id: userId },
-            data: {
-              subscriptionStatus: SubscriptionStatus.FREE,
-            },
-          });
-          user.subscriptionStatus = SubscriptionStatus.FREE;
+        if (currentSubscription.status === SubscriptionStatus.TRIAL && currentSubscription.endDate) {
+          isTrialActive = currentSubscription.endDate > now;
+          trialEndDate = currentSubscription.endDate;
+          
+          // Trial süresi bittiyse subscription'ı deaktif et
+          if (!isTrialActive) {
+            await this.prisma.subscription.update({
+              where: { id: currentSubscription.id },
+              data: {
+                isActive: false,
+              },
+            });
+            currentStatus = SubscriptionStatus.FREE;
+          }
         }
       }
 
-      const currentSubscription = user.subscriptions[0];
-      const features = this.getFeaturesForStatus(user.subscriptionStatus);
+      const features = this.getFeaturesForStatus(currentStatus);
 
       return {
-        status: user.subscriptionStatus,
+        status: currentStatus,
         isTrialActive,
-        trialEndDate: user.trialEndDate,
+        trialEndDate,
         subscriptionEndDate: currentSubscription?.endDate,
         planType: currentSubscription?.planType,
         features,
@@ -162,14 +174,14 @@ export class SubscriptionService {
         data: { subscriptionId: subscription.id },
       });
 
-      // Kullanıcının subscription durumunu güncelle
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          subscriptionStatus: SubscriptionStatus.PREMIUM,
-          subscriptionEndDate: endDate,
-        },
-      });
+      // Kullanıcının subscription durumunu güncelle - User modelinde bu field'lar yok, sadece subscription tablosunu kullan
+      // await this.prisma.user.update({
+      //   where: { id: userId },
+      //   data: {
+      //     subscriptionStatus: SubscriptionStatus.PREMIUM,
+      //     subscriptionEndDate: endDate,
+      //   },
+      // });
 
       this.logger.log(`Subscription created for user ${userId}: ${planType}`);
 
@@ -225,21 +237,21 @@ export class SubscriptionService {
         },
       });
 
-      // Kullanıcının durumunu FREE'e çevir
-      const subscription = await this.prisma.subscription.findUnique({
-        where: { id: subscriptionId },
-        include: { user: true },
-      });
+      // Kullanıcının durumunu FREE'e çevir - User modelinde bu field'lar yok
+      // const subscription = await this.prisma.subscription.findUnique({
+      //   where: { id: subscriptionId },
+      //   include: { user: true },
+      // });
 
-      if (subscription) {
-        await this.prisma.user.update({
-          where: { id: subscription.userId },
-          data: {
-            subscriptionStatus: SubscriptionStatus.FREE,
-            subscriptionEndDate: null,
-          },
-        });
-      }
+      // if (subscription) {
+      //   await this.prisma.user.update({
+      //     where: { id: subscription.userId },
+      //     data: {
+      //       subscriptionStatus: SubscriptionStatus.FREE,
+      //       subscriptionEndDate: null,
+      //     },
+      //   });
+      // }
 
       this.logger.log(`Subscription cancelled: ${subscriptionId}`);
     } catch (error) {
@@ -281,13 +293,13 @@ export class SubscriptionService {
         },
       });
 
-      // Kullanıcının subscription end date'ini güncelle
-      await this.prisma.user.update({
-        where: { id: subscription.userId },
-        data: {
-          subscriptionEndDate: newEndDate,
-        },
-      });
+      // Kullanıcının subscription end date'ini güncelle - User modelinde bu field yok
+      // await this.prisma.user.update({
+      //   where: { id: subscription.userId },
+      //   data: {
+      //     subscriptionEndDate: newEndDate,
+      //   },
+      // });
 
       this.logger.log(`Subscription renewed: ${subscriptionId}`);
     } catch (error) {
@@ -391,9 +403,6 @@ export class SubscriptionService {
     try {
       const subscriptions = await this.prisma.subscription.findMany({
         where: { userId },
-        include: {
-          payments: true,
-        },
         orderBy: { createdAt: 'desc' },
       });
 
