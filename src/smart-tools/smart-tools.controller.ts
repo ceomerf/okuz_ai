@@ -22,7 +22,7 @@ export class SmartToolsController {
 
   @Post('sos-question-solver')
   @ApiOperation({ summary: 'SOS Question Solver - Acil soru çözümü' })
-  async solveQuestion(@Body() data: { question: string; subject: string; grade: number }) {
+  async solveQuestion(@Body() data: { questionText?: string; subject: string; grade?: number; imageBase64?: string }) {
     return this.smartToolsService.solveQuestion(data);
   }
 

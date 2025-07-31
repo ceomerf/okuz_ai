@@ -83,43 +83,81 @@ export class SmartToolsService {
     }
   }
 
-  async solveQuestion(data: { question: string; subject: string; grade: number }) {
-    const prompt = `
-    Sen bir ${data.grade}. sınıf ${data.subject} öğretmenisin. 
-    Aşağıdaki soruyu adım adım çöz ve açıkla:
-    
-    Soru: ${data.question}
-    
-    Lütfen:
-    1. Sorunun ne olduğunu anla
-    2. Hangi konuları kullanacağını belirt
-    3. Adım adım çözümü göster
-    4. Sonucu açıkla
-    5. Benzer sorular için ipuçları ver
-    `;
-
-    const response = await this.geminiService.generateContent(prompt);
-    
-    // Kullanım istatistiğini kaydet
-    await this.prisma.toolUsage.create({
-      data: {
-        toolName: 'sos-question-solver',
-        userId: 'system', // TODO: Gerçek user ID
-        input: data.question,
-        output: response,
-        metadata: { subject: data.subject, grade: data.grade }
+  async solveQuestion(data: { questionText?: string; subject: string; grade?: number; imageBase64?: string }) {
+    try {
+      let questionContent = '';
+      
+      if (data.imageBase64) {
+        // Resim varsa, resim analizi için prompt hazırla
+        questionContent = `Resimdeki soru: [Resim analizi]`;
+      } else if (data.questionText) {
+        questionContent = data.questionText;
+      } else {
+        throw new Error('Soru metni veya resim sağlanmalı');
       }
-    });
 
-    return {
-      success: true,
-      solution: response,
-      metadata: {
-        subject: data.subject,
-        grade: data.grade,
-        timestamp: new Date()
+      const grade = data.grade || 12;
+      
+      const prompt = `
+      Sen bir ${grade}. sınıf ${data.subject} öğretmenisin. 
+      Aşağıdaki soruyu adım adım çöz ve açıkla:
+      
+      Soru: ${questionContent}
+      
+      Lütfen şu formatta cevapla:
+      {
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Adım açıklaması",
+            "formula": "Kullanılan formül (varsa)"
+          }
+        ],
+        "topic": "Tespit edilen konu",
+        "tips": ["İpucu 1", "İpucu 2", "İpucu 3"]
       }
-    };
+      `;
+
+      const response = await this.geminiService.generateContent(prompt);
+      
+      // JSON response'u parse et
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(response);
+      } catch (e) {
+        // Eğer JSON parse edilemezse, basit format kullan
+        parsedResponse = {
+          steps: [
+            {
+              step: 1,
+              explanation: response,
+              formula: null
+            }
+          ],
+          topic: data.subject,
+          tips: ["Çözümü tekrar gözden geçirin", "Benzer sorular çözün", "Formülleri tekrar edin"]
+        };
+      }
+      
+      // Kullanım istatistiğini kaydet
+      await this.prisma.toolUsage.create({
+        data: {
+          toolName: 'sos-question-solver',
+          userId: 'system', // TODO: Gerçek user ID
+          input: questionContent,
+          output: response,
+          metadata: { subject: data.subject, grade: grade }
+        }
+      });
+
+      return {
+        success: true,
+        learningPath: parsedResponse
+      };
+    } catch (error) {
+      console.error('SOS Question Solver error:', error);
+      throw error;
+    }
   }
 
   async generateSummary(data: { content: string; type: string }) {
