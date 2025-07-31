@@ -7,8 +7,8 @@ echo "🚀 Okuz AI Backend VPS Deployment başlatılıyor..."
 # Environment kontrolü
 if [ ! -f .env ]; then
     echo "❌ .env dosyası bulunamadı!"
-    echo "📝 env.production dosyasını .env olarak kopyalayın"
-    cp env.production .env
+    echo "📝 env.example dosyasını .env olarak kopyalayın"
+    cp env.example .env
     echo "⚠️  Lütfen .env dosyasını düzenleyin ve tekrar çalıştırın"
     exit 1
 fi
@@ -31,15 +31,28 @@ npx prisma migrate deploy
 echo "🔨 Production build oluşturuluyor..."
 npm run build
 
-# PM2 restart
-echo "🔄 PM2 restart ediliyor..."
-pm2 restart okuz-api || pm2 start ecosystem.config.js --env production
+# PM2 stop existing process
+echo "🛑 Mevcut PM2 process'i durduruluyor..."
+pm2 stop okuz-api || echo "No existing process to stop"
+
+# PM2 delete existing process
+echo "🗑️ Mevcut PM2 process'i siliniyor..."
+pm2 delete okuz-api || echo "No existing process to delete"
+
+# PM2 start new process
+echo "🔄 PM2 yeni process başlatılıyor..."
+pm2 start ecosystem.config.js --env production
+
+# PM2 save
+echo "💾 PM2 process kaydediliyor..."
+pm2 save
 
 echo "✅ VPS Deployment tamamlandı!"
 echo "📊 PM2 Status:"
 pm2 status
 
 echo "🏥 Health Check:"
+sleep 5
 curl -s http://localhost:3002/health || echo "Health check failed"
 
 echo "🌐 API Documentation:"
