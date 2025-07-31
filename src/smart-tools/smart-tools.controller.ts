@@ -29,11 +29,16 @@ export class SmartToolsController {
   @Post('summary-generator')
   @ApiOperation({ summary: 'Summary Generator - Özet oluşturucu' })
   async generateSummary(@Body() data: any) {
+    // Debug log ekle
+    console.log('🔍 Received data:', JSON.stringify(data, null, 2));
+    
     // FormData'dan gelen verileri işle
     const processedData = {
       content: data.sourceText || data.content || '',
       type: data.format || data.type || 'paragraph'
     };
+    
+    console.log('🔍 Processed data:', JSON.stringify(processedData, null, 2));
     
     return this.smartToolsService.generateSummary(processedData);
   }
