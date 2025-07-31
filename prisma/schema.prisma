@@ -88,6 +88,16 @@ model User {
   // Family connections
   familyMembers FamilyMember[] @relation("Parent")
   children      FamilyMember[] @relation("Child")
+
+  // Additional relations
+  examResults ExamResult[]
+  learningPaths LearningPath[]
+  flashcards Flashcard[]
+  conceptMaps ConceptMap[]
+  quizzes Quiz[]
+  studyGoals StudyGoal[]
+  studyHabits StudyHabit[]
+  subscriptions Subscription[]
 }
 
 model StudentProfile {

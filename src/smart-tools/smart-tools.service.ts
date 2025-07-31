@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GeminiService } from '../services/gemini.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { Response } from 'express';
 
 @Injectable()
 export class SmartToolsService {
@@ -8,6 +9,79 @@ export class SmartToolsService {
     private readonly geminiService: GeminiService,
     private readonly prisma: PrismaService,
   ) {}
+
+  async quickChatStream(data: { message: string; subject?: string; grade?: string }, res: Response) {
+    // Set SSE headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control',
+    });
+
+    try {
+      // Send initial status
+      res.write(`data: ${JSON.stringify({ type: 'STATUS', content: 'AI düşünüyor...' })}\n\n`);
+
+      const prompt = `
+      Sen bir ${data.grade || '12'}. sınıf öğrencisinin ${data.subject || 'genel'} dersinde yardımcı olan bir AI asistanısın.
+      
+      Öğrencinin mesajı: ${data.message}
+      
+      Lütfen:
+      1. Soruyu/konuyu anla
+      2. Açık ve anlaşılır bir şekilde cevapla
+      3. Gerekirse örnekler ver
+      4. Öğrencinin seviyesine uygun dil kullan
+      5. Takip soruları öner
+      `;
+
+      // Stream the response
+      const stream = await this.geminiService.generateContentStream(prompt);
+      
+      let fullResponse = '';
+      
+      for await (const chunk of stream) {
+        fullResponse += chunk;
+        
+        // Send text chunk
+        res.write(`data: ${JSON.stringify({ type: 'TEXT_CHUNK', content: chunk })}\n\n`);
+      }
+
+      // Send metadata with follow-up questions
+      const followUpQuestions = [
+        "Bu konuda başka ne öğrenmek istiyorsun?",
+        "Farklı bir açıdan bakmak ister misin?",
+        "Bu bilgiyi nasıl kullanabilirsin?",
+        "Başka bir konuya geçmek ister misin?"
+      ];
+
+      res.write(`data: ${JSON.stringify({ 
+        type: 'METADATA_CHUNK', 
+        content: { followUpQuestions } 
+      })}\n\n`);
+
+      // Save usage statistics
+      await this.prisma.toolUsage.create({
+        data: {
+          toolName: 'quick-chat-stream',
+          userId: 'system', // TODO: Gerçek user ID
+          input: data.message,
+          output: fullResponse,
+          metadata: { subject: data.subject, grade: data.grade }
+        }
+      });
+
+      res.write(`data: ${JSON.stringify({ type: 'STATUS', content: 'Tamamlandı' })}\n\n`);
+      res.end();
+
+    } catch (error) {
+      console.error('Quick chat stream error:', error);
+      res.write(`data: ${JSON.stringify({ type: 'ERROR_CHUNK', content: 'Bir hata oluştu' })}\n\n`);
+      res.end();
+    }
+  }
 
   async solveQuestion(data: { question: string; subject: string; grade: number }) {
     const prompt = `

@@ -10,8 +10,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(registerDto: { email: string; password: string; name: string }) {
-    const { email, password, name } = registerDto;
+  async register(registerDto: { email: string; password: string; name: string; accountType?: string }) {
+    const { email, password, name, accountType = 'STUDENT' } = registerDto;
 
     try {
       // Email kontrolü
@@ -26,20 +26,31 @@ export class AuthService {
       // Şifre hash'leme
       const hashedPassword = await bcrypt.hash(password, 10);
 
+      // Account type'ı role'a çevir
+      let role: 'STUDENT' | 'PARENT' | 'TEACHER' | 'ADMIN' = 'STUDENT';
+      if (accountType === 'PARENT') {
+        role = 'PARENT';
+      } else if (accountType === 'TEACHER') {
+        role = 'TEACHER';
+      } else if (accountType === 'ADMIN') {
+        role = 'ADMIN';
+      }
+
       // Kullanıcı oluşturma
       const user = await this.prisma.user.create({
         data: {
           email,
           password: hashedPassword,
           name,
+          role,
         },
       });
 
       // JWT token oluşturma
-      const payload = { email: user.email, sub: user.id };
+      const payload = { email: user.email, sub: user.id, role: user.role };
       const access_token = this.jwtService.sign(payload);
 
-      console.log('✅ User registered successfully:', email);
+      console.log('✅ User registered successfully:', email, 'Role:', role);
 
       return {
         access_token,
@@ -47,6 +58,7 @@ export class AuthService {
           id: user.id,
           email: user.email,
           name: user.name,
+          role: user.role,
         },
       };
     } catch (error) {
