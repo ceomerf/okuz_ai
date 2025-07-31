@@ -28,8 +28,14 @@ export class SmartToolsController {
 
   @Post('summary-generator')
   @ApiOperation({ summary: 'Summary Generator - Özet oluşturucu' })
-  async generateSummary(@Body() data: { content: string; type: string }) {
-    return this.smartToolsService.generateSummary(data);
+  async generateSummary(@Body() data: any) {
+    // FormData'dan gelen verileri işle
+    const processedData = {
+      content: data.sourceText || data.content || '',
+      type: data.format || data.type || 'paragraph'
+    };
+    
+    return this.smartToolsService.generateSummary(processedData);
   }
 
   @Post('flashcards-generator')
