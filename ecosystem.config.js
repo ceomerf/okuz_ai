@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'okuz-api',
-    script: 'dist/main.js',
+    script: 'dist/src/main.js',
     instances: 'max',
     exec_mode: 'cluster',
     env: {
