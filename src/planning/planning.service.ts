@@ -1395,10 +1395,29 @@ KURALLAR:
 
     try {
       const aiResponse = await this.geminiService.generateContent(holidayPlanPrompt);
-      let holidayPlan = JSON.parse(aiResponse);
+      
+      // AI yanıtını temizle (markdown formatını kaldır)
+      let cleanedResponse = aiResponse;
+      if (cleanedResponse.includes('```json')) {
+        cleanedResponse = cleanedResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      }
+      if (cleanedResponse.includes('```')) {
+        cleanedResponse = cleanedResponse.replace(/```\n?/g, '');
+      }
+      
+      // AI yanıtını kontrol et ve JSON'a çevirmeye çalış
+      let holidayPlan;
+      try {
+        holidayPlan = JSON.parse(cleanedResponse);
+      } catch (parseError) {
+        console.log('AI response is not valid JSON after cleaning, using default plan');
+        console.log('Cleaned response:', cleanedResponse.substring(0, 200));
+        throw new Error('Invalid JSON response');
+      }
       
       // AI yanıtını doğrula ve gerekirse düzelt
       if (!holidayPlan.dailySchedule || !Array.isArray(holidayPlan.dailySchedule)) {
+        console.log('AI response structure is invalid, using default plan');
         throw new Error('Invalid AI response structure');
       }
       
@@ -1408,7 +1427,7 @@ KURALLAR:
         message: 'Tatil planınız hazır! Keyifli çalışmalar.',
       };
     } catch (error) {
-      console.log('AI plan generation failed, using default plan:', error);
+      console.log('AI plan generation failed, using detailed default plan:', error.message);
       const holidayPlan = this.createDetailedHolidayPlan(data);
       
       return {
