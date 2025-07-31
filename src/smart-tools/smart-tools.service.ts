@@ -309,29 +309,47 @@ export class SmartToolsService {
   }
 
   async generateSummary(data: { content: string; type: string }) {
-    const prompt = `
-    Aşağıdaki içeriği ${data.type} formatında özetle:
-    
-    İçerik: ${data.content}
-    
-    Özet türü: ${data.type}
-    
-    Lütfen:
-    1. Ana fikirleri çıkar
-    2. Önemli noktaları vurgula
-    3. ${data.type} formatında düzenle
-    4. Kolay anlaşılır olsun
-    `;
+    try {
+      this.logger.log(`Summary generation başlatıldı - Type: ${data.type}`);
+      
+      // Input validasyonu
+      if (!data.content || data.content.trim().length === 0) {
+        throw new Error('İçerik boş olamaz');
+      }
+      
+      if (!data.type || data.type.trim().length === 0) {
+        throw new Error('Özet türü belirtilmelidir');
+      }
 
-    const response = await this.geminiService.generateContent(prompt);
-    
-    return {
-      success: true,
-      summary: response,
-      type: data.type,
-      originalLength: data.content.length,
-      summaryLength: response.length
-    };
+      const prompt = `
+      Aşağıdaki içeriği ${data.type} formatında özetle:
+      
+      İçerik: ${data.content}
+      
+      Özet türü: ${data.type}
+      
+      Lütfen:
+      1. Ana fikirleri çıkar
+      2. Önemli noktaları vurgula
+      3. ${data.type} formatında düzenle
+      4. Kolay anlaşılır olsun
+      `;
+
+      const response = await this.geminiService.generateContent(prompt);
+      
+      this.logger.log(`Summary generation tamamlandı - Type: ${data.type}`);
+      
+      return {
+        success: true,
+        summary: response,
+        type: data.type,
+        originalLength: data.content.length,
+        summaryLength: response.length
+      };
+    } catch (error) {
+      this.logger.error(`Summary generation hatası: ${error.message}`, error.stack);
+      throw new Error(`Özet oluşturma işlemi başarısız: ${error.message}`);
+    }
   }
 
   async generateFlashcards(data: { topic: string; count: number }) {
