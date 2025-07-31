@@ -107,14 +107,25 @@ export class SmartToolsService {
       this.logger.log(`userId bulundu: ${data.userId}`);
 
       // Kullanıcının varlığını kontrol et
-      const user = await this.prisma.user.findUnique({
-        where: { id: data.userId },
-        select: { id: true, email: true }
-      });
+      this.logger.log(`Kullanıcı aranıyor: ${data.userId}`);
+      let user;
+      try {
+        user = await this.prisma.user.findUnique({
+          where: { id: data.userId },
+          select: { id: true, email: true }
+        });
 
-      if (!user) {
-        this.logger.warn(`Kullanıcı bulunamadı: ${data.userId}`);
-        throw new NotFoundException(`Kullanıcı bulunamadı: ${data.userId}`);
+        if (!user) {
+          this.logger.warn(`Kullanıcı bulunamadı: ${data.userId}`);
+          this.logger.warn('Anonim kullanım olarak işaretleniyor');
+          return await this._processQuestionWithoutUser(data);
+        }
+
+        this.logger.log(`Kullanıcı bulundu: ${user.email} (ID: ${user.id})`);
+      } catch (userLookupError) {
+        this.logger.error(`Kullanıcı arama hatası: ${userLookupError}`);
+        this.logger.warn('Anonim kullanım olarak işaretleniyor');
+        return await this._processQuestionWithoutUser(data);
       }
 
       this.logger.log(`Soru çözme isteği - Kullanıcı: ${user.email}, Konu: ${data.subject}`);
@@ -173,17 +184,18 @@ export class SmartToolsService {
         };
       }
 
-      // ToolUsage kaydını oluştur (sadece userId varsa)
-      if (data.userId) {
+      // ToolUsage kaydını oluştur (sadece geçerli kullanıcı için)
+      try {
         await this.prisma.toolUsage.create({
           data: {
-            userId: data.userId,
+            userId: user.id, // user.id kullan (data.userId değil)
             toolName: 'solve-question',
           },
         });
-        this.logger.log(`ToolUsage kaydı oluşturuldu - UserId: ${data.userId}`);
-      } else {
-        this.logger.warn('userId olmadığı için ToolUsage kaydı oluşturulmadı');
+        this.logger.log(`ToolUsage kaydı oluşturuldu - UserId: ${user.id}`);
+      } catch (toolUsageError) {
+        this.logger.error(`ToolUsage kaydı oluşturulurken hata: ${toolUsageError}`);
+        // ToolUsage hatası kritik değil, işleme devam et
       }
 
       this.logger.log(`Soru çözme tamamlandı - Kullanıcı: ${user.email}, Konu: ${data.subject}`);
