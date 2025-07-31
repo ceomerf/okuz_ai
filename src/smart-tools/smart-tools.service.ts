@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { GeminiService } from '../services/gemini.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from "../common/prisma/prisma.service"';
 import { Response } from 'express';
 
 @Injectable()
