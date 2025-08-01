@@ -464,7 +464,7 @@ export class SmartToolsService {
       5. Her kavram için kısa açıklama ekle
       6. ${data.grade} seviyesine uygun kavramlar seç
       
-      Format:
+      SADECE JSON formatında yanıt ver, markdown kullanma:
       {
         "centralConcept": "${data.topic}",
         "concepts": [
@@ -498,15 +498,14 @@ export class SmartToolsService {
         // Clean the response first
         let cleanResponse = response.trim();
         
-        // Remove markdown code blocks
-        if (cleanResponse.includes('```json')) {
-          cleanResponse = cleanResponse.replace(/```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleanResponse.includes('```')) {
-          cleanResponse = cleanResponse.replace(/```\s*/, '').replace(/\s*```$/, '');
-        }
+        // Remove markdown code blocks more thoroughly
+        cleanResponse = cleanResponse.replace(/```json\s*/g, '');
+        cleanResponse = cleanResponse.replace(/```\s*/g, '');
+        cleanResponse = cleanResponse.replace(/^```/, '');
+        cleanResponse = cleanResponse.replace(/```$/, '');
         
-        // Remove any remaining markdown formatting
-        cleanResponse = cleanResponse.replace(/^```/, '').replace(/```$/, '');
+        // Remove any leading/trailing whitespace
+        cleanResponse = cleanResponse.trim();
         
         this.logger.debug(`Temizlenmiş response: ${cleanResponse}`);
         
@@ -514,51 +513,58 @@ export class SmartToolsService {
       } catch (parseError) {
         this.logger.warn(`Concept map JSON parse hatası: ${parseError.message}`);
         this.logger.debug(`Orijinal response: ${response}`);
-        // Fallback concept map
+        // Fallback concept map with more specific content based on subject
+        const getSubjectSpecificConcepts = (subject: string, topic: string) => {
+          const subjectLower = subject.toLowerCase();
+          if (subjectLower.includes('matematik')) {
+            return [
+              { name: "Temel Tanımlar", description: `${topic} ile ilgili temel matematiksel tanımlar`, importance: "yüksek" },
+              { name: "Formüller", description: `${topic} konusunda kullanılan formüller`, importance: "yüksek" },
+              { name: "Problem Çözme", description: `${topic} ile ilgili problem çözme teknikleri`, importance: "orta" },
+              { name: "Uygulamalar", description: `${topic} konusunun günlük hayat uygulamaları`, importance: "orta" }
+            ];
+          } else if (subjectLower.includes('fizik')) {
+            return [
+              { name: "Fiziksel Kavramlar", description: `${topic} ile ilgili temel fiziksel kavramlar`, importance: "yüksek" },
+              { name: "Yasalar", description: `${topic} konusunda geçerli fizik yasaları`, importance: "yüksek" },
+              { name: "Deneyler", description: `${topic} ile ilgili laboratuvar deneyleri`, importance: "orta" },
+              { name: "Teknolojik Uygulamalar", description: `${topic} konusunun teknolojideki kullanımı`, importance: "orta" }
+            ];
+          } else if (subjectLower.includes('kimya')) {
+            return [
+              { name: "Kimyasal Kavramlar", description: `${topic} ile ilgili temel kimyasal kavramlar`, importance: "yüksek" },
+              { name: "Reaksiyonlar", description: `${topic} konusunda geçen kimyasal reaksiyonlar`, importance: "yüksek" },
+              { name: "Laboratuvar", description: `${topic} ile ilgili laboratuvar çalışmaları`, importance: "orta" },
+              { name: "Endüstriyel Uygulamalar", description: `${topic} konusunun endüstrideki kullanımı`, importance: "orta" }
+            ];
+          } else if (subjectLower.includes('biyoloji')) {
+            return [
+              { name: "Biyolojik Kavramlar", description: `${topic} ile ilgili temel biyolojik kavramlar`, importance: "yüksek" },
+              { name: "Sistemler", description: `${topic} konusunda geçen biyolojik sistemler`, importance: "yüksek" },
+              { name: "Araştırmalar", description: `${topic} ile ilgili bilimsel araştırmalar`, importance: "orta" },
+              { name: "Sağlık Uygulamaları", description: `${topic} konusunun sağlık alanındaki uygulamaları`, importance: "orta" }
+            ];
+          } else {
+            return [
+              { name: "Temel Kavramlar", description: `${topic} ile ilgili temel kavramlar`, importance: "yüksek" },
+              { name: "Önemli Noktalar", description: `${topic} konusunun önemli noktaları`, importance: "yüksek" },
+              { name: "Uygulamalar", description: `${topic} konusunun pratik uygulamaları`, importance: "orta" },
+              { name: "İleri Konular", description: `${topic} ile ilgili ileri seviye konular`, importance: "düşük" }
+            ];
+          }
+        };
+
+        const concepts = getSubjectSpecificConcepts(data.subject, data.topic);
+        
         conceptMap = {
           centralConcept: data.topic,
-          concepts: [
-            {
-              name: data.topic,
-              description: `${data.topic} konusunun temel kavramları`,
-              importance: "yüksek"
-            },
-            {
-              name: "Temel Kavramlar",
-              description: `${data.topic} ile ilgili temel kavramlar`,
-              importance: "orta"
-            },
-            {
-              name: "Uygulamalar",
-              description: `${data.topic} konusunun pratik uygulamaları`,
-              importance: "orta"
-            },
-            {
-              name: "İleri Konular",
-              description: `${data.topic} ile ilgili ileri seviye konular`,
-              importance: "düşük"
-            }
-          ],
-          relationships: [
-            {
-              from: data.topic,
-              to: "Temel Kavramlar",
-              type: "içerir",
-              description: "Temel kavramları içerir"
-            },
-            {
-              from: data.topic,
-              to: "Uygulamalar",
-              type: "uygulanır",
-              description: "Pratik uygulamalarda kullanılır"
-            },
-            {
-              from: data.topic,
-              to: "İleri Konular",
-              type: "genişletir",
-              description: "İleri seviye konulara genişler"
-            }
-          ]
+          concepts: concepts,
+          relationships: concepts.map((concept, index) => ({
+            from: data.topic,
+            to: concept.name,
+            type: index < 2 ? "içerir" : "uygulanır",
+            description: `${data.topic} konusu ${concept.name.toLowerCase()} ile ilişkilidir`
+          }))
         };
       }
       
