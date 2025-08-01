@@ -390,11 +390,16 @@ export class SmartToolsService {
       try {
         // Response'u temizle
         let cleanResponse = response.trim();
-        if (cleanResponse.startsWith('```json')) {
-          cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleanResponse.startsWith('```')) {
-          cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        
+        // Remove markdown code blocks
+        if (cleanResponse.includes('```json')) {
+          cleanResponse = cleanResponse.replace(/```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanResponse.includes('```')) {
+          cleanResponse = cleanResponse.replace(/```\s*/, '').replace(/\s*```$/, '');
         }
+        
+        // Remove any remaining markdown formatting
+        cleanResponse = cleanResponse.replace(/^```/, '').replace(/```$/, '');
         
         flashcards = JSON.parse(cleanResponse);
         
@@ -492,11 +497,18 @@ export class SmartToolsService {
       try {
         // Clean the response first
         let cleanResponse = response.trim();
-        if (cleanResponse.startsWith('```json')) {
-          cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleanResponse.startsWith('```')) {
-          cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        
+        // Remove markdown code blocks
+        if (cleanResponse.includes('```json')) {
+          cleanResponse = cleanResponse.replace(/```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanResponse.includes('```')) {
+          cleanResponse = cleanResponse.replace(/```\s*/, '').replace(/\s*```$/, '');
         }
+        
+        // Remove any remaining markdown formatting
+        cleanResponse = cleanResponse.replace(/^```/, '').replace(/```$/, '');
+        
+        this.logger.debug(`Temizlenmiş response: ${cleanResponse}`);
         
         conceptMap = JSON.parse(cleanResponse);
       } catch (parseError) {
@@ -647,9 +659,23 @@ export class SmartToolsService {
       
       let quiz;
       try {
-        quiz = JSON.parse(response);
+        // Clean the response first
+        let cleanResponse = response.trim();
+        
+        // Remove markdown code blocks
+        if (cleanResponse.includes('```json')) {
+          cleanResponse = cleanResponse.replace(/```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanResponse.includes('```')) {
+          cleanResponse = cleanResponse.replace(/```\s*/, '').replace(/\s*```$/, '');
+        }
+        
+        // Remove any remaining markdown formatting
+        cleanResponse = cleanResponse.replace(/^```/, '').replace(/```$/, '');
+        
+        quiz = JSON.parse(cleanResponse);
       } catch (parseError) {
-        console.error('Live quiz JSON parse hatası:', parseError);
+        this.logger.warn(`Live quiz JSON parse hatası: ${parseError.message}`);
+        this.logger.debug(`Orijinal response: ${response}`);
         quiz = {
           quiz: {
             topic: data.topic,
@@ -803,22 +829,25 @@ export class SmartToolsService {
       // Response'u parse etmeye çalış, hata olursa fallback kullan
       let learningPath;
       try {
-        // Markdown formatını temizle
-        let cleanResponse = response;
+        // Clean the response first
+        let cleanResponse = response.trim();
         
-        // ```json ve ``` bloklarını kaldır
-        cleanResponse = cleanResponse.replace(/```json\s*/g, '');
-        cleanResponse = cleanResponse.replace(/```\s*/g, '');
+        // Remove markdown code blocks
+        if (cleanResponse.includes('```json')) {
+          cleanResponse = cleanResponse.replace(/```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanResponse.includes('```')) {
+          cleanResponse = cleanResponse.replace(/```\s*/, '').replace(/\s*```$/, '');
+        }
         
-        // Başındaki ve sonundaki boşlukları temizle
-        cleanResponse = cleanResponse.trim();
+        // Remove any remaining markdown formatting
+        cleanResponse = cleanResponse.replace(/^```/, '').replace(/```$/, '');
         
-        console.log('Temizlenmiş response:', cleanResponse);
+        this.logger.debug(`Temizlenmiş response: ${cleanResponse}`);
         
         learningPath = JSON.parse(cleanResponse);
       } catch (parseError) {
-        console.error('Learning path JSON parse hatası:', parseError);
-        console.error('Orijinal response:', response);
+        this.logger.warn(`Learning path JSON parse hatası: ${parseError.message}`);
+        this.logger.debug(`Orijinal response: ${response}`);
         // Fallback response
         learningPath = {
           learningPath: {
@@ -899,9 +928,23 @@ export class SmartToolsService {
       
       let connections;
       try {
-        connections = JSON.parse(response);
+        // Clean the response first
+        let cleanResponse = response.trim();
+        
+        // Remove markdown code blocks
+        if (cleanResponse.includes('```json')) {
+          cleanResponse = cleanResponse.replace(/```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanResponse.includes('```')) {
+          cleanResponse = cleanResponse.replace(/```\s*/, '').replace(/\s*```$/, '');
+        }
+        
+        // Remove any remaining markdown formatting
+        cleanResponse = cleanResponse.replace(/^```/, '').replace(/```$/, '');
+        
+        connections = JSON.parse(cleanResponse);
       } catch (parseError) {
-        console.error('Topic connections JSON parse hatası:', parseError);
+        this.logger.warn(`Topic connections JSON parse hatası: ${parseError.message}`);
+        this.logger.debug(`Orijinal response: ${response}`);
         connections = {
           connections: [
             {
