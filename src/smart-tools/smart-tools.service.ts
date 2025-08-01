@@ -436,6 +436,18 @@ export class SmartToolsService {
 
   async generateConceptMap(data: { grade: string; subject: string; topic: string }) {
     try {
+      // Input validation
+      if (!data.topic || data.topic.trim().length === 0) {
+        throw new Error('Konu belirtilmelidir');
+      }
+      
+      if (!data.subject || data.subject.trim().length === 0) {
+        throw new Error('Ders belirtilmelidir');
+      }
+      
+      if (!data.grade || data.grade.trim().length === 0) {
+        throw new Error('Sınıf belirtilmelidir');
+      }
       const prompt = `
       "${data.grade}" "${data.subject}" dersinde "${data.topic}" konusu için detaylı bir kavram haritası oluştur.
       
@@ -534,8 +546,8 @@ export class SmartToolsService {
         conceptMap: conceptMap
       };
     } catch (error) {
-      console.error('Concept map oluşturma hatası:', error);
-      throw new Error('Kavram haritası oluşturulamadı');
+      this.logger.error(`Concept map oluşturma hatası: ${error.message}`, error.stack);
+      throw new Error('Concept map oluşturulamadı');
     }
   }
 
@@ -732,7 +744,7 @@ export class SmartToolsService {
       
       Ders: ${data.subject || 'Matematik'}
       Sınıf: ${data.grade || '11. Sınıf'}
-      Hedefler: ${data.goals.join(', ')}
+      Hedefler: ${data.goals ? data.goals.join(', ') : 'Hedef belirtilmemiş'}
       
       MEB müfredatına uygun, sadece müfredat dahilindeki konuları içeren bir öğrenme yolu oluştur.
       Kaynaklar MEB ders kitapları, güvenilir yayınevleri ve eğitim platformlarından seçilmeli.
@@ -792,7 +804,7 @@ export class SmartToolsService {
           learningPath: {
             topic: data.topic,
             level: data.level,
-            goals: data.goals,
+            goals: data.goals || [],
             steps: [
               {
                 step: 1,
@@ -835,7 +847,7 @@ export class SmartToolsService {
   async findTopicConnections(data: { topic: string; subjects: string[] }) {
     try {
       const prompt = `
-      "${data.topic}" konusunun ${data.subjects.join(', ')} dersleriyle bağlantılarını bul.
+      "${data.topic}" konusunun ${data.subjects ? data.subjects.join(', ') : 'Genel'} dersleriyle bağlantılarını bul.
       
       Format:
       {
@@ -866,7 +878,7 @@ export class SmartToolsService {
         connections = {
           connections: [
             {
-              subject: data.subjects[0] || "Genel",
+              subject: data.subjects && data.subjects.length > 0 ? data.subjects[0] : "Genel",
               topics: [data.topic],
               connectionType: "Doğrudan",
               description: `${data.topic} konusu ile ilgili bağlantılar`,
