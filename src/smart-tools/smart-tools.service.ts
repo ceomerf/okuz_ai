@@ -454,41 +454,66 @@ export class SmartToolsService {
         throw new Error('Sınıf belirtilmelidir');
       }
       const prompt = `
-      "${data.grade}" "${data.subject}" dersinde "${data.topic}" konusu için detaylı bir kavram haritası oluştur.
+      "${data.grade}" "${data.subject}" dersinde "${data.topic}" konusu için ÇOK DETAYLI ve KAPSAMLI bir kavram haritası oluştur.
       
-      Lütfen:
-      1. Merkezi kavram olarak "${data.topic}" kullan
-      2. Bu konuyla ilgili 5-8 önemli alt kavram belirle
-      3. Her kavramın önem seviyesini belirt (yüksek/orta/düşük)
-      4. Kavramlar arası ilişkileri tanımla
-      5. Her kavram için kısa açıklama ekle
-      6. ${data.grade} seviyesine uygun kavramlar seç
+      ÖNEMLİ: Bu kavram haritası sadece yüzeysel bilgiler değil, konunun TÜM DETAYLARINI içermeli.
+      
+      Lütfen şu kriterleri takip et:
+      
+      1. MERKEZİ KAVRAM: "${data.topic}" (ana konu)
+      
+      2. ALT KAVRAMLAR (8-12 adet):
+         - Her alt kavram için DETAYLI açıklama (en az 2-3 cümle)
+         - Alt kavramların kendi alt kavramları da olabilir
+         - Önem seviyesi: yüksek/orta/düşük
+         - Tarihsel gelişim, önemli kişiler, teoriler, yasalar, formüller, örnekler
+      
+      3. DERS ÖZELİ DETAYLAR:
+         ${this.getSubjectSpecificDetails(data.subject)}
+      
+      4. İLİŞKİLER:
+         - Kavramlar arası bağlantılar
+         - Neden-sonuç ilişkileri
+         - Kronolojik sıralama
+         - Teorik-pratik bağlantılar
+      
+      5. ${data.grade} SEVİYESİNE UYGUN:
+         - Müfredata uygun detay seviyesi
+         - Öğrenci seviyesine uygun dil
+         - Sınav odaklı önemli noktalar
       
       SADECE JSON formatında yanıt ver, markdown kullanma:
       {
         "centralConcept": "${data.topic}",
         "concepts": [
           {
-            "name": "Kavram adı",
-            "description": "Kavramın kısa açıklaması",
-            "importance": "yüksek/orta/düşük"
+            "name": "Detaylı Kavram Adı",
+            "description": "Kavramın çok detaylı açıklaması (en az 2-3 cümle, tarihsel gelişim, önemli kişiler, teoriler, yasalar, formüller, örnekler dahil)",
+            "importance": "yüksek/orta/düşük",
+            "subConcepts": [
+              {
+                "name": "Alt Kavram",
+                "description": "Alt kavramın detaylı açıklaması"
+              }
+            ]
           }
         ],
         "relationships": [
           {
             "from": "kavram1",
-            "to": "kavram2",
-            "type": "ilişki türü",
-            "description": "İlişkinin açıklaması"
+            "to": "kavram2", 
+            "type": "ilişki türü (içerir/etkiler/bağlıdır/uygulanır vb.)",
+            "description": "İlişkinin detaylı açıklaması"
           }
         ]
       }
       
-      Örnek kavramlar:
-      - 9. Sınıf Matematik/Sayılar: Üslü İfadeler, Köklü İfadeler, Gerçek Sayılar, İşlem Özellikleri
-      - 10. Sınıf Fizik/Kuvvet ve Hareket: Newton Yasaları, Sürtünme, Limit Hız, Çembersel Hareket
-      - 11. Sınıf Kimya/Modern Atom Teorisi: Kuantum Modeli, Orbitaller, Periyodik Sistem
-      - 12. Sınıf Biyoloji/Genden Proteine: DNA, RNA, Protein Sentezi, Genetik Kod
+      ÖRNEK DETAYLI KAVRAMLAR:
+      - Matematik: "Üslü İfadeler" → "Üs Kavramı", "Üs Kuralları", "Negatif Üs", "Kesirli Üs", "Bilimsel Gösterim"
+      - Fizik: "Newton Yasaları" → "1. Yasa (Eylemsizlik)", "2. Yasa (Kuvvet-Hızlanma)", "3. Yasa (Etki-Tepki)", "Uygulama Alanları"
+      - Kimya: "Periyodik Sistem" → "Periyotlar", "Gruplar", "Element Özellikleri", "Elektron Dizilimi", "İyonlaşma Enerjisi"
+      - Biyoloji: "Hücre Bölünmesi" → "Mitoz", "Mayoz", "Kromozomlar", "DNA Replikasyonu", "Kanser"
+      - Türkçe: "Tanzimat Edebiyatı" → "Tanzimat Fermanı", "İlk Temsilciler", "Gazeteler", "Roman", "Şiir", "Tiyatro"
       `;
 
       const response = await this.geminiService.generateContent(prompt);
@@ -575,6 +600,92 @@ export class SmartToolsService {
     } catch (error) {
       this.logger.error(`Concept map oluşturma hatası: ${error.message}`, error.stack);
       throw new Error('Concept map oluşturulamadı');
+    }
+  }
+
+  private getSubjectSpecificDetails(subject: string): string {
+    const subjectLower = subject.toLowerCase();
+    
+    if (subjectLower.includes('matematik')) {
+      return `
+      - Temel tanımlar ve kavramlar
+      - Formüller ve teoremler
+      - Problem çözme teknikleri
+      - Uygulama alanları
+      - Tarihsel gelişim
+      - Önemli matematikçiler
+      - Sınav odaklı önemli noktalar
+      `;
+    } else if (subjectLower.includes('fizik')) {
+      return `
+      - Fiziksel kavramlar ve tanımlar
+      - Yasalar ve prensipler
+      - Deneyler ve gözlemler
+      - Formüller ve hesaplamalar
+      - Teknolojik uygulamalar
+      - Tarihsel gelişim
+      - Önemli fizikçiler
+      - Sınav odaklı önemli noktalar
+      `;
+    } else if (subjectLower.includes('kimya')) {
+      return `
+      - Kimyasal kavramlar ve tanımlar
+      - Reaksiyonlar ve denklemler
+      - Laboratuvar çalışmaları
+      - Endüstriyel uygulamalar
+      - Tarihsel gelişim
+      - Önemli kimyacılar
+      - Sınav odaklı önemli noktalar
+      `;
+    } else if (subjectLower.includes('biyoloji')) {
+      return `
+      - Biyolojik kavramlar ve tanımlar
+      - Sistemler ve süreçler
+      - Araştırmalar ve keşifler
+      - Sağlık uygulamaları
+      - Tarihsel gelişim
+      - Önemli biyologlar
+      - Sınav odaklı önemli noktalar
+      `;
+    } else if (subjectLower.includes('türk') || subjectLower.includes('edebiyat')) {
+      return `
+      - Edebi akımlar ve dönemler
+      - Önemli yazarlar ve şairler
+      - Eserler ve türler
+      - Tarihsel gelişim
+      - Sosyal ve kültürel bağlam
+      - Dil özellikleri
+      - Sınav odaklı önemli noktalar
+      `;
+    } else if (subjectLower.includes('tarih')) {
+      return `
+      - Tarihsel olaylar ve dönemler
+      - Önemli kişiler ve liderler
+      - Siyasi ve sosyal gelişmeler
+      - Ekonomik faktörler
+      - Kültürel değişimler
+      - Coğrafi faktörler
+      - Sınav odaklı önemli noktalar
+      `;
+    } else if (subjectLower.includes('coğrafya')) {
+      return `
+      - Fiziki coğrafya özellikleri
+      - Beşeri coğrafya faktörleri
+      - Ekonomik faaliyetler
+      - Çevre sorunları
+      - Doğal kaynaklar
+      - İklim ve bitki örtüsü
+      - Sınav odaklı önemli noktalar
+      `;
+    } else {
+      return `
+      - Temel kavramlar ve tanımlar
+      - Önemli teoriler ve yaklaşımlar
+      - Uygulama alanları
+      - Tarihsel gelişim
+      - Önemli kişiler
+      - Sınav odaklı önemli noktalar
+      `;
     }
   }
 
