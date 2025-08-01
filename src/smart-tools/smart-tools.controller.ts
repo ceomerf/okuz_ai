@@ -58,7 +58,7 @@ export class SmartToolsController {
 
   @Post('concept-map')
   @ApiOperation({ summary: 'Concept Map Generator - Kavram haritası oluşturucu' })
-  async generateConceptMap(@Body() data: { topic: string; connections: string[] }) {
+  async generateConceptMap(@Body() data: { grade: string; subject: string; topic: string }) {
     return this.smartToolsService.generateConceptMap(data);
   }
 

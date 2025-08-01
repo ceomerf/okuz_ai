@@ -31,29 +31,24 @@ npx prisma migrate deploy
 echo "🔨 Production build oluşturuluyor..."
 npm run build
 
-# PM2 stop existing process
-echo "🛑 Mevcut PM2 process'i durduruluyor..."
-pm2 stop okuz-api || echo "No existing process to stop"
+# Kill existing Node.js processes
+echo "🛑 Mevcut Node.js process'leri durduruluyor..."
+pkill -f "node.*dist/main.js" || echo "No existing Node.js processes to stop"
 
-# PM2 delete existing process
-echo "🗑️ Mevcut PM2 process'i siliniyor..."
-pm2 delete okuz-api || echo "No existing process to delete"
-
-# PM2 start new process
-echo "🔄 PM2 yeni process başlatılıyor..."
-pm2 start ecosystem.config.js --env production
-
-# PM2 save
-echo "💾 PM2 process kaydediliyor..."
-pm2 save
+# Start new process
+echo "🔄 Yeni process başlatılıyor..."
+nohup node dist/main.js > app.log 2>&1 &
+echo "✅ Process başlatıldı (PID: $!)"
 
 echo "✅ VPS Deployment tamamlandı!"
-echo "📊 PM2 Status:"
-pm2 status
+echo "📊 Process Status:"
+ps aux | grep "node.*dist/main.js" | grep -v grep
 
 echo "🏥 Health Check:"
 sleep 5
 curl -s http://localhost:3002/health || echo "Health check failed"
 
 echo "🌐 API Documentation:"
-curl -s http://localhost:3002/api || echo "API docs check failed" 
+curl -s http://localhost:3002/api || echo "API docs check failed"
+
+echo "📝 Log dosyası: app.log" 

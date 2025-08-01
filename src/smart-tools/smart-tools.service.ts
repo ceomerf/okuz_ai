@@ -434,12 +434,18 @@ export class SmartToolsService {
     }
   }
 
-  async generateConceptMap(data: { topic: string; connections: string[] }) {
+  async generateConceptMap(data: { grade: string; subject: string; topic: string }) {
     try {
       const prompt = `
-      "${data.topic}" konusu için kavram haritası oluştur.
+      "${data.grade}" "${data.subject}" dersinde "${data.topic}" konusu için detaylı bir kavram haritası oluştur.
       
-      Bağlantılar: ${data.connections.join(', ')}
+      Lütfen:
+      1. Merkezi kavram olarak "${data.topic}" kullan
+      2. Bu konuyla ilgili 5-8 önemli alt kavram belirle
+      3. Her kavramın önem seviyesini belirt (yüksek/orta/düşük)
+      4. Kavramlar arası ilişkileri tanımla
+      5. Her kavram için kısa açıklama ekle
+      6. ${data.grade} seviyesine uygun kavramlar seç
       
       Format:
       {
@@ -447,8 +453,7 @@ export class SmartToolsService {
         "concepts": [
           {
             "name": "Kavram adı",
-            "description": "Açıklama",
-            "connections": ["bağlantı1", "bağlantı2"],
+            "description": "Kavramın kısa açıklaması",
             "importance": "yüksek/orta/düşük"
           }
         ],
@@ -456,11 +461,17 @@ export class SmartToolsService {
           {
             "from": "kavram1",
             "to": "kavram2",
-            "type": "bağlantı türü",
-            "description": "açıklama"
+            "type": "ilişki türü",
+            "description": "İlişkinin açıklaması"
           }
         ]
       }
+      
+      Örnek kavramlar:
+      - 9. Sınıf Matematik/Sayılar: Üslü İfadeler, Köklü İfadeler, Gerçek Sayılar, İşlem Özellikleri
+      - 10. Sınıf Fizik/Kuvvet ve Hareket: Newton Yasaları, Sürtünme, Limit Hız, Çembersel Hareket
+      - 11. Sınıf Kimya/Modern Atom Teorisi: Kuantum Modeli, Orbitaller, Periyodik Sistem
+      - 12. Sınıf Biyoloji/Genden Proteine: DNA, RNA, Protein Sentezi, Genetik Kod
       `;
 
       const response = await this.geminiService.generateContent(prompt);
@@ -470,22 +481,49 @@ export class SmartToolsService {
         conceptMap = JSON.parse(response);
       } catch (parseError) {
         console.error('Concept map JSON parse hatası:', parseError);
+        // Fallback concept map
         conceptMap = {
           centralConcept: data.topic,
           concepts: [
             {
               name: data.topic,
               description: `${data.topic} konusunun temel kavramları`,
-              connections: data.connections,
               importance: "yüksek"
+            },
+            {
+              name: "Temel Kavramlar",
+              description: `${data.topic} ile ilgili temel kavramlar`,
+              importance: "orta"
+            },
+            {
+              name: "Uygulamalar",
+              description: `${data.topic} konusunun pratik uygulamaları`,
+              importance: "orta"
+            },
+            {
+              name: "İleri Konular",
+              description: `${data.topic} ile ilgili ileri seviye konular`,
+              importance: "düşük"
             }
           ],
           relationships: [
             {
               from: data.topic,
-              to: data.connections[0] || "Temel Kavram",
-              type: "bağlantı",
-              description: "Temel bağlantı"
+              to: "Temel Kavramlar",
+              type: "içerir",
+              description: "Temel kavramları içerir"
+            },
+            {
+              from: data.topic,
+              to: "Uygulamalar",
+              type: "uygulanır",
+              description: "Pratik uygulamalarda kullanılır"
+            },
+            {
+              from: data.topic,
+              to: "İleri Konular",
+              type: "genişletir",
+              description: "İleri seviye konulara genişler"
             }
           ]
         };
@@ -497,7 +535,7 @@ export class SmartToolsService {
       };
     } catch (error) {
       console.error('Concept map oluşturma hatası:', error);
-      throw new Error('Concept map oluşturulamadı');
+      throw new Error('Kavram haritası oluşturulamadı');
     }
   }
 
