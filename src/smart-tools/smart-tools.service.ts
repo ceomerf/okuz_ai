@@ -490,9 +490,18 @@ export class SmartToolsService {
       
       let conceptMap;
       try {
-        conceptMap = JSON.parse(response);
+        // Clean the response first
+        let cleanResponse = response.trim();
+        if (cleanResponse.startsWith('```json')) {
+          cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanResponse.startsWith('```')) {
+          cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        
+        conceptMap = JSON.parse(cleanResponse);
       } catch (parseError) {
-        console.error('Concept map JSON parse hatası:', parseError);
+        this.logger.warn(`Concept map JSON parse hatası: ${parseError.message}`);
+        this.logger.debug(`Orijinal response: ${response}`);
         // Fallback concept map
         conceptMap = {
           centralConcept: data.topic,
@@ -739,12 +748,23 @@ export class SmartToolsService {
 
   async generateLearningPath(data: { topic: string; level: string; goals: string[]; subject?: string; grade?: string }) {
     try {
+      // Input validation
+      if (!data.topic || data.topic.trim().length === 0) {
+        throw new Error('Konu belirtilmelidir');
+      }
+      
+      if (!data.level || data.level.trim().length === 0) {
+        throw new Error('Seviye belirtilmelidir');
+      }
+      
+      // Ensure goals is always an array
+      const goals = data.goals || [];
       const prompt = `
       "${data.topic}" konusu için ${data.level} seviyesinde öğrenme yolu oluştur.
       
       Ders: ${data.subject || 'Matematik'}
       Sınıf: ${data.grade || '11. Sınıf'}
-      Hedefler: ${data.goals ? data.goals.join(', ') : 'Hedef belirtilmemiş'}
+      Hedefler: ${goals.join(', ')}
       
       MEB müfredatına uygun, sadece müfredat dahilindeki konuları içeren bir öğrenme yolu oluştur.
       Kaynaklar MEB ders kitapları, güvenilir yayınevleri ve eğitim platformlarından seçilmeli.
@@ -804,7 +824,7 @@ export class SmartToolsService {
           learningPath: {
             topic: data.topic,
             level: data.level,
-            goals: data.goals || [],
+            goals: goals,
             steps: [
               {
                 step: 1,
@@ -846,8 +866,15 @@ export class SmartToolsService {
 
   async findTopicConnections(data: { topic: string; subjects: string[] }) {
     try {
+      // Input validation
+      if (!data.topic || data.topic.trim().length === 0) {
+        throw new Error('Konu belirtilmelidir');
+      }
+      
+      // Ensure subjects is always an array
+      const subjects = data.subjects || [];
       const prompt = `
-      "${data.topic}" konusunun ${data.subjects ? data.subjects.join(', ') : 'Genel'} dersleriyle bağlantılarını bul.
+      "${data.topic}" konusunun ${subjects.join(', ')} dersleriyle bağlantılarını bul.
       
       Format:
       {
@@ -878,7 +905,7 @@ export class SmartToolsService {
         connections = {
           connections: [
             {
-              subject: data.subjects && data.subjects.length > 0 ? data.subjects[0] : "Genel",
+              subject: subjects.length > 0 ? subjects[0] : "Genel",
               topics: [data.topic],
               connectionType: "Doğrudan",
               description: `${data.topic} konusu ile ilgili bağlantılar`,
@@ -896,7 +923,7 @@ export class SmartToolsService {
       return {
         success: true,
         topic: data.topic,
-        subjects: data.subjects,
+        subjects: subjects,
         connections: connections
       };
     } catch (error) {
