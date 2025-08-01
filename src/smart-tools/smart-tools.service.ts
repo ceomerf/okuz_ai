@@ -454,67 +454,58 @@ export class SmartToolsService {
         throw new Error('Sınıf belirtilmelidir');
       }
       const prompt = `
-      "${data.grade}" "${data.subject}" dersinde "${data.topic}" konusu için ÇOK DETAYLI ve KAPSAMLI bir kavram haritası oluştur.
-      
-      ÖNEMLİ: Bu kavram haritası sadece yüzeysel bilgiler değil, konunun TÜM DETAYLARINI içermeli.
-      
-      Lütfen şu kriterleri takip et:
-      
-      1. MERKEZİ KAVRAM: "${data.topic}" (ana konu)
-      
-      2. ALT KAVRAMLAR (8-12 adet):
-         - Her alt kavram için DETAYLI açıklama (en az 2-3 cümle)
-         - Alt kavramların kendi alt kavramları da olabilir
-         - Önem seviyesi: yüksek/orta/düşük
-         - Tarihsel gelişim, önemli kişiler, teoriler, yasalar, formüller, örnekler
-      
-      3. DERS ÖZELİ DETAYLAR:
-         ${this.getSubjectSpecificDetails(data.subject)}
-      
-      4. İLİŞKİLER:
-         - Kavramlar arası bağlantılar
-         - Neden-sonuç ilişkileri
-         - Kronolojik sıralama
-         - Teorik-pratik bağlantılar
-      
-      5. ${data.grade} SEVİYESİNE UYGUN:
-         - Müfredata uygun detay seviyesi
-         - Öğrenci seviyesine uygun dil
-         - Sınav odaklı önemli noktalar
-      
-      SADECE JSON formatında yanıt ver, markdown kullanma:
+**SİSTEM ROLÜ VE KİMLİK:**
+Sen, karmaşık konuları görsel ve sezgisel "Bilgi Ağaçları"na dönüştüren dahi bir **Usta Kâşif ve Bilgi Mimarısı**'sın. Senin görevin, öğrenciye sadece bir harita vermek değil, onu konunun derinliklerinde heyecan verici bir keşif yolculuğuna çıkarmaktır. Her bir kavram, bu yolculuktaki bir durak noktasıdır.
+
+**ANA PRENSİPLER (FELSEFEN):**
+1.  **HİYERARŞİK DÜŞÜN:** Bilgiyi ağaç yapısında, genelden özele doğru organize et. Bir ana kavramın, onu oluşturan alt dalları (children) olmalıdır. Bu yapı, bilginin nasıl katmanlaştığını gösterir.
+2.  **BİLGİYİ HAYATA BAĞLA (WOW FAKTÖRÜ):** Her bir kavram durağını sıkıcı bir tanımdan ibaret bırakma. Onu zenginleştirerek hayata geçir. Her kavram için MUTLAKA şu üç unsuru ekle:
+    * **Analoji:** Soyut kavramı, öğrencinin günlük hayatından anlayabileceği somut bir benzetme ile açıkla.
+    * **Kilit Soru:** Öğrencinin eleştirel düşünmesini tetikleyecek, "Neden?", "Eğer böyle olmasaydı ne olurdu?" gibi açık uçlu bir soru sor.
+    * **Yaygın Yanılgı:** Öğrencilerin bu kavramla ilgili sıkça düştüğü bir tuzağı veya yanlış anlamayı belirt ve doğrusunu açıkla.
+3.  **GÖRSEL VE SEZGİSEL OL:** Her kavrama, onun doğasını yansıtan bir emoji \`icon\` önerisi ekle. Bu, haritanın görsel dilini zenginleştirir.
+4.  **ÖĞRENME YOLCULUĞU TASARLA:** Harita, en temel kavramdan başlayıp en karmaşık uygulamalara doğru ilerleyen mantıksal bir akış sunmalıdır.
+
+**GÖREV SÜRECİ (DÜŞÜNCE AKIŞIN):**
+1.  **Merkezi Belirle:** Sana verilen "${data.topic}" konusunu ağacın kökü (\`centralConcept\`) olarak belirle.
+2.  **Ana Dalları Oluştur:** Kök kavramı doğrudan oluşturan en önemli 3 ila 5 ana alt kavramı (\`children\` olarak) tanımla.
+3.  **Derinleş:** Her bir ana dal için, onu daha detaylı açıklayan 2 ila 3 adet ikincil alt dal (\`children\` of children) oluştur. Hiyerarşiyi en az 2 seviye derinleştir.
+4.  **HER BİR DÜĞÜMÜ ZENGİNLEŞTİR:** Ağaçtaki **HER BİR** kavram (merkez, ana ve ikincil dallar) için, aşağıda belirtilen JSON formatındaki **TÜM** alanları eksiksiz doldur. Hiçbir alanı boş bırakma.
+
+**GİRDİ PARAMETRELERİ:**
+* **grade:** ${data.grade}
+* **subject:** ${data.subject}
+* **topic:** ${data.topic}
+
+**ÇIKTI FORMATI (JSON - KESİNLİKLE UYULMASI GEREKEN YAPI):**
+Çıktın, aşağıdaki hiyerarşik yapıya sahip tek bir JSON objesi olmalıdır. Açıklama veya ek metin ekleme.
+{
+  "mapTitle": "string", // Örn: "Hücre Bölünmesi: Bir Yaşam Macerası"
+  "centralConcept": {
+    "name": "${data.topic}",
+    "description": "string", // Konunun genel bir özeti, 1-2 cümle.
+    "importance": "yüksek",
+    "icon": "string", // Konuyu en iyi temsil eden emoji. Örn: "🧬"
+    "analogy": "string", // Konuyu açıklayan basit ve güçlü bir benzetme. Örn: "Hücre bölünmesi, bir kütüphanedeki tüm kitapların fotokopisini çekip yeni bir kütüphane kurmaya benzer."
+    "keyQuestion": "string", // Eleştirel düşünme sorusu. Örn: "Eğer hücreler hiç bölünmeseydi, canlılık nasıl devam ederdi?"
+    "commonMisconception": "string | null", // Varsa, konuyla ilgili genel bir yanılgı.
+    "children": [ // ANA DALLAR
       {
-        "centralConcept": "${data.topic}",
-        "concepts": [
-          {
-            "name": "Detaylı Kavram Adı",
-            "description": "Kavramın çok detaylı açıklaması (en az 2-3 cümle, tarihsel gelişim, önemli kişiler, teoriler, yasalar, formüller, örnekler dahil)",
-            "importance": "yüksek/orta/düşük",
-            "subConcepts": [
-              {
-                "name": "Alt Kavram",
-                "description": "Alt kavramın detaylı açıklaması"
-              }
-            ]
-          }
-        ],
-        "relationships": [
-          {
-            "from": "kavram1",
-            "to": "kavram2", 
-            "type": "ilişki türü (içerir/etkiler/bağlıdır/uygulanır vb.)",
-            "description": "İlişkinin detaylı açıklaması"
-          }
+        "name": "string", // Alt kavramın adı. Örn: "Mitoz Bölünme"
+        "description": "string",
+        "importance": "yüksek" | "orta" | "düşük",
+        "icon": "string", // Örn: " copie"
+        "analogy": "string", // Örn: "Mitoz, bir sayfanın birebir aynı fotokopisini çekmek gibidir."
+        "keyQuestion": "string", // Örn: "Vücudumuzdaki hangi hücreler sürekli mitoz geçirir ve neden?"
+        "commonMisconception": "string", // Örn: "Yaygın bir yanılgı, mitozun sadece büyüme için olduğudur; oysa yaraların iyileşmesi de mitoz sayesindedir."
+        "children": [ // İKİNCİL DALLAR
+          // ... aynı yapı burada da devam eder ...
         ]
       }
-      
-      ÖRNEK DETAYLI KAVRAMLAR:
-      - Matematik: "Üslü İfadeler" → "Üs Kavramı", "Üs Kuralları", "Negatif Üs", "Kesirli Üs", "Bilimsel Gösterim"
-      - Fizik: "Newton Yasaları" → "1. Yasa (Eylemsizlik)", "2. Yasa (Kuvvet-Hızlanma)", "3. Yasa (Etki-Tepki)", "Uygulama Alanları"
-      - Kimya: "Periyodik Sistem" → "Periyotlar", "Gruplar", "Element Özellikleri", "Elektron Dizilimi", "İyonlaşma Enerjisi"
-      - Biyoloji: "Hücre Bölünmesi" → "Mitoz", "Mayoz", "Kromozomlar", "DNA Replikasyonu", "Kanser"
-      - Türkçe: "Tanzimat Edebiyatı" → "Tanzimat Fermanı", "İlk Temsilciler", "Gazeteler", "Roman", "Şiir", "Tiyatro"
-      `;
+    ]
+  }
+}
+`;
 
       const response = await this.geminiService.generateContent(prompt);
       
@@ -608,83 +599,127 @@ export class SmartToolsService {
     
     if (subjectLower.includes('matematik')) {
       return `
-      - Temel tanımlar ve kavramlar
-      - Formüller ve teoremler
-      - Problem çözme teknikleri
-      - Uygulama alanları
-      - Tarihsel gelişim
-      - Önemli matematikçiler
-      - Sınav odaklı önemli noktalar
+      - Temel tanımlar ve kavramlar (çok detaylı)
+      - Formüller ve teoremler (ispatları dahil)
+      - Problem çözme teknikleri (adım adım)
+      - Uygulama alanları (günlük hayat örnekleri)
+      - Tarihsel gelişim (önemli matematikçiler ve katkıları)
+      - Sınav odaklı önemli noktalar (püf noktaları)
+      - Hata yapılan noktalar ve çözümleri
+      - Önceki konularla bağlantılar
+      - Sonraki konulara geçişler
+      - Karşılaştırmalı analizler
+      - Güncel uygulamalar ve teknoloji
       `;
     } else if (subjectLower.includes('fizik')) {
       return `
-      - Fiziksel kavramlar ve tanımlar
-      - Yasalar ve prensipler
-      - Deneyler ve gözlemler
-      - Formüller ve hesaplamalar
-      - Teknolojik uygulamalar
-      - Tarihsel gelişim
-      - Önemli fizikçiler
-      - Sınav odaklı önemli noktalar
+      - Fiziksel kavramlar ve tanımlar (çok detaylı)
+      - Yasalar ve prensipler (tarihsel gelişim)
+      - Deneyler ve gözlemler (laboratuvar süreçleri)
+      - Formüller ve hesaplamalar (birim analizi)
+      - Teknolojik uygulamalar (güncel örnekler)
+      - Tarihsel gelişim (önemli fizikçiler ve keşifler)
+      - Sınav odaklı önemli noktalar (püf noktaları)
+      - Hata yapılan noktalar ve çözümleri
+      - Önceki konularla bağlantılar
+      - Sonraki konulara geçişler
+      - Karşılaştırmalı analizler
+      - Güncel araştırmalar ve buluşlar
       `;
     } else if (subjectLower.includes('kimya')) {
       return `
-      - Kimyasal kavramlar ve tanımlar
-      - Reaksiyonlar ve denklemler
-      - Laboratuvar çalışmaları
-      - Endüstriyel uygulamalar
-      - Tarihsel gelişim
-      - Önemli kimyacılar
-      - Sınav odaklı önemli noktalar
+      - Kimyasal kavramlar ve tanımlar (çok detaylı)
+      - Reaksiyonlar ve denklemler (mekanizmaları)
+      - Laboratuvar çalışmaları (güvenlik kuralları)
+      - Endüstriyel uygulamalar (güncel örnekler)
+      - Tarihsel gelişim (önemli kimyacılar ve keşifler)
+      - Sınav odaklı önemli noktalar (püf noktaları)
+      - Hata yapılan noktalar ve çözümleri
+      - Önceki konularla bağlantılar
+      - Sonraki konulara geçişler
+      - Karşılaştırmalı analizler
+      - Güncel araştırmalar ve buluşlar
+      - Çevre ve sağlık etkileri
       `;
     } else if (subjectLower.includes('biyoloji')) {
       return `
-      - Biyolojik kavramlar ve tanımlar
-      - Sistemler ve süreçler
-      - Araştırmalar ve keşifler
-      - Sağlık uygulamaları
-      - Tarihsel gelişim
-      - Önemli biyologlar
-      - Sınav odaklı önemli noktalar
+      - Biyolojik kavramlar ve tanımlar (çok detaylı)
+      - Sistemler ve süreçler (mekanizmaları)
+      - Araştırmalar ve keşifler (güncel buluşlar)
+      - Sağlık uygulamaları (tıbbi örnekler)
+      - Tarihsel gelişim (önemli biyologlar ve keşifler)
+      - Sınav odaklı önemli noktalar (püf noktaları)
+      - Hata yapılan noktalar ve çözümleri
+      - Önceki konularla bağlantılar
+      - Sonraki konulara geçişler
+      - Karşılaştırmalı analizler
+      - Güncel araştırmalar ve buluşlar
+      - Çevre ve ekoloji etkileri
+      - Genetik ve evrimsel bağlantılar
       `;
     } else if (subjectLower.includes('türk') || subjectLower.includes('edebiyat')) {
       return `
-      - Edebi akımlar ve dönemler
-      - Önemli yazarlar ve şairler
-      - Eserler ve türler
-      - Tarihsel gelişim
-      - Sosyal ve kültürel bağlam
-      - Dil özellikleri
-      - Sınav odaklı önemli noktalar
+      - Edebi akımlar ve dönemler (tarihsel gelişim)
+      - Önemli yazarlar ve şairler (hayatları ve eserleri)
+      - Eserler ve türler (detaylı analiz)
+      - Tarihsel gelişim (sosyal ve siyasi bağlam)
+      - Sosyal ve kültürel bağlam (dönem özellikleri)
+      - Dil özellikleri (gramer ve üslup)
+      - Sınav odaklı önemli noktalar (püf noktaları)
+      - Hata yapılan noktalar ve çözümleri
+      - Önceki dönemlerle bağlantılar
+      - Sonraki dönemlere geçişler
+      - Karşılaştırmalı analizler
+      - Güncel edebiyat etkileri
+      - Edebiyat teorileri ve eleştiri
+      - Çeviri ve etkileşim
       `;
     } else if (subjectLower.includes('tarih')) {
       return `
-      - Tarihsel olaylar ve dönemler
-      - Önemli kişiler ve liderler
-      - Siyasi ve sosyal gelişmeler
-      - Ekonomik faktörler
-      - Kültürel değişimler
-      - Coğrafi faktörler
-      - Sınav odaklı önemli noktalar
+      - Tarihsel olaylar ve dönemler (kronolojik sıralama)
+      - Önemli kişiler ve liderler (hayatları ve katkıları)
+      - Siyasi ve sosyal gelişmeler (neden-sonuç ilişkileri)
+      - Ekonomik faktörler (ticaret ve sanayi)
+      - Kültürel değişimler (sanat ve bilim)
+      - Coğrafi faktörler (stratejik önem)
+      - Sınav odaklı önemli noktalar (püf noktaları)
+      - Hata yapılan noktalar ve çözümleri
+      - Önceki dönemlerle bağlantılar
+      - Sonraki dönemlere geçişler
+      - Karşılaştırmalı analizler
+      - Güncel tarih araştırmaları
+      - Arkeolojik bulgular
+      - Tarih metodolojisi
       `;
     } else if (subjectLower.includes('coğrafya')) {
       return `
-      - Fiziki coğrafya özellikleri
-      - Beşeri coğrafya faktörleri
-      - Ekonomik faaliyetler
-      - Çevre sorunları
-      - Doğal kaynaklar
-      - İklim ve bitki örtüsü
-      - Sınav odaklı önemli noktalar
+      - Fiziki coğrafya özellikleri (detaylı analiz)
+      - Beşeri coğrafya faktörleri (sosyal ve ekonomik)
+      - Ekonomik faaliyetler (sanayi ve tarım)
+      - Çevre sorunları (küresel ısınma, kirlilik)
+      - Doğal kaynaklar (enerji ve madenler)
+      - İklim ve bitki örtüsü (ekosistem)
+      - Sınav odaklı önemli noktalar (püf noktaları)
+      - Hata yapılan noktalar ve çözümleri
+      - Önceki konularla bağlantılar
+      - Sonraki konulara geçişler
+      - Karşılaştırmalı analizler
+      - Güncel çevre sorunları
+      - Sürdürülebilir kalkınma
+      - Küresel değişimler
       `;
     } else {
       return `
-      - Temel kavramlar ve tanımlar
-      - Önemli teoriler ve yaklaşımlar
-      - Uygulama alanları
-      - Tarihsel gelişim
-      - Önemli kişiler
-      - Sınav odaklı önemli noktalar
+      - Temel kavramlar ve tanımlar (çok detaylı)
+      - Önemli teoriler ve yaklaşımlar (tarihsel gelişim)
+      - Uygulama alanları (güncel örnekler)
+      - Tarihsel gelişim (önemli kişiler ve katkıları)
+      - Sınav odaklı önemli noktalar (püf noktaları)
+      - Hata yapılan noktalar ve çözümleri
+      - Önceki konularla bağlantılar
+      - Sonraki konulara geçişler
+      - Karşılaştırmalı analizler
+      - Güncel araştırmalar ve buluşlar
       `;
     }
   }
