@@ -52,7 +52,7 @@ export class SmartToolsController {
 
   @Post('flashcards-generator')
   @ApiOperation({ summary: 'Flashcards Generator - Kart oluşturucu' })
-  async generateFlashcards(@Body() data: { topic: string; count: number }) {
+  async generateFlashcards(@Body() data: { topic: string; count: number; cardCount?: number }) {
     return this.smartToolsService.generateFlashcards(data);
   }
 

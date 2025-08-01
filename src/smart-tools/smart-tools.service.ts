@@ -352,7 +352,7 @@ export class SmartToolsService {
     }
   }
 
-  async generateFlashcards(data: { topic: string; count: number }) {
+  async generateFlashcards(data: { topic: string; count: number; cardCount?: number }) {
     try {
       this.logger.log(`Flashcards generation başlatıldı - Topic: ${data.topic}, Count: ${data.count}`);
       
@@ -361,12 +361,14 @@ export class SmartToolsService {
         throw new Error('Konu belirtilmelidir');
       }
       
-      if (!data.count || data.count < 1 || data.count > 20) {
+      // count veya cardCount parametresini kontrol et
+      const cardCount = data.count || data.cardCount;
+      if (!cardCount || cardCount < 1 || cardCount > 20) {
         throw new Error('Flashcard sayısı 1-20 arasında olmalıdır');
       }
 
-      const prompt = `
-      "${data.topic}" konusu için ${data.count} adet flashcard oluştur.
+              const prompt = `
+        "${data.topic}" konusu için ${cardCount} adet flashcard oluştur.
       
       Her flashcard için:
       - Ön yüz: Soru/Kavram
@@ -430,7 +432,7 @@ export class SmartToolsService {
       return {
         success: true,
         topic: data.topic,
-        count: data.count,
+        count: cardCount,
         flashcards: flashcards
       };
     } catch (error) {
