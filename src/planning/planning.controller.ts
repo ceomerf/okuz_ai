@@ -74,7 +74,7 @@ export class PlanningController {
     return this.planningService.getWeeklyOverview(userId);
   }
 
-  @Get('daily-schedule')
+  @Post('daily-schedule')
   @ApiOperation({ summary: 'Get daily schedule' })
   async getDailySchedule(@Request() req, @Body() data: { date: string }) {
     const userId = req.user?.id || 'user-1753052679951';
