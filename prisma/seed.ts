@@ -50,7 +50,45 @@ async function main() {
     },
   });
 
-  console.log('Seed data created:', { testUser, testPlan, testAchievement });
+  // Bugünkü dersler için örnek veriler oluştur
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Biyoloji dersi - 10:00
+  const biologySession = await prisma.studySession.create({
+    data: {
+      userId: testUser.id,
+      planId: testPlan.id,
+      subject: 'Biyoloji',
+      topic: 'Oksijenli ve Oksijensiz Solunum',
+      duration: 60,
+      startTime: new Date(today.getTime() + 10 * 60 * 60 * 1000), // 10:00
+      endTime: new Date(today.getTime() + 11 * 60 * 60 * 1000), // 11:00
+      isCompleted: false,
+    },
+  });
+
+  // Türkçe dersi - 15:00
+  const turkishSession = await prisma.studySession.create({
+    data: {
+      userId: testUser.id,
+      planId: testPlan.id,
+      subject: 'Türkçe',
+      topic: 'İstanbul Kültür Üniversitesi',
+      duration: 45,
+      startTime: new Date(today.getTime() + 15 * 60 * 60 * 1000), // 15:00
+      endTime: new Date(today.getTime() + 15 * 60 * 60 * 1000 + 45 * 60 * 1000), // 15:45
+      isCompleted: false,
+    },
+  });
+
+  console.log('Seed data created:', { 
+    testUser, 
+    testPlan, 
+    testAchievement, 
+    biologySession, 
+    turkishSession 
+  });
 }
 
 main()
