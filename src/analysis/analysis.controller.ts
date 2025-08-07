@@ -2,6 +2,9 @@ import { Controller, Post, Get, Body, UseGuards, Request, Param } from '@nestjs/
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AnalysisService } from './analysis.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AnalyzeExamResultDto } from './dto/analyze-exam-result.dto';
+import { AnalyzeLearningPathDto } from './dto/analyze-learning-path.dto';
+import { AnalyzeStudyPatternDto } from './dto/analyze-study-pattern.dto';
 
 @ApiTags('Analysis')
 @Controller('analysis')
@@ -12,22 +15,13 @@ export class AnalysisController {
 
   @Post('exam-result')
   @ApiOperation({ summary: 'Analyze exam results' })
-  async analyzeExamResult(@Body() data: { 
-    examData: any; 
-    subject: string; 
-    grade: number;
-    performance: number;
-  }) {
+  async analyzeExamResult(@Body() data: AnalyzeExamResultDto) {
     return this.analysisService.analyzeExamResult(data);
   }
 
   @Post('learning-path')
   @ApiOperation({ summary: 'Analyze learning path performance' })
-  async analyzeLearningPath(@Body() data: { 
-    pathId: string; 
-    progress: any[]; 
-    performance: any;
-  }) {
+  async analyzeLearningPath(@Body() data: AnalyzeLearningPathDto) {
     return this.analysisService.analyzeLearningPath(data);
   }
 
@@ -57,10 +51,7 @@ export class AnalysisController {
 
   @Post('study-pattern')
   @ApiOperation({ summary: 'Analyze study patterns' })
-  async analyzeStudyPattern(@Body() data: { 
-    studySessions: any[]; 
-    timeRange: string;
-  }) {
+  async analyzeStudyPattern(@Body() data: AnalyzeStudyPatternDto) {
     return this.analysisService.analyzeStudyPattern(data);
   }
 
