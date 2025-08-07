@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { GeminiService } from '../services/gemini.service';
+import { AnalyzeLearningPathDto } from './dto/analyze-learning-path.dto';
 
 interface ExamAnalysisData {
   examData: any;
@@ -661,7 +662,7 @@ export class AnalysisService {
     return insights;
   }
 
-  async analyzeLearningPath(data: { pathId: string; progress: any[]; performance: any }): Promise<any> {
+  async analyzeLearningPath(data: AnalyzeLearningPathDto): Promise<any> {
     const userId = 'user-id'; // JWT'den gelecek
 
     const learningPath = await this.prisma.learningPath.findUnique({
