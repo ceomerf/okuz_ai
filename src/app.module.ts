@@ -17,6 +17,7 @@ import { InvitesModule } from './invites/invites.module';
 import { InteractionModule } from './interaction/interaction.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SubscriptionModule } from './subscription/subscription.module';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
     InteractionModule,
     NotificationsModule,
     SubscriptionModule,
+    RealtimeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

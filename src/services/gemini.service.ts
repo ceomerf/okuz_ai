@@ -8,10 +8,11 @@ export class GeminiService {
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY || 'your-gemini-api-key';
-    console.log('🔑 Gemini API Key Debug:');
-    console.log(`   API Key exists: ${apiKey !== 'your-gemini-api-key'}`);
-    console.log(`   API Key length: ${apiKey.length}`);
-    console.log(`   API Key preview: ${apiKey.substring(0, 20)}...`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('🔑 Gemini API Key Debug:');
+      console.log(`   API Key exists: ${apiKey !== 'your-gemini-api-key'}`);
+      console.log(`   API Key length: ${apiKey.length}`);
+    }
     
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
@@ -23,7 +24,9 @@ export class GeminiService {
       const response = await result.response;
       return response.text();
     } catch (error) {
-      console.error('Gemini API Error:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Gemini API Error:', error);
+      }
       return 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
     }
   }
@@ -41,7 +44,9 @@ export class GeminiService {
         }
       })();
     } catch (error) {
-      console.error('Gemini Stream API Error:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Gemini Stream API Error:', error);
+      }
       return (async function* () {
         yield 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
       })();
@@ -63,7 +68,9 @@ export class GeminiService {
         return { content, structured: false };
       }
     } catch (error) {
-      console.error('Structured Content Error:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Structured Content Error:', error);
+      }
       return { error: 'Yapılandırılmış içerik oluşturulamadı' };
     }
   }

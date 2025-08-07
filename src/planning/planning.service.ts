@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { GeminiService } from '../services/gemini.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 interface PlanGenerationData {
   subjects: string[];
@@ -46,10 +47,14 @@ export class PlanningService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly geminiService: GeminiService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   async generatePlan(data: PlanGenerationData): Promise<any> {
-    const userId = data.userId || 'user-id'; // JWT'den gelecek
+    if (!data.userId) {
+      throw new BadRequestException('Kullanıcı kimliği gerekli');
+    }
+    const userId = data.userId;
 
     // Kullanıcının mevcut verilerini analiz et
     const userContext = await this.analyzeUserContext(userId);
@@ -104,6 +109,177 @@ export class PlanningService {
         recommendations: await this.generateRecommendations(data, userContext),
       },
       message: 'Kişiselleştirilmiş planınız başarıyla oluşturuldu!',
+    };
+  }
+
+  // Frontend’in beklediği: görev ilerlemesi güncelle
+  async updateTaskProgress(data: { taskId: string; minutes: number }) {
+    if (!data.taskId || typeof data.minutes !== 'number') {
+      throw new BadRequestException('Geçersiz parametreler');
+    }
+    const session = await this.prisma.studySession.findUnique({ where: { id: data.taskId } });
+    if (!session) throw new NotFoundException('Session not found');
+    const updated = await this.prisma.studySession.update({
+      where: { id: data.taskId },
+      data: {
+        duration: Math.max(0, (session.duration || 0) + data.minutes),
+        metadata: {
+          ...(session.metadata as any || {}),
+          progressUpdatedAt: new Date(),
+          lastProgressDeltaMin: data.minutes,
+        },
+      },
+    });
+    this.realtime.publishProgressUpdated(updated.userId, {
+      sessionId: updated.id,
+      minutesDelta: data.minutes,
+      duration: updated.duration,
+    });
+    return { success: true, session: updated };
+  }
+
+  // Onboarding verileriyle plan oluştur
+  async createPlanFromOnboarding(userId: string, data: any) {
+    if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
+    // Basit bir varsayılanla ilerle: kullanıcı profilinden bazı alanları almayı deneyebiliriz
+    const profile = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { studentProfile: true },
+    });
+    const subjects = data?.subjects || ['Matematik', 'Türkçe'];
+    const goals = data?.goals || ['Temel hedefler'];
+    const availableTime = data?.availableTime || 120;
+    const learningStyle = profile?.studentProfile?.learningStyle || 'visual';
+    const currentLevel = 'medium';
+    return this.generatePlan({ subjects, goals, availableTime, learningStyle, currentLevel, userId });
+  }
+
+  // Premium plan oluştur (7/30 günlük)
+  async createPremiumPlan(userId: string, data: any) {
+    if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
+    const durationDays = data?.durationDays === 30 ? 30 : 7;
+    const subjects = data?.subjects || ['Matematik', 'Türkçe'];
+    const goals = data?.goals || ['Premium hedefler'];
+    const availableTime = data?.availableTime || 180;
+    const learningStyle = data?.learningStyle || 'visual';
+    const currentLevel = data?.currentLevel || 'medium';
+    const result = await this.generatePlan({ subjects, goals, availableTime, learningStyle, currentLevel, userId });
+    // Planın endDate’ini premium kuralına göre güncelle
+    if (result?.plan?.id) {
+      const updated = await this.prisma.plan.update({
+        where: { id: result.plan.id },
+        data: { endDate: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000) },
+      });
+      return { ...result, plan: { ...result.plan, endDate: updated.endDate } };
+    }
+    return result;
+  }
+
+  // Tatil planını AI’den oluşturup kalıcılaştır
+  async generateAndPersistHolidayPlan(userId: string, data: any) {
+    if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
+    const holiday = await this.generateHolidayPlan({
+      holidayType: data?.holidayType || 'balanced',
+      duration: data?.duration || 7,
+      goals: data?.goals || ['Verimli tatil'],
+    });
+    // Planı kalıcılaştır
+    const savedPlan = await this.prisma.plan.create({
+      data: {
+        userId,
+        title: (holiday.plan?.title) || 'Tatil Çalışma Planı',
+        description: 'Tatil dönemine özel çalışma planı',
+        type: 'HOLIDAY',
+        subjects: [],
+        goals: holiday.plan?.goals || [],
+        startDate: new Date(),
+        endDate: new Date(Date.now() + ((holiday.plan?.duration || data?.duration || 7) * 24 * 60 * 60 * 1000)),
+        metadata: { aiGenerated: true, holidayPlan: holiday.plan },
+      },
+    });
+    // StudySession üretimi: varsa günlük schedule’dan basit seanslar çıkar
+    const sessions: Array<{ day: number; time?: string; subject?: string; topic?: string; duration?: number }>
+      = holiday.plan?.dailySchedule || [];
+    const toMinutes = (timeRange?: string) => {
+      if (!timeRange) return 60;
+      const [start, end] = timeRange.split('-');
+      const [sh, sm] = start.split(':').map(Number);
+      const [eh, em] = end.split(':').map(Number);
+      return Math.max(30, (eh * 60 + em) - (sh * 60 + sm));
+    };
+    const createDateForDay = (day: number, time?: string) => {
+      const d = new Date();
+      d.setDate(d.getDate() + (day - 1));
+      if (time) {
+        const [h, m] = time.split(':').map(Number);
+        d.setHours(h, m, 0, 0);
+      }
+      return d;
+    };
+    const sessionCreates = sessions.flatMap((ds: any) =>
+      (ds.sessions || []).map((s: any) => this.prisma.studySession.create({
+        data: {
+          planId: savedPlan.id,
+          userId,
+          subject: s.subject || 'Genel',
+          topic: s.topic || 'Çalışma',
+          duration: toMinutes(s.time),
+          startTime: createDateForDay(ds.day, (s.time || '09:00').split('-')[0]),
+          metadata: { type: s.type || 'study', difficulty: s.difficulty || 'medium' },
+        },
+      }))
+    );
+    await Promise.all(sessionCreates);
+    return { success: true, plan: savedPlan };
+  }
+
+  // Tatil planı durumu kontrolü
+  async checkHolidayStatus(userId: string) {
+    const active = await this.prisma.plan.findFirst({
+      where: { userId, type: 'HOLIDAY', isActive: true, endDate: { gte: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return { hasHolidayPlan: !!active, planId: active?.id };
+  }
+
+  // YKS özel uçlar (basit ilk sürüm)
+  async assignYksSubjects(userId: string, data: { subjects: string[] }) {
+    if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { metadata: { assignedYksSubjects: data.subjects } } as any,
+    });
+    return { success: true };
+  }
+
+  async generateYksPlan(userId: string, data: any) {
+    if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
+    const subjects = data?.subjects || ['TYT Matematik', 'TYT Türkçe'];
+    const goals = data?.goals || ['YKS hedefleri'];
+    const availableTime = data?.availableTime || 180;
+    const learningStyle = data?.learningStyle || 'visual';
+    const currentLevel = data?.currentLevel || 'medium';
+    return this.generatePlan({ subjects, goals, availableTime, learningStyle, currentLevel, userId });
+  }
+
+  async getYksSubjectRecommendations(track?: string) {
+    const recs = {
+      sayisal: ['Matematik', 'Fizik', 'Kimya', 'Biyoloji'],
+      esitsay: ['Matematik', 'Türkçe', 'Tarih', 'Coğrafya'],
+      sozel: ['Türk Dili ve Edebiyatı', 'Tarih', 'Coğrafya', 'Felsefe'],
+    } as any;
+    return { subjects: recs[track || 'sayisal'] || recs.sayisal };
+  }
+
+  async getMebTopics(subject?: string, grade?: string) {
+    // Şimdilik basit statik dönüş; ileride veri kaynağına bağlanabilir
+    return {
+      subject: subject || 'Matematik',
+      grade: grade || '11',
+      topics: [
+        { unit: 'Fonksiyonlar', outcomes: ['Fonksiyon kavramı', 'Grafikler'] },
+        { unit: 'Limit ve Süreklilik', outcomes: ['Limit tanımı', 'Süreklilik'] },
+      ],
     };
   }
 
@@ -1102,8 +1278,12 @@ KURALLAR:
       },
     });
 
-    // Gamification entegrasyonu
-    // TODO: GamificationService'i çağır
+    // Realtime event
+    this.realtime.publishSessionCompleted(updatedSession.userId, {
+      sessionId: updatedSession.id,
+      planId: updatedSession.planId,
+      performance: updatedSession.performance,
+    });
 
     return {
       success: true,
@@ -1678,8 +1858,8 @@ KURALLAR:
     };
   }
 
-  async createLongTermPlan(data: { goals: string[]; timeline: number; milestones: any[] }): Promise<any> {
-    const userId = 'user-id'; // JWT'den gelecek
+  async createLongTermPlan(userId: string, data: { goals: string[]; timeline: number; milestones: any[] }): Promise<any> {
+    if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
 
     const longTermPlanPrompt = `
     ${data.timeline} aylık uzun vadeli eğitim planı oluştur.

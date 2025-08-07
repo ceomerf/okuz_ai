@@ -1,32 +1,31 @@
-import { Controller, Post, Get, Put, Delete, Body, UseGuards, Request, Param } from '@nestjs/common';
+import { Controller, Post, Get, Put, Delete, Body, UseGuards, Request, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PlanningService } from './planning.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('Planning')
 @Controller('planning')
-// @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class PlanningController {
   constructor(private readonly planningService: PlanningService) {}
 
   @Post('generate-plan')
   @ApiOperation({ summary: 'Generate personalized study plan' })
-  async generatePlan(@Body() data: { 
+  async generatePlan(@Request() req, @Body() data: { 
     subjects: string[]; 
     goals: string[]; 
     availableTime: number; 
     learningStyle: string;
     currentLevel: string;
   }) {
-    return this.planningService.generatePlan(data);
+    return this.planningService.generatePlan({ ...data, userId: req.user.id });
   }
 
   @Get('user-plans')
   @ApiOperation({ summary: 'Get user plans' })
   async getUserPlans(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.planningService.getUserPlans(userId);
+    return this.planningService.getUserPlans(req.user.id);
   }
 
   @Get('plan/:planId')
@@ -70,15 +69,13 @@ export class PlanningController {
   @Get('weekly-overview')
   @ApiOperation({ summary: 'Get weekly study overview' })
   async getWeeklyOverview(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.planningService.getWeeklyOverview(userId);
+    return this.planningService.getWeeklyOverview(req.user.id);
   }
 
   @Post('daily-schedule')
   @ApiOperation({ summary: 'Get daily schedule' })
   async getDailySchedule(@Request() req, @Body() data: { date: string }) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.planningService.getDailySchedule(userId, data.date);
+    return this.planningService.getDailySchedule(req.user.id, data.date);
   }
 
   @Post('complete-session')
@@ -100,7 +97,7 @@ export class PlanningController {
     return this.planningService.skipSession(data);
   }
 
-  @Get('progress-tracking')
+  @Get('progress-tracking/:planId')
   @ApiOperation({ summary: 'Get plan progress tracking' })
   async getProgressTracking(@Request() req, @Param('planId') planId: string) {
     return this.planningService.getProgressTracking(req.user.id, planId);
@@ -118,8 +115,8 @@ export class PlanningController {
 
   @Post('create-holiday-plan')
   @ApiOperation({ summary: 'Create holiday study plan' })
-  async createHolidayPlan(@Body() data: any) {
-    return this.planningService.generateHolidayPlan(data);
+  async createHolidayPlan(@Request() req, @Body() data: any) {
+    return this.planningService.generateAndPersistHolidayPlan(req.user.id, data);
   }
 
   @Get('long-term-plan')
@@ -130,11 +127,64 @@ export class PlanningController {
 
   @Post('create-long-term-plan')
   @ApiOperation({ summary: 'Create long term study plan' })
-  async createLongTermPlan(@Body() data: { 
+  async createLongTermPlan(@Request() req, @Body() data: { 
     goals: string[]; 
     timeline: number; 
     milestones: any[];
   }) {
-    return this.planningService.createLongTermPlan(data);
+    return this.planningService.createLongTermPlan(req.user.id, data);
+  }
+
+  // Update task progress (frontend expects this endpoint)
+  @Post('update-progress')
+  @ApiOperation({ summary: 'Update task progress (minutes)' })
+  async updateProgress(@Body() data: { taskId: string; minutes: number }) {
+    return this.planningService.updateTaskProgress(data);
+  }
+
+  // Create plan from onboarding
+  @Post('create-from-onboarding')
+  @ApiOperation({ summary: 'Create initial plan using onboarding data' })
+  async createFromOnboarding(@Request() req, @Body() data: any) {
+    return this.planningService.createPlanFromOnboarding(req.user.id, data);
+  }
+
+  // Create premium plan
+  @Post('create-premium-plan')
+  @ApiOperation({ summary: 'Create premium plan (7/30 days)' })
+  async createPremiumPlan(@Request() req, @Body() data: any) {
+    return this.planningService.createPremiumPlan(req.user.id, data);
+  }
+
+  // Check holiday plan status
+  @Get('check-holiday-status')
+  @ApiOperation({ summary: 'Check whether user has an active holiday plan' })
+  async checkHolidayStatus(@Request() req) {
+    return this.planningService.checkHolidayStatus(req.user.id);
+  }
+
+  // YKS-specific endpoints expected by frontend
+  @Post('yks/assign-subjects')
+  @ApiOperation({ summary: 'Assign YKS subjects to user' })
+  async assignYksSubjects(@Request() req, @Body() data: { subjects: string[] }) {
+    return this.planningService.assignYksSubjects(req.user.id, data);
+  }
+
+  @Post('yks/generate-plan')
+  @ApiOperation({ summary: 'Generate YKS study plan' })
+  async generateYksPlan(@Request() req, @Body() data: any) {
+    return this.planningService.generateYksPlan(req.user.id, data);
+  }
+
+  @Get('yks/subject-recommendations')
+  @ApiOperation({ summary: 'Get YKS subject recommendations' })
+  async getYksSubjectRecommendations(@Query('track') track?: string) {
+    return this.planningService.getYksSubjectRecommendations(track);
+  }
+
+  @Get('yks/meb-topics')
+  @ApiOperation({ summary: 'Get MEB topics by subject' })
+  async getMebTopics(@Query('subject') subject?: string, @Query('grade') grade?: string) {
+    return this.planningService.getMebTopics(subject, grade);
   }
 }

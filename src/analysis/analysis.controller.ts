@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('Analysis')
 @Controller('analysis')
-// @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class AnalysisController {
   constructor(private readonly analysisService: AnalysisService) {}
@@ -34,29 +34,25 @@ export class AnalysisController {
   @Get('performance-dashboard')
   @ApiOperation({ summary: 'Get performance dashboard' })
   async getPerformanceDashboard(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.analysisService.getPerformanceDashboard(userId);
+    return this.analysisService.getPerformanceDashboard(req.user.id);
   }
 
   @Get('subject-analysis/:subject')
   @ApiOperation({ summary: 'Get subject-specific analysis' })
   async getSubjectAnalysis(@Request() req, @Param('subject') subject: string) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.analysisService.getSubjectAnalysis(userId, subject);
+    return this.analysisService.getSubjectAnalysis(req.user.id, subject);
   }
 
   @Get('weak-areas')
   @ApiOperation({ summary: 'Identify weak areas' })
   async getWeakAreas(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.analysisService.getWeakAreas(userId);
+    return this.analysisService.getWeakAreas(req.user.id);
   }
 
   @Get('strength-areas')
   @ApiOperation({ summary: 'Identify strength areas' })
   async getStrengthAreas(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.analysisService.getStrengthAreas(userId);
+    return this.analysisService.getStrengthAreas(req.user.id);
   }
 
   @Post('study-pattern')
@@ -71,8 +67,7 @@ export class AnalysisController {
   @Get('progress-trends')
   @ApiOperation({ summary: 'Get progress trends' })
   async getProgressTrends(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.analysisService.getProgressTrends(userId);
+    return this.analysisService.getProgressTrends(req.user.id);
   }
 
   @Post('predictive-analysis')
@@ -87,8 +82,7 @@ export class AnalysisController {
   @Get('comparison-analysis')
   @ApiOperation({ summary: 'Compare performance with peers' })
   async getComparisonAnalysis(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.analysisService.getComparisonAnalysis(userId);
+    return this.analysisService.getComparisonAnalysis(req.user.id);
   }
 
   @Post('goal-progress')

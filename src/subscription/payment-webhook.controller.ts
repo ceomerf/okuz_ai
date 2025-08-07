@@ -18,7 +18,8 @@ interface PaymentWebhookData {
   gatewayResponse: any;
 }
 
-@Controller('webhook')
+// Not used for initial release (Google/Apple IAP will be used). Keeping controller behind disabled routes.
+@Controller('webhook-disabled')
 export class PaymentWebhookController {
   private readonly logger = new Logger(PaymentWebhookController.name);
 
