@@ -1,7 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { SubscriptionStatus, SubscriptionPlan, PaymentStatus } from '@prisma/client';
-import { PlanningService } from '../planning/planning.service';
 
 export interface CreateSubscriptionDto {
   userId: string;
@@ -26,7 +25,6 @@ export class SubscriptionService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly planningService: PlanningService,
   ) {}
 
   // Yeni kullanıcı için trial başlat
@@ -223,39 +221,8 @@ export class SubscriptionService {
         });
 
         // Premium aktif olduğunda: aktif 3 günlük planı 7 güne yükselt
-        try {
-          const userId = payment.subscription.userId;
-          const activePlan = await this.prisma.plan.findFirst({
-            where: { userId, isActive: true },
-            orderBy: { createdAt: 'desc' },
-          });
-          if (activePlan) {
-            const now = new Date();
-            const desiredEnd = new Date(activePlan.startDate);
-            desiredEnd.setDate(desiredEnd.getDate() + 7);
-            const updated = await this.prisma.plan.update({
-              where: { id: activePlan.id },
-              data: { endDate: desiredEnd, type: 'WEEKLY' as any },
-            });
-
-            // Eksik günler için yeni seanslar üret (basit tetik: yeniden plan optimize/generate)
-            await this.planningService.generatePlan({
-              subjects: updated.subjects,
-              goals: updated.goals,
-              availableTime: (updated.metadata as any)?.availableTime || 120,
-              learningStyle: (updated.metadata as any)?.learningStyle || 'visual',
-              currentLevel: (updated.metadata as any)?.preferences?.difficulty || 'medium',
-              userId,
-              // 7 güne hedefle
-              preferences: {
-                ...(updated.metadata as any)?.preferences,
-              } as any,
-              ...( { planDurationDays: 7 } as any ),
-            } as any);
-          }
-        } catch (e) {
-          this.logger.warn(`Plan extension on premium failed: ${e?.message || e}`);
-        }
+        // Not: Plan uzatma mantığı dairesel bağımlılığa yol açtı. Bunu, ayrı bir domain service
+        // veya event tabanlı tetik ile ekleyeceğiz. Şimdilik yalnızca subscription aktif edilir.
       }
 
       this.logger.log(`Payment confirmed: ${paymentId}`);
