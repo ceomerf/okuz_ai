@@ -65,23 +65,21 @@ export class PlanningService {
     objectives: z.array(z.string()).optional(),
     resources: z.array(z.string()).optional(),
     techniques: z.array(z.string()).optional(),
-    });
-    }
   });
 
   private readonly aiWeeklyPlanSchema = z.object({
     week: z.number().int().positive(),
     focus: z.string().min(1).optional(),
-    sessions: z.array(this.aiSessionSchema),
+    sessions: z.array(this.aiSessionSchema).optional(),
   });
 
   private readonly aiPlanSchema = z.union([
     z.object({
-      sessions: z.array(this.aiSessionSchema),
+      sessions: z.array(this.aiSessionSchema).optional(),
       weeklyPlans: z.array(this.aiWeeklyPlanSchema).optional(),
     }),
     z.object({
-      weeklyPlans: z.array(this.aiWeeklyPlanSchema).min(1),
+      weeklyPlans: z.array(this.aiWeeklyPlanSchema).optional(),
       sessions: z.array(this.aiSessionSchema).optional(),
     }),
   ]);
