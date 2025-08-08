@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsArray, IsString, IsObject, IsOptional, ArrayNotEmpty } from 'class-validator';
+import { IsNotEmpty, IsArray, IsString, IsObject, IsOptional, ArrayNotEmpty, IsNumber, Min } from 'class-validator';
 
 export class GeneratePlanDto {
   @IsArray()
@@ -14,6 +14,11 @@ export class GeneratePlanDto {
   @IsObject()
   @IsOptional()
   studentProfile?: { grade?: number; field?: string };
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  availableTime?: number; // dakika/gün
 
   @IsString()
   @IsNotEmpty()
