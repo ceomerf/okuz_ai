@@ -51,6 +51,21 @@ export class PlanningService {
     private readonly realtime: RealtimeGateway,
   ) {}
 
+  private getLearningStyleDisplayName(style: string): string {
+    switch ((style || '').toLowerCase()) {
+      case 'visual':
+        return 'Görsel';
+      case 'auditory':
+        return 'İşitsel';
+      case 'kinesthetic':
+        return 'Kinestetik';
+      case 'reading':
+        return 'Okuma/Not Alma';
+      default:
+        return style?.isNotEmpty ? style : 'Kişisel';
+    }
+  }
+
   async generatePlan(data: PlanGenerationData | (GeneratePlanDto & { userId: string })): Promise<any> {
     const normalized: PlanGenerationData = (data as any).availableTime != null
       ? (data as PlanGenerationData)
@@ -97,7 +112,7 @@ export class PlanningService {
     const savedPlan = await this.prisma.plan.create({
       data: {
         userId,
-        title: `${normalized.learningStyle} Öğrenme Planı`,
+        title: `${this.getLearningStyleDisplayName(normalized.learningStyle)} Öğrenme Planı`,
         description: `${normalized.subjects.join(', ')} dersleri için kişiselleştirilmiş plan`,
         type: 'MONTHLY',
         subjects: normalized.subjects,
