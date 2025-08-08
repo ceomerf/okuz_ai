@@ -12,11 +12,11 @@ export class UsersController {
   }
 
   @Post('complete-onboarding')
-  // @UseGuards(JwtAuthGuard) // Geçici olarak kaldırıldı
+  @UseGuards(JwtAuthGuard)
   async completeOnboarding(@Body() onboardingData: any, @Request() req: any) {
     console.log('🎯 Complete onboarding request:', onboardingData);
-    console.log('🎯 User ID from token:', req.user?.sub || 'test-user-id');
+    console.log('🎯 User ID from token:', req.user?.id);
     
-    return this.usersService.completeOnboarding('test-user-id', onboardingData);
+    return this.usersService.completeOnboarding(req.user.id, onboardingData);
   }
 }

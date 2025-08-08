@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { z } from 'zod';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { GeminiService } from '../services/gemini.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
@@ -51,6 +52,42 @@ export class PlanningService {
     private readonly realtime: RealtimeGateway,
   ) {}
 
+  // Zod: AI plan yapısı doğrulama şemaları
+  private readonly aiSessionSchema = z.object({
+    subject: z.string().min(1),
+    topic: z.string().min(1),
+    duration: z.number().positive().optional(),
+    durationInMinutes: z.number().positive().optional(),
+    type: z.enum(['study', 'review', 'practice', 'exam']).optional(),
+    difficulty: z.string().optional(),
+    week: z.number().int().positive().optional(),
+    day: z.string().optional(),
+    objectives: z.array(z.string()).optional(),
+    resources: z.array(z.string()).optional(),
+    techniques: z.array(z.string()).optional(),
+  }).superRefine((val, ctx) => {
+    if (val.duration == null && val.durationInMinutes == null) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'duration or durationInMinutes required' });
+    }
+  });
+
+  private readonly aiWeeklyPlanSchema = z.object({
+    week: z.number().int().positive(),
+    focus: z.string().min(1).optional(),
+    sessions: z.array(this.aiSessionSchema).min(1),
+  });
+
+  private readonly aiPlanSchema = z.union([
+    z.object({
+      sessions: z.array(this.aiSessionSchema).min(1),
+      weeklyPlans: z.array(this.aiWeeklyPlanSchema).optional(),
+    }),
+    z.object({
+      weeklyPlans: z.array(this.aiWeeklyPlanSchema).min(1),
+      sessions: z.array(this.aiSessionSchema).optional(),
+    }),
+  ]);
+
   private getLearningStyleDisplayName(style: string): string {
     const s = (style || '').trim();
     switch (s.toLowerCase()) {
@@ -92,17 +129,20 @@ export class PlanningService {
     const aiPlanPrompt = this.createPlanPrompt(normalized, userContext);
     const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
     
-    let planStructure;
+    let planStructureRaw: any;
     try {
-      planStructure = JSON.parse(aiResponse);
+      planStructureRaw = JSON.parse(aiResponse);
     } catch (error) {
-      throw new BadRequestException('AI plan çıktısı geçersiz formatta.');
+      throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
     }
 
-    // Şema doğrulaması (schema guard). Geçersizse hata döndür.
-    if (!this.isValidPlanStructure(planStructure)) {
-      throw new BadRequestException('AI plan yapısı doğrulamadan geçmedi.');
+    // Zod ile güçlü doğrulama
+    const validationResult = this.aiPlanSchema.safeParse(planStructureRaw);
+    if (!validationResult.success) {
+      console.error('AI Response Validation Error:', validationResult.error);
+      throw new BadRequestException('AI servisinden geçersiz plan yapısı alındı.');
     }
+    const planStructure = validationResult.data as any;
 
     // Plan optimizasyonu
     const optimizedPlan = await this.optimizePlan(planStructure, normalized, userContext);
@@ -150,25 +190,14 @@ export class PlanningService {
     };
   }
 
-  // AI'dan gelen plan yapısına basit şema doğrulaması
-  private isValidPlanStructure(plan: any): boolean {
-    if (!plan) return false;
-    const sessions = plan.sessions || plan.weeklyPlans?.flatMap((w: any) => w.sessions || []) || [];
-    if (!Array.isArray(sessions) || sessions.length === 0) return false;
-    // ilk birkaç öğeyi kontrol ederek temel alanların varlığını doğrula
-    const sample = sessions.slice(0, Math.min(3, sessions.length));
-    return sample.every((s: any) =>
-      s && typeof s.subject === 'string' && typeof s.topic === 'string' &&
-      (typeof s.duration === 'number' || typeof s.durationInMinutes === 'number')
-    );
-  }
+  // isValidPlanStructure kaldırıldı; yerine Zod şeması kullanılıyor
 
   // Frontend’in beklediği: görev ilerlemesi güncelle
-  async updateTaskProgress(data: { taskId: string; minutes: number }) {
+  async updateTaskProgress(data: { userId: string; taskId: string; minutes: number }) {
     if (!data.taskId || typeof data.minutes !== 'number') {
       throw new BadRequestException('Geçersiz parametreler');
     }
-    const session = await this.prisma.studySession.findUnique({ where: { id: data.taskId } });
+    const session = await this.prisma.studySession.findFirst({ where: { id: data.taskId, userId: data.userId } });
     if (!session) throw new NotFoundException('Session not found');
     const updated = await this.prisma.studySession.update({
       where: { id: data.taskId },
@@ -1151,6 +1180,27 @@ KURALLAR:
       message: `${rescheduledSessions.length} seans yeniden planlandı`,
       newSchedule: rescheduledSessions,
     };
+  }
+
+  async rescheduleSingle(data: { userId: string; sessionId: string; newStartTime: string }) {
+    const session = await this.prisma.studySession.findFirst({
+      where: { id: data.sessionId, userId: data.userId },
+    });
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+    const newTime = new Date(data.newStartTime);
+    if (isNaN(newTime.getTime())) {
+      throw new BadRequestException('Invalid newStartTime');
+    }
+    const updated = await this.prisma.studySession.update({
+      where: { id: data.sessionId },
+      data: {
+        startTime: newTime,
+        metadata: { ...(session.metadata as any || {}), rescheduled: true, rescheduleReason: 'manual' },
+      },
+    });
+    return { success: true, session: updated };
   }
 
   private async resolveConflicts(sessions: any[], conflicts: any[], preferences: any) {

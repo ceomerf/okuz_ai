@@ -4,6 +4,7 @@ import { PlanningService } from './planning.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GeneratePlanDto } from './dto/generate-plan.dto';
 import { IsArray, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min, MinLength } from 'class-validator';
+import { RescheduleSessionDto } from './dto/reschedule-session.dto';
 
 class DailyScheduleDto {
   @IsDateString()
@@ -72,13 +73,9 @@ export class PlanningController {
   }
 
   @Post('reschedule')
-  @ApiOperation({ summary: 'Reschedule study sessions' })
-  async reschedule(@Request() req, @Body() data: { 
-    planId: string; 
-    conflicts: any[]; 
-    preferences: any;
-  }) {
-    return this.planningService.reschedule({ ...data, userId: req.user.id });
+  @ApiOperation({ summary: 'Reschedule a single study session' })
+  async reschedule(@Request() req, @Body() dto: RescheduleSessionDto) {
+    return this.planningService.rescheduleSingle({ ...dto, userId: req.user.id });
   }
 
   @Post('ai-reschedule-suggestions')
@@ -156,8 +153,8 @@ export class PlanningController {
   // Update task progress (frontend expects this endpoint)
   @Post('update-progress')
   @ApiOperation({ summary: 'Update task progress (minutes)' })
-  async updateProgress(@Body() data: { taskId: string; minutes: number }) {
-    return this.planningService.updateTaskProgress(data);
+  async updateProgress(@Request() req, @Body() data: { taskId: string; minutes: number }) {
+    return this.planningService.updateTaskProgress({ ...data, userId: req.user.id });
   }
 
   // Create plan from onboarding

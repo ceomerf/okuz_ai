@@ -192,6 +192,8 @@ model Plan {
   @@index([userId])
   @@index([userId, isActive])
   @@index([userId, startDate])
+  @@index([userId, createdAt])
+  @@index([userId, type, isActive, endDate])
 }
 
 model StudySession {
@@ -233,6 +235,9 @@ model Achievement {
   createdAt   DateTime        @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
 }
 
 model GamificationProfile {
@@ -263,6 +268,9 @@ model Notification {
   createdAt DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+   @@index([userId])
+   @@index([createdAt])
 }
 
 model ToolUsage {
@@ -275,6 +283,9 @@ model ToolUsage {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model FamilyMember {
