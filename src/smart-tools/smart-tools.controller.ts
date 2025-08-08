@@ -76,8 +76,8 @@ export class SmartToolsController {
 
   @Post('live-quiz')
   @ApiOperation({ summary: 'Live Quiz Generator - Canlı quiz oluşturucu' })
-  async generateLiveQuiz(@Body() data: { topic: string; difficulty: string; count: number }) {
-    return this.smartToolsService.generateLiveQuiz(data);
+  async generateLiveQuiz(@Body() data: { topic: string; difficulty: string; count?: number; questionCount?: number; subject?: string; grade?: string }) {
+    return this.smartToolsService.generateLiveQuiz(data as any);
   }
 
   @Post('exam-simulator')

@@ -786,10 +786,19 @@ Sen, karmaşık konuları görsel ve sezgisel "Bilgi Ağaçları"na dönüştür
     };
   }
 
-  async generateLiveQuiz(data: { topic: string; difficulty: string; count: number }) {
+  async generateLiveQuiz(data: { topic: string; difficulty: string; count?: number; questionCount?: number; subject?: string; grade?: string }) {
     try {
+      const count = (typeof data.questionCount === 'number' && data.questionCount > 0)
+        ? data.questionCount
+        : (typeof data.count === 'number' && data.count > 0 ? data.count : 10);
+
+      const subjectLine = data.subject ? `Ders: ${data.subject}.` : '';
+      const gradeLine = data.grade ? `Sınıf: ${data.grade}.` : '';
+
       const prompt = `
-      "${data.topic}" konusu için ${data.count} adet ${data.difficulty} zorlukta soru oluştur.
+      ${gradeLine} ${subjectLine}
+      "${data.topic}" konusu için ${count} adet ${data.difficulty} zorlukta soru oluştur.
+      Soruları doğrudan bu konuya ve bu dersin müfredat bağlamına uygun üret.
       
       Format:
       {
