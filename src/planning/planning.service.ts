@@ -88,6 +88,20 @@ export class PlanningService {
     }),
   ]);
 
+  private cleanAiJsonResponse(text: string): string {
+    if (!text) return text;
+    let cleaned = text.trim();
+    // Remove code fences
+    cleaned = cleaned.replace(/```json\n?/gi, '').replace(/```/g, '');
+    // Try to extract JSON substring between first { and last }
+    const first = cleaned.indexOf('{');
+    const last = cleaned.lastIndexOf('}');
+    if (first !== -1 && last !== -1 && last > first) {
+      cleaned = cleaned.substring(first, last + 1);
+    }
+    return cleaned;
+  }
+
   private getLearningStyleDisplayName(style: string): string {
     const s = (style || '').trim();
     switch (s.toLowerCase()) {
@@ -129,10 +143,14 @@ export class PlanningService {
     const aiPlanPrompt = this.createPlanPrompt(normalized, userContext);
     const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
     
+    // AI yanıtı bazen markdown/çitler içerebilir; temizleyip parse etmeyi dene
+    const cleaned = this.cleanAiJsonResponse(aiResponse);
     let planStructureRaw: any;
     try {
-      planStructureRaw = JSON.parse(aiResponse);
+      planStructureRaw = JSON.parse(cleaned);
     } catch (error) {
+      console.error('AI JSON parse failed. Raw preview:', aiResponse?.slice(0, 200));
+      console.error('Cleaned preview:', cleaned?.slice(0, 200));
       throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
     }
 
