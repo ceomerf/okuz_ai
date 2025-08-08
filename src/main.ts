@@ -3,7 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
-import compression from 'compression';
+import * as compression from 'compression';
 import rateLimit from 'express-rate-limit';
 
 async function bootstrap() {
@@ -11,7 +11,8 @@ async function bootstrap() {
 
   // Güvenlik ve performans middleware'leri
   app.use(helmet());
-  app.use(compression());
+  // compression import'u CJS olduğundan namespace import ile çağırıyoruz
+  app.use((compression as unknown as () => any)());
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,

@@ -4,9 +4,10 @@ import { PlanningService } from './planning.service';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { GeminiModule } from '../services/gemini.module';
 import { AuthModule } from '../auth/auth.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
-  imports: [PrismaModule, GeminiModule, AuthModule],
+  imports: [PrismaModule, GeminiModule, AuthModule, RealtimeModule],
   controllers: [PlanningController],
   providers: [PlanningService],
   exports: [PlanningService],
