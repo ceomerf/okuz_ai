@@ -1,6 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { GeminiService } from '../services/gemini.service';
+import { AnalyzeLearningPathDto } from './dto/analyze-learning-path.dto';
 
 interface ExamAnalysisData {
   examData: any;
@@ -37,10 +40,11 @@ export class AnalysisService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly geminiService: GeminiService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async analyzeExamResult(data: ExamAnalysisData): Promise<any> {
-    const userId = data.userId || 'user-id'; // JWT'den gelecek
+    const userId = data.userId as string; // JWT'den gelmeli; fallback kaldırıldı
 
     // Sınav verilerini analiz et
     const examAnalysis = await this.performExamAnalysis(data);
@@ -661,7 +665,7 @@ export class AnalysisService {
     return insights;
   }
 
-  async analyzeLearningPath(data: { pathId: string; progress: any[]; performance: any }): Promise<any> {
+  async analyzeLearningPath(data: AnalyzeLearningPathDto): Promise<any> {
     const userId = 'user-id'; // JWT'den gelecek
 
     const learningPath = await this.prisma.learningPath.findUnique({
@@ -926,41 +930,122 @@ export class AnalysisService {
   }
 
   async getPerformanceDashboard(userId: string): Promise<any> {
-    // Genel performans metrikleri
-    const overallMetrics = await this.calculateOverallMetrics(userId);
-    
-    // Konu bazlı performans
-    const subjectPerformance = await this.getSubjectPerformance(userId);
-    
-    // Zaman bazlı trendler
-    const timeBasedTrends = await this.getTimeBasedTrends(userId);
-    
-    // Hedef takibi
-    const goalTracking = await this.getGoalTracking(userId);
-    
-    // Karşılaştırmalı analiz
-    const comparative = await this.getComparativeAnalysis(userId);
+    const cacheKey = `perf_dash:${userId}`;
+    const cached = await this.cacheManager.get<any>(cacheKey);
+    if (cached) return cached;
 
-    return {
+    // Ağ çağrılarını paralel başlat
+    const [
+      overallMetrics,
+      subjectPerformance,
+      timeBasedTrends,
+      goalTracking,
+      comparative,
+      weekly,
+      subjectsTime,
+      activity,
+    ] = await Promise.all([
+      this.calculateOverallMetrics(userId),
+      this.getSubjectPerformance(userId),
+      this.getTimeBasedTrends(userId),
+      this.getGoalTracking(userId),
+      this.getComparativeAnalysis(userId),
+      this.getWeeklyDistribution(userId),
+      this.getSubjectTimeDistribution(userId),
+      this.getRecentActivityLogs(userId),
+    ]);
+
+    const result = {
       summary: {
-        overallScore: overallMetrics.averageScore,
-        improvement: overallMetrics.improvement,
-        consistency: overallMetrics.consistency,
-        studyStreak: overallMetrics.studyStreak,
-        totalStudyHours: overallMetrics.totalStudyHours,
+        overallScore: (overallMetrics as any).averageScore ?? (overallMetrics as any).overall,
+        improvement: (overallMetrics as any).improvement,
+        consistency: (overallMetrics as any).consistency,
+        studyStreak: (overallMetrics as any).studyStreak,
+        totalStudyHours: (overallMetrics as any).totalStudyHours,
       },
       performance: {
         subjects: subjectPerformance,
         trends: timeBasedTrends,
         goals: goalTracking,
       },
+      distributions: {
+        weekly,
+        subjectsTime,
+      },
+      activity,
       insights: {
-        strengths: overallMetrics.strengths,
-        improvements: overallMetrics.improvements,
-        recommendations: overallMetrics.recommendations,
+        strengths: (overallMetrics as any).strengths,
+        improvements: (overallMetrics as any).improvements,
+        recommendations: (overallMetrics as any).recommendations,
       },
       comparative,
     };
+
+    await this.cacheManager.set(cacheKey, result, 60); // 60 sn TTL
+    return result;
+  }
+
+  private async getWeeklyDistribution(userId: string) {
+    const startOfWeek = new Date();
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1);
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    const sessions = await this.prisma.studySession.findMany({
+      where: { userId, startTime: { gte: startOfWeek, lte: endOfWeek } },
+      orderBy: { startTime: 'asc' },
+    });
+
+    const daily = Array.from({ length: 7 }).map((_, i) => ({
+      day: ['Pzt','Sal','Çar','Per','Cum','Cts','Paz'][i],
+      minutes: 0,
+      completed: 0,
+      total: 0,
+    }));
+
+    sessions.forEach(s => {
+      const idx = (new Date(s.startTime).getDay() + 6) % 7; // Pazartesi=0
+      daily[idx].minutes += s.duration || 0;
+      daily[idx].total += 1;
+      if (s.isCompleted) daily[idx].completed += 1;
+    });
+
+    return daily;
+  }
+
+  private async getSubjectTimeDistribution(userId: string) {
+    const sessions = await this.prisma.studySession.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+    });
+    const map = {} as Record<string, { minutes: number; completedMinutes: number; count: number }>;
+    sessions.forEach(s => {
+      const key = s.subject || 'Genel';
+      if (!map[key]) map[key] = { minutes: 0, completedMinutes: 0, count: 0 };
+      map[key].minutes += s.duration || 0;
+      map[key].count += 1;
+      if (s.isCompleted) map[key].completedMinutes += s.duration || 0;
+    });
+    return Object.keys(map).map(k => ({ subject: k, ...map[k] }));
+  }
+
+  private async getRecentActivityLogs(userId: string) {
+    const sessions = await this.prisma.studySession.findMany({
+      where: { userId },
+      orderBy: { startTime: 'desc' },
+      take: 20,
+    });
+    return sessions.map(s => ({
+      id: s.id,
+      activity: `${s.subject} - ${s.topic}`,
+      duration: s.duration,
+      timestamp: s.startTime,
+      completed: s.isCompleted,
+      performance: s.performance ?? null,
+    }));
   }
 
   private async calculateOverallMetrics(userId: string): Promise<PerformanceMetrics> {

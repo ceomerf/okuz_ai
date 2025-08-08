@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PrismaModule } from './prisma/prisma.module';
+import { PrismaModule } from './common/prisma/prisma.module';
 import { GeminiModule } from './services/gemini.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -17,11 +17,13 @@ import { InvitesModule } from './invites/invites.module';
 import { InteractionModule } from './interaction/interaction.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SubscriptionModule } from './subscription/subscription.module';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: '.env',
     }),
     PrismaModule,
     GeminiModule,
@@ -38,6 +40,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
     InteractionModule,
     NotificationsModule,
     SubscriptionModule,
+    RealtimeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

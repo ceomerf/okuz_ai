@@ -50,6 +50,28 @@ enum NotificationType {
   INVITE
 }
 
+enum SubscriptionStatus {
+  TRIAL
+  FREE
+  PREMIUM
+  FAMILY
+  CANCELLED
+}
+
+enum SubscriptionPlan {
+  MONTHLY_PREMIUM
+  YEARLY_PREMIUM
+  FAMILY_PLAN
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -58,6 +80,11 @@ model User {
   role      UserRole @default(STUDENT)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Subscription fields
+  subscriptionStatus  SubscriptionStatus @default(TRIAL)
+  trialEndDate        DateTime?
+  subscriptionEndDate DateTime?
 
   // Profile relations
   studentProfile StudentProfile?
@@ -88,20 +115,31 @@ model User {
   // Family connections
   familyMembers FamilyMember[] @relation("Parent")
   children      FamilyMember[] @relation("Child")
+
+  // Additional relations
+  examResults   ExamResult[]
+  learningPaths LearningPath[]
+  flashcards    Flashcard[]
+  conceptMaps   ConceptMap[]
+  quizzes       Quiz[]
+  studyGoals    StudyGoal[]
+  studyHabits   StudyHabit[]
+  subscriptions Subscription[]
+  payments      Payment[]
 }
 
 model StudentProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  grade       Int
-  field       String
-  goals       String[]
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  grade         Int
+  field         String
+  goals         String[]
   learningStyle String?
-  strengths   String[]
-  weaknesses  String[]
-  interests   String[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  strengths     String[]
+  weaknesses    String[]
+  interests     String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -123,7 +161,7 @@ model Invite {
   inviteeId String?
   email     String
   token     String   @unique
-  type      String   // "student" or "parent"
+  type      String // "student" or "parent"
   status    String   @default("pending") // "pending", "accepted", "expired"
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -148,28 +186,40 @@ model Plan {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   sessions StudySession[]
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@index([userId, startDate])
+  @@index([userId, createdAt])
+  @@index([userId, type, isActive, endDate])
 }
 
 model StudySession {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   planId      String?
   userId      String
   subject     String
   topic       String
-  duration    Int      // minutes
+  duration    Int // minutes
   startTime   DateTime
   endTime     DateTime?
-  isCompleted Boolean  @default(false)
-  performance Int?     // 0-100
+  isCompleted Boolean   @default(false)
+  performance Int? // 0-100
   notes       String?
   metadata    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   plan Plan? @relation(fields: [planId], references: [id])
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([planId])
+  @@index([startTime])
+  @@index([userId, startTime])
+  @@index([userId, createdAt])
 }
 
 model Achievement {
@@ -185,21 +235,24 @@ model Achievement {
   createdAt   DateTime        @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
 }
 
 model GamificationProfile {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  level        Int      @default(1)
-  experience   Int      @default(0)
-  energy       Int      @default(100)
-  maxEnergy    Int      @default(100)
-  streak       Int      @default(0)
-  totalPoints  Int      @default(0)
-  coins        Int      @default(0)
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  level            Int      @default(1)
+  experience       Int      @default(0)
+  energy           Int      @default(100)
+  maxEnergy        Int      @default(100)
+  streak           Int      @default(0)
+  totalPoints      Int      @default(0)
+  coins            Int      @default(0)
   lastEnergyRefill DateTime @default(now())
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -215,25 +268,31 @@ model Notification {
   createdAt DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+   @@index([userId])
+   @@index([createdAt])
 }
 
 model ToolUsage {
-  id       String   @id @default(cuid())
-  userId   String
-  toolName String
-  input    String?
-  output   String?
-  metadata Json?
+  id        String   @id @default(cuid())
+  userId    String
+  toolName  String
+  input     String?
+  output    String?
+  metadata  Json?
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model FamilyMember {
-  id       String   @id @default(cuid())
-  parentId String
-  childId  String
-  role     String   // "parent", "child"
+  id        String   @id @default(cuid())
+  parentId  String
+  childId   String
+  role      String // "parent", "child"
   createdAt DateTime @default(now())
 
   parent User @relation("Parent", fields: [parentId], references: [id], onDelete: Cascade)
@@ -243,18 +302,21 @@ model FamilyMember {
 }
 
 model ExamResult {
-  id          String   @id @default(cuid())
-  userId      String
-  subject     String
-  examType    String
-  score       Int
-  totalScore  Int
-  duration    Int      // minutes
-  answers     Json?
-  analysis    Json?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  subject    String
+  examType   String
+  score      Int
+  totalScore Int
+  duration   Int // minutes
+  answers    Json?
+  analysis   Json?
+  createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
 }
 
 model LearningPath {
@@ -271,21 +333,25 @@ model LearningPath {
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Flashcard {
-  id       String   @id @default(cuid())
-  userId   String
-  topic    String
-  front    String
-  back     String
-  difficulty String @default("medium")
-  isMastered Boolean @default(false)
+  id           String    @id @default(cuid())
+  userId       String
+  topic        String
+  front        String
+  back         String
+  difficulty   String    @default("medium")
+  isMastered   Boolean   @default(false)
   lastReviewed DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model ConceptMap {
@@ -298,38 +364,45 @@ model ConceptMap {
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Quiz {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
   topic       String
   questions   Json
   answers     Json?
   score       Int?
   totalScore  Int
-  duration    Int      // minutes
-  isCompleted Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  duration    Int // minutes
+  isCompleted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
   completedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
 }
 
 model StudyGoal {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
   title       String
   description String?
   target      Int
-  current     Int      @default(0)
-  unit        String   // "hours", "pages", "questions", etc.
+  current     Int       @default(0)
+  unit        String // "hours", "pages", "questions", etc.
   deadline    DateTime?
-  isCompleted Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isCompleted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model StudyHabit {
@@ -337,7 +410,7 @@ model StudyHabit {
   userId      String
   name        String
   description String?
-  frequency   String   // "daily", "weekly", "monthly"
+  frequency   String // "daily", "weekly", "monthly"
   target      Int
   current     Int      @default(0)
   streak      Int      @default(0)
@@ -346,19 +419,46 @@ model StudyHabit {
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Subscription {
-  id          String   @id @default(cuid())
-  userId      String
-  planType    String   // "free", "premium", "family"
-  startDate   DateTime
-  endDate     DateTime?
-  isActive    Boolean  @default(true)
-  features    String[]
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String             @id @default(cuid())
+  userId    String
+  planType  SubscriptionPlan
+  status    SubscriptionStatus
+  startDate DateTime
+  endDate   DateTime?
+  isActive  Boolean            @default(true)
+  features  String[]
+  metadata  Json?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId])
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  subscriptionId  String?
+  amount          Float
+  currency        String        @default("TRY")
+  status          PaymentStatus @default(PENDING)
+  paymentMethod   String // "credit_card", "bank_transfer", etc.
+  transactionId   String? // External payment gateway transaction ID
+  gatewayResponse Json? // Full response from payment gateway
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@index([userId])
+  @@index([subscriptionId])
 }

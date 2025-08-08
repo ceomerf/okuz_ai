@@ -1,16 +1,16 @@
 module.exports = {
   apps: [{
     name: 'okuz-api',
-    script: 'dist/main.js',
+    script: 'dist/src/main.js',
     instances: 'max',
     exec_mode: 'cluster',
     env: {
       NODE_ENV: 'production',
-      PORT: 3000
+      PORT: 3002
     },
     env_production: {
       NODE_ENV: 'production',
-      PORT: 3000
+      PORT: 3002
     },
     error_file: './logs/err.log',
     out_file: './logs/out.log',

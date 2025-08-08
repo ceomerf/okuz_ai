@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 @Injectable()
@@ -6,25 +7,37 @@ export class GeminiService {
   private genAI: GoogleGenerativeAI;
   private model: any;
 
-  constructor() {
-    const apiKey = process.env.GEMINI_API_KEY || 'your-gemini-api-key';
-    console.log('🔑 Gemini API Key Debug:');
-    console.log(`   API Key exists: ${apiKey !== 'your-gemini-api-key'}`);
-    console.log(`   API Key length: ${apiKey.length}`);
-    console.log(`   API Key preview: ${apiKey.substring(0, 20)}...`);
-    
+  constructor(private readonly configService: ConfigService) {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is required');
+    }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const preferredModel = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
+    this.model = this.genAI.getGenerativeModel({ model: preferredModel });
   }
 
   async generateContent(prompt: string): Promise<string> {
     try {
-      const result = await this.model.generateContent(prompt);
+      const result = await this.model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }]}],
+      });
       const response = await result.response;
       return response.text();
     } catch (error) {
-      console.error('Gemini API Error:', error);
-      return 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
+      console.error('Gemini API Error (primary model):', (error as any)?.message || error);
+      // Fallback: 1.5-flash ile bir deneme daha yap
+      try {
+        const fallback = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const result = await fallback.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }]}],
+        });
+        const response = await result.response;
+        return response.text();
+      } catch (err2) {
+        console.error('Gemini API Error (fallback model):', (err2 as any)?.message || err2);
+        return 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
+      }
     }
   }
 
@@ -41,7 +54,9 @@ export class GeminiService {
         }
       })();
     } catch (error) {
-      console.error('Gemini Stream API Error:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Gemini Stream API Error:', error);
+      }
       return (async function* () {
         yield 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
       })();
@@ -63,7 +78,9 @@ export class GeminiService {
         return { content, structured: false };
       }
     } catch (error) {
-      console.error('Structured Content Error:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Structured Content Error:', error);
+      }
       return { error: 'Yapılandırılmış içerik oluşturulamadı' };
     }
   }

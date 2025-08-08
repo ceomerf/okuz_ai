@@ -2,77 +2,63 @@ import { Controller, Post, Get, Body, UseGuards, Request, Param } from '@nestjs/
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AnalysisService } from './analysis.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AnalyzeExamResultDto } from './dto/analyze-exam-result.dto';
+import { AnalyzeLearningPathDto } from './dto/analyze-learning-path.dto';
+import { AnalyzeStudyPatternDto } from './dto/analyze-study-pattern.dto';
 
 @ApiTags('Analysis')
 @Controller('analysis')
-// @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class AnalysisController {
   constructor(private readonly analysisService: AnalysisService) {}
 
   @Post('exam-result')
   @ApiOperation({ summary: 'Analyze exam results' })
-  async analyzeExamResult(@Body() data: { 
-    examData: any; 
-    subject: string; 
-    grade: number;
-    performance: number;
-  }) {
-    return this.analysisService.analyzeExamResult(data);
+  async analyzeExamResult(@Request() req, @Body() data: AnalyzeExamResultDto) {
+    return this.analysisService.analyzeExamResult({ ...data, userId: req.user.id } as any);
   }
 
   @Post('learning-path')
   @ApiOperation({ summary: 'Analyze learning path performance' })
-  async analyzeLearningPath(@Body() data: { 
-    pathId: string; 
-    progress: any[]; 
-    performance: any;
-  }) {
-    return this.analysisService.analyzeLearningPath(data);
+  async analyzeLearningPath(@Request() req, @Body() data: AnalyzeLearningPathDto) {
+    return this.analysisService.analyzeLearningPath({ ...data, userId: req.user.id } as any);
   }
 
   @Get('performance-dashboard')
   @ApiOperation({ summary: 'Get performance dashboard' })
   async getPerformanceDashboard(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.analysisService.getPerformanceDashboard(userId);
+    return this.analysisService.getPerformanceDashboard(req.user.id);
   }
 
   @Get('subject-analysis/:subject')
   @ApiOperation({ summary: 'Get subject-specific analysis' })
   async getSubjectAnalysis(@Request() req, @Param('subject') subject: string) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.analysisService.getSubjectAnalysis(userId, subject);
+    return this.analysisService.getSubjectAnalysis(req.user.id, subject);
   }
 
   @Get('weak-areas')
   @ApiOperation({ summary: 'Identify weak areas' })
   async getWeakAreas(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.analysisService.getWeakAreas(userId);
+    return this.analysisService.getWeakAreas(req.user.id);
   }
 
   @Get('strength-areas')
   @ApiOperation({ summary: 'Identify strength areas' })
   async getStrengthAreas(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.analysisService.getStrengthAreas(userId);
+    return this.analysisService.getStrengthAreas(req.user.id);
   }
 
   @Post('study-pattern')
   @ApiOperation({ summary: 'Analyze study patterns' })
-  async analyzeStudyPattern(@Body() data: { 
-    studySessions: any[]; 
-    timeRange: string;
-  }) {
-    return this.analysisService.analyzeStudyPattern(data);
+  async analyzeStudyPattern(@Request() req, @Body() data: AnalyzeStudyPatternDto) {
+    return this.analysisService.analyzeStudyPattern({ ...data, userId: req.user.id } as any);
   }
 
   @Get('progress-trends')
   @ApiOperation({ summary: 'Get progress trends' })
   async getProgressTrends(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.analysisService.getProgressTrends(userId);
+    return this.analysisService.getProgressTrends(req.user.id);
   }
 
   @Post('predictive-analysis')
@@ -87,8 +73,7 @@ export class AnalysisController {
   @Get('comparison-analysis')
   @ApiOperation({ summary: 'Compare performance with peers' })
   async getComparisonAnalysis(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
-    return this.analysisService.getComparisonAnalysis(userId);
+    return this.analysisService.getComparisonAnalysis(req.user.id);
   }
 
   @Post('goal-progress')
@@ -103,7 +88,7 @@ export class AnalysisController {
   @Get('learning-efficiency')
   @ApiOperation({ summary: 'Calculate learning efficiency' })
   async getLearningEfficiency(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
+    const userId = req.user.id;
     return this.analysisService.getLearningEfficiency(userId);
   }
 
