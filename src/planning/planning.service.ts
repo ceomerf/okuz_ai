@@ -52,7 +52,8 @@ export class PlanningService {
   ) {}
 
   private getLearningStyleDisplayName(style: string): string {
-    switch ((style || '').toLowerCase()) {
+    const s = (style || '').trim();
+    switch (s.toLowerCase()) {
       case 'visual':
         return 'Görsel';
       case 'auditory':
@@ -62,7 +63,7 @@ export class PlanningService {
       case 'reading':
         return 'Okuma/Not Alma';
       default:
-        return style?.isNotEmpty ? style : 'Kişisel';
+        return s || 'Kişisel';
     }
   }
 
@@ -95,14 +96,12 @@ export class PlanningService {
     try {
       planStructure = JSON.parse(aiResponse);
     } catch (error) {
-      // AI yanıtı JSON formatında değilse, varsayılan plan oluştur
-      planStructure = await this.createDefaultPlan(normalized);
+      throw new BadRequestException('AI plan çıktısı geçersiz formatta.');
     }
 
-    // Şema doğrulaması (schema guard). Geçersizse fallback plan üret.
+    // Şema doğrulaması (schema guard). Geçersizse hata döndür.
     if (!this.isValidPlanStructure(planStructure)) {
-      console.warn('[PlanningService] AI plan yapısı geçersiz, varsayılan plana düşülüyor.');
-      planStructure = await this.createDefaultPlan(normalized);
+      throw new BadRequestException('AI plan yapısı doğrulamadan geçmedi.');
     }
 
     // Plan optimizasyonu
@@ -436,44 +435,7 @@ KURALLAR:
 `;
   }
 
-  private async createDefaultPlan(data: PlanGenerationData) {
-    // AI yanıt vermezse varsayılan plan
-    const weeklyStudyTime = data.availableTime * 7;
-    const subjectTimeAllocation = this.allocateTimeToSubjects(data.subjects, weeklyStudyTime);
-
-    const sessions = [];
-    const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
-    
-    for (let week = 1; week <= 4; week++) {
-      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-        const day = days[dayIndex];
-        
-        // Her gün için dersleri döngüsel olarak dağıt
-        data.subjects.forEach((subject, subjectIndex) => {
-          if ((dayIndex + subjectIndex) % 2 === 0) { // Gün bazında dağıtım
-            sessions.push({
-              week,
-              day,
-              subject,
-              topic: `${subject} - Hafta ${week} Konuları`,
-              duration: Math.min(data.availableTime, subjectTimeAllocation[subject] / 7),
-              type: week <= 2 ? 'study' : 'review',
-              difficulty: data.currentLevel,
-              objectives: [`${subject} temel kavramlarını öğren`],
-              resources: [`${subject} ders kitabı`, 'Online kaynaklar'],
-              techniques: this.getTechniquesForLearningStyle(data.learningStyle),
-            });
-          }
-        });
-      }
-    }
-
-    return {
-      weeklyPlans: this.groupSessionsByWeek(sessions),
-      milestones: this.generateMilestones(data.subjects, data.goals),
-      adaptiveStrategies: this.generateAdaptiveStrategies(data.learningStyle),
-    };
-  }
+  // Mock/varsayılan plan üretimi kaldırıldı; sadece AI tabanlı plan desteklenir.
 
   private allocateTimeToSubjects(subjects: string[], totalTime: number): Record<string, number> {
     const allocation = {};
@@ -1668,15 +1630,15 @@ KURALLAR:
         console.log('🔍 Parsed Plan Duration:', holidayPlan.duration);
         console.log('🔍 Parsed Daily Schedule Length:', holidayPlan.dailySchedule?.length);
       } catch (parseError) {
-        console.log('AI response is not valid JSON after cleaning, using default plan');
+        console.log('AI response is not valid JSON after cleaning');
         console.log('Cleaned response:', cleanedResponse.substring(0, 200));
-        throw new Error('Invalid JSON response');
+        throw new BadRequestException('AI tatil planı çıktısı geçersiz.');
       }
       
       // AI yanıtını doğrula ve gerekirse düzelt
       if (!holidayPlan.dailySchedule || !Array.isArray(holidayPlan.dailySchedule)) {
-        console.log('AI response structure is invalid, using default plan');
-        throw new Error('Invalid AI response structure');
+        console.log('AI response structure is invalid');
+        throw new BadRequestException('AI tatil planı yapısı doğrulamadan geçmedi.');
       }
       
       return {
@@ -1685,19 +1647,14 @@ KURALLAR:
         message: 'Tatil planınız hazır! Keyifli çalışmalar.',
       };
     } catch (error) {
-      console.log('AI plan generation failed, using detailed default plan:', error.message);
-      const holidayPlan = this.createDetailedHolidayPlan(data);
-      
-      return {
-        success: true,
-        plan: holidayPlan,
-        message: 'Tatil planınız hazır! Keyifli çalışmalar.',
-      };
+      console.log('AI holiday plan generation failed:', error.message);
+      throw error;
     }
   }
 
   private createDetailedHolidayPlan(data: any) {
-    const dailySchedule = [];
+    throw new BadRequestException('Mock tatil planı devre dışı. AI planı üretilemedi.');
+    /* const dailySchedule = [];
     const subjects = ['Matematik', 'Türkçe', 'Fen Bilgisi', 'Sosyal Bilgiler'];
     const activities = [
       'Konu tekrarı ve not alma',
@@ -1803,66 +1760,11 @@ KURALLAR:
       });
     }
     
-    return {
-      title: `${data.holidayType} Tatil Çalışma Planı`,
-      duration: planDuration,
-      type: data.holidayType,
-      goals: data.goals,
-      dailySchedule,
-      weeklyGoals,
-      tips: [
-        'Tatilde düzenli olmaya çalışın',
-        'Kısa ama verimli seanslar yapın',
-        'Öğrenmeyi eğlenceli hale getirin',
-        'Sosyal aktiviteleri ihmal etmeyin',
-        'Her gün hedeflerinizi kontrol edin',
-        'Hafta sonu genel değerlendirme yapın',
-        'Tatil sonrası okula hazırlık için son günleri planlayın'
-      ]
-    };
+    return {} as any; */
   }
 
   private createDefaultHolidayPlan(data: any) {
-    const dailySchedule = [];
-    
-    for (let day = 1; day <= data.duration; day++) {
-      dailySchedule.push({
-        day,
-        morning: {
-          time: '09:00-10:30',
-          activity: 'Günlük okuma ve not alma',
-          type: 'study',
-        },
-        afternoon: {
-          time: '14:00-15:00',
-          activity: 'Pratik sorular',
-          type: 'practice',
-        },
-        evening: {
-          time: '19:00-20:00',
-          activity: 'Gün değerlendirmesi',
-          type: 'review',
-        },
-        free: {
-          time: 'Geri kalan zaman',
-          activity: 'Dinlenme, spor, hobi',
-          type: 'leisure',
-        },
-      });
-    }
-
-    return {
-      type: data.holidayType,
-      duration: data.duration,
-      goals: data.goals,
-      schedule: dailySchedule,
-      tips: [
-        'Tatilde de düzenli olmaya çalışın',
-        'Kısa ama verimli seanslar yapın',
-        'Öğrenmeyi eğlenceli hale getirin',
-        'Sosyal aktiviteleri ihmal etmeyin',
-      ],
-    };
+    throw new BadRequestException('Mock tatil planı devre dışı.');
   }
 
   async getLongTermPlan(userId: string): Promise<any> {
@@ -1950,7 +1852,7 @@ KURALLAR:
     try {
       planStructure = JSON.parse(aiResponse);
     } catch {
-      planStructure = this.createDefaultLongTermPlan(data);
+      throw new BadRequestException('AI uzun vadeli plan çıktısı geçersiz.');
     }
 
     const plan = await this.prisma.plan.create({
@@ -1984,30 +1886,6 @@ KURALLAR:
   }
 
   private createDefaultLongTermPlan(data: any) {
-    const months = [];
-    
-    for (let month = 1; month <= data.timeline; month++) {
-      months.push({
-        month,
-        focus: `${month}. Ay Hedefleri`,
-        objectives: data.goals.slice(0, Math.ceil(data.goals.length / data.timeline)),
-        milestones: data.milestones.filter(m => m.month === month),
-        evaluation: {
-          criteria: 'Aylık quiz ve değerlendirme',
-          target: '80% başarı',
-        },
-      });
-    }
-
-    return {
-      totalMonths: data.timeline,
-      monthlyPlans: months,
-      overallStrategy: 'Aşamalı öğrenme ve pekiştirme',
-      adaptationRules: [
-        'Aylık değerlendirmelere göre planı uyarla',
-        'Güçlü alanlarda hızlan, zayıf alanlarda yavaşla',
-        'Motivasyona göre hedefleri ayarla',
-      ],
-    };
+    throw new BadRequestException('Mock uzun vadeli plan devre dışı.');
   }
 }
