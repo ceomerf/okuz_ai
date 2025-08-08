@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 @Injectable()
@@ -6,14 +7,11 @@ export class GeminiService {
   private genAI: GoogleGenerativeAI;
   private model: any;
 
-  constructor() {
-    const apiKey = process.env.GEMINI_API_KEY || 'your-gemini-api-key';
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('🔑 Gemini API Key Debug:');
-      console.log(`   API Key exists: ${apiKey !== 'your-gemini-api-key'}`);
-      console.log(`   API Key length: ${apiKey.length}`);
+  constructor(private readonly configService: ConfigService) {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is required');
     }
-    
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
   }

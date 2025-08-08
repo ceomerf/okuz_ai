@@ -188,6 +188,10 @@ model Plan {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   sessions StudySession[]
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@index([userId, startDate])
 }
 
 model StudySession {
@@ -208,6 +212,12 @@ model StudySession {
 
   plan Plan? @relation(fields: [planId], references: [id])
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([planId])
+  @@index([startTime])
+  @@index([userId, startTime])
+  @@index([userId, createdAt])
 }
 
 model Achievement {
@@ -293,6 +303,9 @@ model ExamResult {
   createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
 }
 
 model LearningPath {
@@ -309,6 +322,8 @@ model LearningPath {
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Flashcard {
@@ -324,6 +339,8 @@ model Flashcard {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model ConceptMap {
@@ -336,6 +353,8 @@ model ConceptMap {
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Quiz {
@@ -352,6 +371,9 @@ model Quiz {
   completedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
 }
 
 model StudyGoal {
@@ -368,6 +390,8 @@ model StudyGoal {
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model StudyHabit {
@@ -384,6 +408,8 @@ model StudyHabit {
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Subscription {
@@ -401,6 +427,8 @@ model Subscription {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   payments Payment[]
+
+  @@index([userId])
 }
 
 model Payment {
@@ -419,4 +447,7 @@ model Payment {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@index([userId])
+  @@index([subscriptionId])
 }

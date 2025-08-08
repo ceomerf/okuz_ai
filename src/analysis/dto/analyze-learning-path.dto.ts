@@ -12,5 +12,9 @@ export class AnalyzeLearningPathDto {
   @IsObject()
   @IsOptional()
   performance?: any;
+
+  @IsString()
+  @IsOptional()
+  userId?: string;
 }
 

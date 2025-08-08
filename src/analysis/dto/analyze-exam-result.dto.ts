@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsObject, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class AnalyzeExamResultDto {
   @IsObject()
@@ -14,5 +14,9 @@ export class AnalyzeExamResultDto {
 
   @IsNumber()
   performance: number;
+
+  @IsString()
+  @IsOptional()
+  userId?: string;
 }
 

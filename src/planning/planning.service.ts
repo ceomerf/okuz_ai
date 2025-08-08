@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../common/prisma/prisma.service';
 import { GeminiService } from '../services/gemini.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { GeneratePlanDto } from './dto/generate-plan.dto';
 
 interface PlanGenerationData {
   subjects: string[];
@@ -50,17 +51,29 @@ export class PlanningService {
     private readonly realtime: RealtimeGateway,
   ) {}
 
-  async generatePlan(data: PlanGenerationData): Promise<any> {
-    if (!data.userId) {
+  async generatePlan(data: PlanGenerationData | (GeneratePlanDto & { userId: string })): Promise<any> {
+    const normalized: PlanGenerationData = (data as any).availableTime != null
+      ? (data as PlanGenerationData)
+      : {
+          subjects: (data as any).subjects,
+          goals: (data as any).goals ?? [],
+          availableTime: 120,
+          learningStyle: (data as any).learningStyle,
+          currentLevel: (data as any).currentLevel,
+          userId: (data as any).userId,
+          preferences: (data as any).preferences,
+        };
+
+    if (!normalized.userId) {
       throw new BadRequestException('Kullanıcı kimliği gerekli');
     }
-    const userId = data.userId;
+    const userId = normalized.userId;
 
     // Kullanıcının mevcut verilerini analiz et
     const userContext = await this.analyzeUserContext(userId);
     
     // AI ile detaylı plan oluştur
-    const aiPlanPrompt = this.createPlanPrompt(data, userContext);
+    const aiPlanPrompt = this.createPlanPrompt(normalized, userContext);
     const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
     
     let planStructure;
@@ -68,27 +81,33 @@ export class PlanningService {
       planStructure = JSON.parse(aiResponse);
     } catch (error) {
       // AI yanıtı JSON formatında değilse, varsayılan plan oluştur
-      planStructure = await this.createDefaultPlan(data);
+      planStructure = await this.createDefaultPlan(normalized);
+    }
+
+    // Şema doğrulaması (schema guard). Geçersizse fallback plan üret.
+    if (!this.isValidPlanStructure(planStructure)) {
+      console.warn('[PlanningService] AI plan yapısı geçersiz, varsayılan plana düşülüyor.');
+      planStructure = await this.createDefaultPlan(normalized);
     }
 
     // Plan optimizasyonu
-    const optimizedPlan = await this.optimizePlan(planStructure, data, userContext);
+    const optimizedPlan = await this.optimizePlan(planStructure, normalized, userContext);
     
     // Veritabanına kaydet
     const savedPlan = await this.prisma.plan.create({
       data: {
         userId,
-        title: `${data.learningStyle} Öğrenme Planı`,
-        description: `${data.subjects.join(', ')} dersleri için kişiselleştirilmiş plan`,
+        title: `${normalized.learningStyle} Öğrenme Planı`,
+        description: `${normalized.subjects.join(', ')} dersleri için kişiselleştirilmiş plan`,
         type: 'MONTHLY',
-        subjects: data.subjects,
-        goals: data.goals,
+        subjects: normalized.subjects,
+        goals: normalized.goals,
         startDate: new Date(),
         endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 gün
         metadata: {
-          learningStyle: data.learningStyle,
-          availableTime: data.availableTime,
-          preferences: data.preferences,
+          learningStyle: normalized.learningStyle,
+          availableTime: normalized.availableTime,
+          preferences: normalized.preferences,
           aiGenerated: true,
           planStructure: optimizedPlan,
         },
@@ -106,10 +125,23 @@ export class PlanningService {
         description: savedPlan.description,
         structure: optimizedPlan,
         timeline: this.generateTimeline(optimizedPlan),
-        recommendations: await this.generateRecommendations(data, userContext),
+        recommendations: await this.generateRecommendations(normalized, userContext),
       },
       message: 'Kişiselleştirilmiş planınız başarıyla oluşturuldu!',
     };
+  }
+
+  // AI'dan gelen plan yapısına basit şema doğrulaması
+  private isValidPlanStructure(plan: any): boolean {
+    if (!plan) return false;
+    const sessions = plan.sessions || plan.weeklyPlans?.flatMap((w: any) => w.sessions || []) || [];
+    if (!Array.isArray(sessions) || sessions.length === 0) return false;
+    // ilk birkaç öğeyi kontrol ederek temel alanların varlığını doğrula
+    const sample = sessions.slice(0, Math.min(3, sessions.length));
+    return sample.every((s: any) =>
+      s && typeof s.subject === 'string' && typeof s.topic === 'string' &&
+      (typeof s.duration === 'number' || typeof s.durationInMinutes === 'number')
+    );
   }
 
   // Frontend’in beklediği: görev ilerlemesi güncelle
@@ -284,31 +316,33 @@ export class PlanningService {
   }
 
   private async analyzeUserContext(userId: string) {
-    // Kullanıcının geçmiş performansını analiz et
-    const studySessions = await this.prisma.studySession.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-
-    const quizResults = await this.prisma.quiz.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    });
-
-    const examResults = await this.prisma.examResult.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    });
+    // Kullanıcının geçmiş performansını analiz et (paralel sorgular)
+    const [studySessions, quizResults, examResults] = await Promise.all([
+      this.prisma.studySession.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      this.prisma.quiz.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      }),
+      this.prisma.examResult.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+    ]);
 
     // Performans analizi
     const subjectPerformance = this.analyzeSubjectPerformance(studySessions, quizResults, examResults);
     const timePatterns = this.analyzeStudyTimePatterns(studySessions);
     const learningVelocity = this.calculateLearningVelocity(studySessions);
-    const weakAreas = await this.identifyWeakAreas(userId);
-    const strongAreas = await this.identifyStrongAreas(userId);
+    const [weakAreas, strongAreas] = await Promise.all([
+      this.identifyWeakAreas(userId),
+      this.identifyStrongAreas(userId),
+    ]);
 
     return {
       subjectPerformance,
@@ -710,30 +744,48 @@ KURALLAR:
   }
 
   private async createStudySessions(planId: string, sessions: any[], userId: string) {
-    const sessionPromises = sessions.map(session => {
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() + ((session.week - 1) * 7) + this.getDayOffset(session.day));
-      
-      return this.prisma.studySession.create({
-        data: {
-          planId,
-          userId,
-          subject: session.subject,
-          topic: session.topic,
-          duration: session.duration,
-          startTime: startDate,
-          metadata: {
-            type: session.type,
-            difficulty: session.difficulty,
-            objectives: session.objectives,
-            resources: session.resources,
-            techniques: session.techniques,
-          },
-        },
-      });
-    });
+    if (!Array.isArray(sessions) || sessions.length === 0) return;
 
-    await Promise.all(sessionPromises);
+    const safeGetDayOffset = (day: any): number => {
+      if (typeof day !== 'string') return 0;
+      const idx = this.getDayOffset(day);
+      return idx >= 0 ? idx : 0;
+    };
+
+    const clamped = (value: any): number => {
+      const num = typeof value === 'number' ? value : (typeof value === 'string' ? Number(value) : 0);
+      return Math.max(20, Math.min(num, 180));
+    };
+
+    const tasks = sessions
+      .filter((s: any) => s && typeof s.subject === 'string' && typeof s.topic === 'string')
+      .map((session: any) => {
+        const startDate = new Date();
+        const weekOffset = typeof session.week === 'number' ? session.week : 1;
+        startDate.setDate(startDate.getDate() + ((weekOffset - 1) * 7) + safeGetDayOffset(session.day));
+
+        const durationMinutes = clamped(session.durationInMinutes ?? session.duration ?? 60);
+
+        return this.prisma.studySession.create({
+          data: {
+            planId,
+            userId,
+            subject: session.subject,
+            topic: session.topic,
+            duration: durationMinutes,
+            startTime: startDate,
+            metadata: {
+              type: typeof session.type === 'string' ? session.type : 'study',
+              difficulty: typeof session.difficulty === 'string' ? session.difficulty : 'medium',
+              objectives: Array.isArray(session.objectives) ? session.objectives : [],
+              resources: Array.isArray(session.resources) ? session.resources : [],
+              techniques: Array.isArray(session.techniques) ? session.techniques : [],
+            },
+          },
+        });
+      });
+
+    await Promise.all(tasks);
   }
 
   private getDayOffset(day: string): number {
@@ -827,9 +879,9 @@ KURALLAR:
     return upcomingSessions[0] || null;
   }
 
-  async getPlan(planId: string): Promise<any> {
-    const plan = await this.prisma.plan.findUnique({
-      where: { id: planId },
+  async getPlan(userId: string, planId: string): Promise<any> {
+    const plan = await this.prisma.plan.findFirst({
+      where: { id: planId, userId },
       include: {
         sessions: {
           orderBy: { startTime: 'asc' },
@@ -955,9 +1007,9 @@ KURALLAR:
     return recommendations;
   }
 
-  async updatePlan(planId: string, data: any): Promise<any> {
-    const plan = await this.prisma.plan.findUnique({
-      where: { id: planId },
+  async updatePlan(userId: string, planId: string, data: any): Promise<any> {
+    const plan = await this.prisma.plan.findFirst({
+      where: { id: planId, userId },
     });
 
     if (!plan) {
@@ -987,9 +1039,9 @@ KURALLAR:
     };
   }
 
-  async deletePlan(planId: string): Promise<any> {
-    const plan = await this.prisma.plan.findUnique({
-      where: { id: planId },
+  async deletePlan(userId: string, planId: string): Promise<any> {
+    const plan = await this.prisma.plan.findFirst({
+      where: { id: planId, userId },
     });
 
     if (!plan) {
@@ -1011,9 +1063,9 @@ KURALLAR:
     };
   }
 
-  async reschedule(data: { planId: string; conflicts: any[]; preferences: any }): Promise<any> {
-    const plan = await this.prisma.plan.findUnique({
-      where: { id: data.planId },
+  async reschedule(data: { userId: string; planId: string; conflicts: any[]; preferences: any }): Promise<any> {
+    const plan = await this.prisma.plan.findFirst({
+      where: { id: data.planId, userId: data.userId },
       include: { sessions: true },
     });
 
@@ -1088,7 +1140,7 @@ KURALLAR:
     return alternatives[0]; // Basit implementasyon
   }
 
-  async getRescheduleSuggestions(data: { planId: string; conflicts: any[]; performance: any }): Promise<any> {
+  async getRescheduleSuggestions(data: { userId: string; planId: string; conflicts: any[]; performance: any }): Promise<any> {
     const suggestions = [];
 
     // AI ile yeniden planlama önerileri oluştur
@@ -1259,9 +1311,9 @@ KURALLAR:
     return suggestions;
   }
 
-  async completeSession(data: { sessionId: string; performance: number; notes: string }): Promise<any> {
-    const session = await this.prisma.studySession.findUnique({
-      where: { id: data.sessionId },
+  async completeSession(data: { userId: string; sessionId: string; performance: number; notes: string }): Promise<any> {
+    const session = await this.prisma.studySession.findFirst({
+      where: { id: data.sessionId, userId: data.userId },
     });
 
     if (!session) {
@@ -1295,9 +1347,9 @@ KURALLAR:
     };
   }
 
-  async skipSession(data: { sessionId: string; reason: string }): Promise<any> {
-    const session = await this.prisma.studySession.findUnique({
-      where: { id: data.sessionId },
+  async skipSession(data: { userId: string; sessionId: string; reason: string }): Promise<any> {
+    const session = await this.prisma.studySession.findFirst({
+      where: { id: data.sessionId, userId: data.userId },
     });
 
     if (!session) {
@@ -1343,8 +1395,8 @@ KURALLAR:
   }
 
   async getProgressTracking(userId: string, planId: string): Promise<any> {
-    const plan = await this.prisma.plan.findUnique({
-      where: { id: planId },
+    const plan = await this.prisma.plan.findFirst({
+      where: { id: planId, userId },
       include: { sessions: true },
     });
 

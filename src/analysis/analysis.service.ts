@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { GeminiService } from '../services/gemini.service';
 import { AnalyzeLearningPathDto } from './dto/analyze-learning-path.dto';
@@ -38,10 +40,11 @@ export class AnalysisService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly geminiService: GeminiService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async analyzeExamResult(data: ExamAnalysisData): Promise<any> {
-    const userId = data.userId || 'user-id'; // JWT'den gelecek
+    const userId = data.userId as string; // JWT'den gelmeli; fallback kaldırıldı
 
     // Sınav verilerini analiz et
     const examAnalysis = await this.performExamAnalysis(data);
@@ -927,6 +930,10 @@ export class AnalysisService {
   }
 
   async getPerformanceDashboard(userId: string): Promise<any> {
+    const cacheKey = `perf_dash:${userId}`;
+    const cached = await this.cacheManager.get<any>(cacheKey);
+    if (cached) return cached;
+
     // Ağ çağrılarını paralel başlat
     const [
       overallMetrics,
@@ -948,7 +955,7 @@ export class AnalysisService {
       this.getRecentActivityLogs(userId),
     ]);
 
-    return {
+    const result = {
       summary: {
         overallScore: (overallMetrics as any).averageScore ?? (overallMetrics as any).overall,
         improvement: (overallMetrics as any).improvement,
@@ -973,6 +980,9 @@ export class AnalysisService {
       },
       comparative,
     };
+
+    await this.cacheManager.set(cacheKey, result, 60); // 60 sn TTL
+    return result;
   }
 
   private async getWeeklyDistribution(userId: string) {

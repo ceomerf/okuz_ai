@@ -15,14 +15,14 @@ export class AnalysisController {
 
   @Post('exam-result')
   @ApiOperation({ summary: 'Analyze exam results' })
-  async analyzeExamResult(@Body() data: AnalyzeExamResultDto) {
-    return this.analysisService.analyzeExamResult(data);
+  async analyzeExamResult(@Request() req, @Body() data: AnalyzeExamResultDto) {
+    return this.analysisService.analyzeExamResult({ ...data, userId: req.user.id } as any);
   }
 
   @Post('learning-path')
   @ApiOperation({ summary: 'Analyze learning path performance' })
-  async analyzeLearningPath(@Body() data: AnalyzeLearningPathDto) {
-    return this.analysisService.analyzeLearningPath(data);
+  async analyzeLearningPath(@Request() req, @Body() data: AnalyzeLearningPathDto) {
+    return this.analysisService.analyzeLearningPath({ ...data, userId: req.user.id } as any);
   }
 
   @Get('performance-dashboard')
@@ -51,8 +51,8 @@ export class AnalysisController {
 
   @Post('study-pattern')
   @ApiOperation({ summary: 'Analyze study patterns' })
-  async analyzeStudyPattern(@Body() data: AnalyzeStudyPatternDto) {
-    return this.analysisService.analyzeStudyPattern(data);
+  async analyzeStudyPattern(@Request() req, @Body() data: AnalyzeStudyPatternDto) {
+    return this.analysisService.analyzeStudyPattern({ ...data, userId: req.user.id } as any);
   }
 
   @Get('progress-trends')
@@ -88,7 +88,7 @@ export class AnalysisController {
   @Get('learning-efficiency')
   @ApiOperation({ summary: 'Calculate learning efficiency' })
   async getLearningEfficiency(@Request() req) {
-    const userId = req.user?.id || 'user-1753052679951';
+    const userId = req.user.id;
     return this.analysisService.getLearningEfficiency(userId);
   }
 

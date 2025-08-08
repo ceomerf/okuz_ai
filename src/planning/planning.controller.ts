@@ -2,6 +2,37 @@ import { Controller, Post, Get, Put, Delete, Body, UseGuards, Request, Param, Qu
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PlanningService } from './planning.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { GeneratePlanDto } from './dto/generate-plan.dto';
+import { IsArray, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min, MinLength } from 'class-validator';
+
+class DailyScheduleDto {
+  @IsDateString()
+  date: string;
+}
+
+class CompleteSessionDto {
+  @IsString()
+  @IsNotEmpty()
+  sessionId: string;
+
+  @IsNumber()
+  @Min(0)
+  performance: number;
+
+  @IsString()
+  @MinLength(0)
+  notes: string;
+}
+
+class SkipSessionDto {
+  @IsString()
+  @IsNotEmpty()
+  sessionId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  reason: string;
+}
 
 @ApiTags('Planning')
 @Controller('planning')
@@ -12,14 +43,8 @@ export class PlanningController {
 
   @Post('generate-plan')
   @ApiOperation({ summary: 'Generate personalized study plan' })
-  async generatePlan(@Request() req, @Body() data: { 
-    subjects: string[]; 
-    goals: string[]; 
-    availableTime: number; 
-    learningStyle: string;
-    currentLevel: string;
-  }) {
-    return this.planningService.generatePlan({ ...data, userId: req.user.id });
+  async generatePlan(@Request() req, @Body() planData: GeneratePlanDto) {
+    return this.planningService.generatePlan({ ...planData, userId: req.user.id } as any);
   }
 
   @Get('user-plans')
@@ -30,40 +55,40 @@ export class PlanningController {
 
   @Get('plan/:planId')
   @ApiOperation({ summary: 'Get specific plan' })
-  async getPlan(@Param('planId') planId: string) {
-    return this.planningService.getPlan(planId);
+  async getPlan(@Request() req, @Param('planId') planId: string) {
+    return this.planningService.getPlan(req.user.id, planId);
   }
 
   @Put('plan/:planId')
   @ApiOperation({ summary: 'Update plan' })
-  async updatePlan(@Param('planId') planId: string, @Body() data: any) {
-    return this.planningService.updatePlan(planId, data);
+  async updatePlan(@Request() req, @Param('planId') planId: string, @Body() data: any) {
+    return this.planningService.updatePlan(req.user.id, planId, data);
   }
 
   @Delete('plan/:planId')
   @ApiOperation({ summary: 'Delete plan' })
-  async deletePlan(@Param('planId') planId: string) {
-    return this.planningService.deletePlan(planId);
+  async deletePlan(@Request() req, @Param('planId') planId: string) {
+    return this.planningService.deletePlan(req.user.id, planId);
   }
 
   @Post('reschedule')
   @ApiOperation({ summary: 'Reschedule study sessions' })
-  async reschedule(@Body() data: { 
+  async reschedule(@Request() req, @Body() data: { 
     planId: string; 
     conflicts: any[]; 
     preferences: any;
   }) {
-    return this.planningService.reschedule(data);
+    return this.planningService.reschedule({ ...data, userId: req.user.id });
   }
 
   @Post('ai-reschedule-suggestions')
   @ApiOperation({ summary: 'Get AI reschedule suggestions' })
-  async getRescheduleSuggestions(@Body() data: { 
+  async getRescheduleSuggestions(@Request() req, @Body() data: { 
     planId: string; 
     conflicts: any[]; 
     performance: any;
   }) {
-    return this.planningService.getRescheduleSuggestions(data);
+    return this.planningService.getRescheduleSuggestions({ ...(data as any), userId: req.user.id } as any);
   }
 
   @Get('weekly-overview')
@@ -74,27 +99,20 @@ export class PlanningController {
 
   @Post('daily-schedule')
   @ApiOperation({ summary: 'Get daily schedule' })
-  async getDailySchedule(@Request() req, @Body() data: { date: string }) {
+  async getDailySchedule(@Request() req, @Body() data: DailyScheduleDto) {
     return this.planningService.getDailySchedule(req.user.id, data.date);
   }
 
   @Post('complete-session')
   @ApiOperation({ summary: 'Mark study session as complete' })
-  async completeSession(@Body() data: { 
-    sessionId: string; 
-    performance: number; 
-    notes: string;
-  }) {
-    return this.planningService.completeSession(data);
+  async completeSession(@Request() req, @Body() data: CompleteSessionDto) {
+    return this.planningService.completeSession({ ...data, userId: req.user.id });
   }
 
   @Post('skip-session')
   @ApiOperation({ summary: 'Skip a study session' })
-  async skipSession(@Body() data: { 
-    sessionId: string; 
-    reason: string;
-  }) {
-    return this.planningService.skipSession(data);
+  async skipSession(@Request() req, @Body() data: SkipSessionDto) {
+    return this.planningService.skipSession({ ...data, userId: req.user.id });
   }
 
   @Get('progress-tracking/:planId')

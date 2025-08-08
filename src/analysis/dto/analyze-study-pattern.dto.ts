@@ -1,4 +1,4 @@
-import { IsArray, IsIn, IsNotEmpty, IsString } from 'class-validator';
+import { IsArray, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class AnalyzeStudyPatternDto {
   @IsArray()
@@ -8,5 +8,9 @@ export class AnalyzeStudyPatternDto {
   @IsString()
   @IsIn(['week', 'month', 'quarter', 'custom'])
   timeRange: string;
+
+  @IsString()
+  @IsOptional()
+  userId?: string;
 }
 
