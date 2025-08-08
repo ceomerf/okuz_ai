@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { z } from 'zod';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { GeminiService } from '../services/gemini.service';
@@ -102,6 +102,33 @@ export class PlanningService {
     return cleaned;
   }
 
+  private extractFirstJsonBlock(text: string): string | null {
+    if (!text) return null;
+    const n = text.length;
+    for (let i = 0; i < n; i++) {
+      const ch = text[i];
+      if (ch === '{' || ch === '[') {
+        const stack: string[] = [ch];
+        for (let j = i + 1; j < n; j++) {
+          const cj = text[j];
+          if (cj === '{' || cj === '[') stack.push(cj);
+          else if (cj === '}' || cj === ']') {
+            const last = stack[stack.length - 1];
+            if ((last === '{' && cj === '}') || (last === '[' && cj === ']')) {
+              stack.pop();
+              if (stack.length === 0) {
+                const candidate = text.slice(i, j + 1).trim();
+                if (candidate.length >= 2) return candidate;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   private getLearningStyleDisplayName(style: string): string {
     const s = (style || '').trim();
     switch (s.toLowerCase()) {
@@ -149,9 +176,20 @@ export class PlanningService {
     try {
       planStructureRaw = JSON.parse(cleaned);
     } catch (error) {
-      console.error('AI JSON parse failed. Raw preview:', aiResponse?.slice(0, 200));
-      console.error('Cleaned preview:', cleaned?.slice(0, 200));
-      throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
+      // Son bir kez daha: ilk JSON bloğunu ayrıştırmayı dene
+      const block = this.extractFirstJsonBlock(aiResponse);
+      if (block) {
+        try {
+          planStructureRaw = JSON.parse(block);
+        } catch {
+          console.error('AI JSON parse failed (block). Block preview:', block.slice(0, 200));
+          throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
+        }
+      } else {
+        console.error('AI JSON parse failed. Raw preview:', aiResponse?.slice(0, 200));
+        console.error('Cleaned preview:', cleaned?.slice(0, 200));
+        throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
+      }
     }
 
     // Zod ile güçlü doğrulama
