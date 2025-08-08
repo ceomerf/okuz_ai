@@ -197,38 +197,54 @@ export class PlanningService {
       console.error('AI Response Validation Error:', validationResult.error);
       throw new BadRequestException('AI servisinden geçersiz plan yapısı alındı.');
     }
-    const planStructure = validationResult.data as any;
+    let planStructure = validationResult.data as any;
 
     // Plan optimizasyonu
-    const optimizedPlan = await this.optimizePlan(planStructure, normalized, userContext);
+    let optimizedPlan = await this.optimizePlan(planStructure, normalized, userContext);
+    // Plan süresi (gün) - varsayılan 3
+    const planDurationDays: number = Number((normalized as any)?.planDurationDays) > 0
+      ? Number((normalized as any).planDurationDays)
+      : 3;
+    // Eğer AI oturum üretmediyse, güvenli bir geri dönüş planı oluştur
+    let sessionsFromStructure = Array.isArray((optimizedPlan as any)?.sessions)
+      ? (optimizedPlan as any).sessions
+      : Array.isArray((optimizedPlan as any)?.weeklyPlans)
+        ? (optimizedPlan as any).weeklyPlans.flatMap((w: any) => w?.sessions || [])
+        : [];
+    if (!Array.isArray(sessionsFromStructure) || sessionsFromStructure.length === 0) {
+      optimizedPlan = this.generateFallbackPlan(planDurationDays, normalized, userContext);
+      sessionsFromStructure = optimizedPlan.weeklyPlans?.flatMap((w: any) => w.sessions || []) || [];
+      optimizedPlan.optimizationNotes = Array.isArray(optimizedPlan.optimizationNotes)
+        ? [...optimizedPlan.optimizationNotes, 'AI boş yanıt verdiği için güvenli geri dönüş planı uygulandı']
+        : ['AI boş yanıt verdiği için güvenli geri dönüş planı uygulandı'];
+    }
+    // Plan yapısına süre bilgisini ekle (timeline hesaplaması için)
+    (optimizedPlan as any).planDurationDays = planDurationDays;
     
     // Veritabanına kaydet
+    const inferredPlanType = planDurationDays >= 7 ? 'WEEKLY' : 'DAILY';
     const savedPlan = await this.prisma.plan.create({
       data: {
         userId,
         title: `${this.getLearningStyleDisplayName(normalized.learningStyle)} Öğrenme Planı`,
         description: `${normalized.subjects.join(', ')} dersleri için kişiselleştirilmiş plan`,
-        type: 'MONTHLY',
+        type: inferredPlanType as any,
         subjects: normalized.subjects,
         goals: normalized.goals,
         startDate: new Date(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 gün
+        endDate: new Date(Date.now() + planDurationDays * 24 * 60 * 60 * 1000),
         metadata: {
           learningStyle: normalized.learningStyle,
           availableTime: normalized.availableTime,
           preferences: normalized.preferences,
           aiGenerated: true,
           planStructure: optimizedPlan,
+          planDurationDays,
         },
       },
     });
 
     // Çalışma seanslarını oluştur (weeklyPlans içindeki seansları da destekle)
-    const sessionsFromStructure = Array.isArray((optimizedPlan as any)?.sessions)
-      ? (optimizedPlan as any).sessions
-      : Array.isArray((optimizedPlan as any)?.weeklyPlans)
-        ? (optimizedPlan as any).weeklyPlans.flatMap((w: any) => w?.sessions || [])
-        : [];
     await this.createStudySessions(savedPlan.id, sessionsFromStructure, userId);
 
     return {
@@ -505,8 +521,17 @@ export class PlanningService {
 
   private createPlanPrompt(data: PlanGenerationData, userContext: any): string {
     const prefs = (data as any)?.preferences || {};
+    const planDurationDays: number = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
+    const minSessionsPerDay = 2;
     return `
 Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSON.
+
+PLAN KISITLARI:
+- Plan süresi: ${planDurationDays} gün.
+- Her gün en az ${minSessionsPerDay} oturum üret. Oturumlar arasında mola öner.
+- Her oturum için durationInMinutes alanını DOLDUR (ör. 40, 60 gibi). Eğer duration alanı kullanıyorsan durationInMinutes yerine duration kullanabilirsin.
+- weeklyPlans yapısını kullan ve her haftada sessions dolu olsun. Her oturumda day alanı Pazartesi, Salı, Çarşamba, Perşembe, Cuma, Cumartesi veya Pazar olmalı.
+- Oturumlar kişiselleştirilmiş olmalı: güçlü alanlarda pekiştirme, zayıf alanlarda temel kavramlar ve tekrar.
 
 ÖĞRENCİ BİLGİLERİ:
 - Dersler: ${data.subjects.join(', ')}
@@ -535,13 +560,13 @@ BEKLENEN JSON ŞEMASI (örnek):
   "weeklyPlans": [
     {
       "week": 1,
-      "focus": "Temel kavramlar",
+      "focus": "Kişiselleştirilmiş odak",
       "sessions": [
         {
           "day": "Pazartesi",
           "subject": "Matematik",
-          "topic": "Limit kavramı",
-          "duration": 60,
+          "topic": "Temel kavram",
+          "durationInMinutes": 60,
           "type": "study",
           "difficulty": "medium",
           "objectives": ["Hedef"],
@@ -588,11 +613,13 @@ BEKLENEN JSON ŞEMASI (örnek):
 
   private groupSessionsByWeek(sessions: any[]): any[] {
     const weeks = [];
-    for (let week = 1; week <= 4; week++) {
+    const planDurationDays = (sessions?.length || 0) > 0 ? Math.max(7, Math.ceil(sessions.length / 2)) : 28;
+    const totalWeeks = Math.max(1, Math.ceil(planDurationDays / 7));
+    for (let week = 1; week <= totalWeeks; week++) {
       const weekSessions = sessions.filter(s => s.week === week);
       weeks.push({
         week,
-        focus: `Hafta ${week} - ${week <= 2 ? 'Öğrenme' : 'Pekiştirme'}`,
+        focus: `Hafta ${week} - ${week <= Math.ceil(totalWeeks / 2) ? 'Öğrenme' : 'Pekiştirme'}`,
         sessions: weekSessions,
       });
     }
@@ -898,16 +925,56 @@ BEKLENEN JSON ŞEMASI (örnek):
   }
 
   private generateTimeline(planStructure: any) {
+    const planDurationDays = Number(planStructure?.planDurationDays) > 0 ? Number(planStructure.planDurationDays) : 7;
+    const totalSessions = planStructure.weeklyPlans?.reduce((sum: number, w: any) => sum + (w.sessions?.length || 0), 0) || 0;
     return {
-      totalWeeks: 4,
-      totalSessions: planStructure.weeklyPlans?.reduce((sum, week) => sum + week.sessions?.length || 0, 0) || 0,
-      estimatedCompletionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      weeklyBreakdown: planStructure.weeklyPlans?.map(week => ({
+      totalWeeks: Math.max(1, Math.ceil(planDurationDays / 7)),
+      totalSessions,
+      estimatedCompletionDate: new Date(Date.now() + planDurationDays * 24 * 60 * 60 * 1000),
+      weeklyBreakdown: planStructure.weeklyPlans?.map((week: any) => ({
         week: week.week,
         focus: week.focus,
         sessionCount: week.sessions?.length || 0,
-        totalHours: week.sessions?.reduce((sum, s) => sum + (s.duration || 0), 0) / 60 || 0,
+        totalHours: (week.sessions?.reduce((sum: number, s: any) => sum + (s.durationInMinutes || s.duration || 0), 0) || 0) / 60,
       })) || [],
+    };
+  }
+
+  private generateFallbackPlan(planDurationDays: number, data: PlanGenerationData, userContext: any) {
+    const dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    const subjects = Array.isArray(data.subjects) && data.subjects.length > 0 ? data.subjects : ['Genel'];
+    const sessionDuration = Math.max(30, Math.min(((data as any)?.preferences?.sessionDuration || 40), 120));
+    const sessionsPerDay = 2;
+    const weeklyPlans: Array<any> = [];
+    for (let d = 0; d < planDurationDays; d++) {
+      const weekIndex = Math.floor(d / 7) + 1;
+      while (weeklyPlans.length < weekIndex) {
+        weeklyPlans.push({ week: weeklyPlans.length + 1, focus: undefined, sessions: [] });
+      }
+      const dayName = dayNames[d % 7];
+      for (let k = 0; k < sessionsPerDay; k++) {
+        const subject = subjects[(d * sessionsPerDay + k) % subjects.length];
+        const topic = k === 0 ? 'Temel kavramlar' : 'Pekiştirme çalışması';
+        weeklyPlans[weekIndex - 1].sessions.push({
+          week: weekIndex,
+          day: dayName,
+          subject,
+          topic: `${subject} - ${topic}`,
+          durationInMinutes: sessionDuration,
+          type: 'study',
+          difficulty: userContext.learningVelocity > 0.8 ? 'hard' : userContext.learningVelocity > 0.5 ? 'medium' : 'easy',
+          objectives: ['Hedefe yönelik ilerleme'],
+          resources: [],
+          techniques: this.getTechniquesForLearningStyle(data.learningStyle),
+        });
+      }
+    }
+    return {
+      weeklyPlans,
+      milestones: this.generateMilestones(data.subjects, data.goals),
+      adaptiveStrategies: this.generateAdaptiveStrategies(data.learningStyle),
+      optimizationNotes: ['Kullanıcı tercihleri ve performansına göre otomatik baz plan'],
+      planDurationDays,
     };
   }
 
