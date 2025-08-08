@@ -192,17 +192,60 @@ export class PlanningService {
   // Onboarding verileriyle plan oluştur
   async createPlanFromOnboarding(userId: string, data: any) {
     if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
-    // Basit bir varsayılanla ilerle: kullanıcı profilinden bazı alanları almayı deneyebiliriz
+    // Kullanıcı profilini al
     const profile = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { studentProfile: true },
     });
-    const subjects = data?.subjects || ['Matematik', 'Türkçe'];
-    const goals = data?.goals || ['Temel hedefler'];
-    const availableTime = data?.availableTime || 120;
-    const learningStyle = profile?.studentProfile?.learningStyle || 'visual';
-    const currentLevel = 'medium';
-    return this.generatePlan({ subjects, goals, availableTime, learningStyle, currentLevel, userId });
+
+    // Onboarding alanlarını derle
+    const selectedSubjects: string[] = data?.selectedSubjects || data?.subjects || profile?.studentProfile?.goals || ['Matematik', 'Türkçe'];
+    const weaknesses: string[] = data?.weaknesses || profile?.studentProfile?.weaknesses || [];
+    const goals: string[] = (data?.goals && Array.isArray(data.goals) && data.goals.length > 0)
+      ? data.goals
+      : (selectedSubjects.length > 0
+          ? selectedSubjects.slice(0, 3).map((s: string) => `${s} temel kavramlarını tamamla`)
+          : ['Temel hedefler']);
+
+    const dailyHours: number = typeof data?.dailyHours === 'number' ? data.dailyHours
+      : (typeof data?.availableTime === 'number' ? Math.max(0, Math.round((data.availableTime as number) / 60)) : 2);
+    const availableTime: number = dailyHours * 60; // dakika/gün
+
+    const learningStyle: string = data?.learningStyle || profile?.studentProfile?.learningStyle || 'visual';
+
+    const preferredStudyTimes: string[] = Array.isArray(data?.preferredStudyTimes) ? data.preferredStudyTimes : [];
+    const preferredSessionDuration: number = typeof data?.preferredSessionDuration === 'number' ? data.preferredSessionDuration : 40;
+    const studyDays: number[] = Array.isArray(data?.studyDays) ? data.studyDays : [];
+    const confidenceLevels = data?.confidenceLevels || {};
+    const lastCompletedTopics = data?.lastCompletedTopics || {};
+    const gradeStr: string = (data?.grade ?? profile?.studentProfile?.grade ?? '').toString();
+    const gradeNum: number = parseInt(gradeStr) || 0;
+    const academicTrack: string = data?.academicTrack || profile?.studentProfile?.field || '';
+
+    const currentLevel: string = gradeNum >= 11 ? 'advanced' : (gradeNum >= 9 ? 'medium' : 'beginner');
+
+    const normalized = {
+      subjects: selectedSubjects,
+      goals,
+      availableTime,
+      learningStyle,
+      currentLevel,
+      userId,
+      preferences: {
+        studyTimes: preferredStudyTimes,
+        sessionDuration: preferredSessionDuration,
+        breakDuration: 10,
+        difficulty: currentLevel,
+        focusAreas: weaknesses,
+        studyDays,
+        grade: gradeNum,
+        field: academicTrack,
+        confidenceLevels,
+        lastCompletedTopics,
+      },
+    } as any;
+
+    return this.generatePlan(normalized);
   }
 
   // Premium plan oluştur (7/30 günlük)
@@ -377,6 +420,7 @@ export class PlanningService {
   }
 
   private createPlanPrompt(data: PlanGenerationData, userContext: any): string {
+    const prefs = (data as any)?.preferences || {};
     return `
 Sen bir uzman eğitim danışmanısın. Aşağıdaki bilgilere göre 30 günlük detaylı bir çalışma planı oluştur:
 
@@ -386,6 +430,14 @@ Sen bir uzman eğitim danışmanısın. Aşağıdaki bilgilere göre 30 günlük
 - Günlük çalışma süresi: ${data.availableTime} dakika
 - Öğrenme stili: ${data.learningStyle}
 - Seviye: ${data.currentLevel}
+ - Sınıf: ${prefs.grade ?? ''}
+ - Alan: ${prefs.field ?? ''}
+ - Zorluk/alanda zorlanmalar: ${(prefs.focusAreas || []).join(', ')}
+ - Güven düzeyleri: ${JSON.stringify(prefs.confidenceLevels || {})}
+ - Son tamamlanan konular: ${JSON.stringify(prefs.lastCompletedTopics || {})}
+ - Tercih edilen çalışma saatleri: ${(prefs.studyTimes || []).join(', ')}
+ - Tercih edilen seans süresi: ${prefs.sessionDuration ?? 40} dk
+ - Çalışma günleri: ${(prefs.studyDays || []).join(', ')}
 
 GEÇMİŞ PERFORMANS:
 - Toplam çalışma süresi: ${userContext.totalStudyTime} dakika
