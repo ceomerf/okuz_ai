@@ -21,7 +21,6 @@ export class GeminiService {
     try {
       const result = await this.model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }]}],
-        generationConfig: { responseMimeType: 'application/json' } as any,
       });
       const response = await result.response;
       return response.text();
@@ -32,7 +31,6 @@ export class GeminiService {
         const fallback = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         const result = await fallback.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }]}],
-          generationConfig: { responseMimeType: 'application/json' } as any,
         });
         const response = await result.response;
         return response.text();
