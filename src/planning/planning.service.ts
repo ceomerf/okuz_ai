@@ -510,7 +510,7 @@ export class PlanningService {
   private createPlanPrompt(data: PlanGenerationData, userContext: any): string {
     const prefs = (data as any)?.preferences || {};
     return `
-Sen bir uzman eğitim danışmanısın. Aşağıdaki bilgilere göre 30 günlük detaylı bir çalışma planı oluştur:
+Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSON.
 
 ÖĞRENCİ BİLGİLERİ:
 - Dersler: ${data.subjects.join(', ')}
@@ -518,14 +518,14 @@ Sen bir uzman eğitim danışmanısın. Aşağıdaki bilgilere göre 30 günlük
 - Günlük çalışma süresi: ${data.availableTime} dakika
 - Öğrenme stili: ${data.learningStyle}
 - Seviye: ${data.currentLevel}
- - Sınıf: ${prefs.grade ?? ''}
- - Alan: ${prefs.field ?? ''}
- - Zorluk/alanda zorlanmalar: ${(prefs.focusAreas || []).join(', ')}
- - Güven düzeyleri: ${JSON.stringify(prefs.confidenceLevels || {})}
- - Son tamamlanan konular: ${JSON.stringify(prefs.lastCompletedTopics || {})}
- - Tercih edilen çalışma saatleri: ${(prefs.studyTimes || []).join(', ')}
- - Tercih edilen seans süresi: ${prefs.sessionDuration ?? 40} dk
- - Çalışma günleri: ${(prefs.studyDays || []).join(', ')}
+- Sınıf: ${prefs.grade ?? ''}
+- Alan: ${prefs.field ?? ''}
+- Zorluk/alanda zorlanmalar: ${(prefs.focusAreas || []).join(', ')}
+- Güven düzeyleri: ${JSON.stringify(prefs.confidenceLevels || {})}
+- Son tamamlanan konular: ${JSON.stringify(prefs.lastCompletedTopics || {})}
+- Tercih edilen çalışma saatleri: ${(prefs.studyTimes || []).join(', ')}
+- Tercih edilen seans süresi: ${prefs.sessionDuration ?? 40} dk
+- Çalışma günleri: ${(prefs.studyDays || []).join(', ')}
 
 GEÇMİŞ PERFORMANS:
 - Toplam çalışma süresi: ${userContext.totalStudyTime} dakika
@@ -534,7 +534,7 @@ GEÇMİŞ PERFORMANS:
 - Zayıf alanlar: ${userContext.weakAreas.join(', ')}
 - Tercih edilen çalışma saatleri: ${userContext.preferredStudyHours.join(', ')}
 
-PLAN YAPISI (JSON formatında):
+BEKLENEN JSON ŞEMASI (örnek):
 {
   "weeklyPlans": [
     {
@@ -548,35 +548,21 @@ PLAN YAPISI (JSON formatında):
           "duration": 60,
           "type": "study",
           "difficulty": "medium",
-          "objectives": ["Limit tanımını öğren", "Grafik analizi yap"],
-          "resources": ["Ders kitabı sayfa 45-60", "Video: Limit giriş"],
-          "techniques": ["Görsel öğrenme", "Pratik sorular"]
+          "objectives": ["Hedef"],
+          "resources": ["Kaynak"],
+          "techniques": ["Teknik"]
         }
       ]
     }
   ],
   "milestones": [
-    {
-      "week": 1,
-      "goal": "Temel kavramları kavra",
-      "assessment": "Quiz",
-      "criteria": "70% başarı"
-    }
+    { "week": 1, "goal": "Temel kavramları kavra", "assessment": "Quiz", "criteria": "70% başarı" }
   ],
   "adaptiveStrategies": [
-    "Zorlandığında sessionsür süresini azalt",
+    "Zorlandığında konuyu böl",
     "Başarılı olduğunda zorluk seviyesini artır"
   ]
 }
-
-KURALLAR:
-1. ${data.learningStyle} öğrenme stiline uygun teknikler kullan
-2. Zayıf alanlara daha fazla zaman ayır
-3. Güçlü alanları pekiştirici aktiviteler ekle
-4. Her hafta değerlendirme ve uyarlama noktaları ekle
-5. Motivasyon için kısa vadeli hedefler belirle
-6. Mola ve dinlenme periyotlarını dahil et
-7. Çeşitli öğrenme materyalleri öner
 `;
   }
 
