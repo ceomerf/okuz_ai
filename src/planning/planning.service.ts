@@ -128,8 +128,13 @@ export class PlanningService {
       },
     });
 
-    // Çalışma seanslarını oluştur
-    await this.createStudySessions(savedPlan.id, optimizedPlan.sessions, userId);
+    // Çalışma seanslarını oluştur (weeklyPlans içindeki seansları da destekle)
+    const sessionsFromStructure = Array.isArray((optimizedPlan as any)?.sessions)
+      ? (optimizedPlan as any).sessions
+      : Array.isArray((optimizedPlan as any)?.weeklyPlans)
+        ? (optimizedPlan as any).weeklyPlans.flatMap((w: any) => w?.sessions || [])
+        : [];
+    await this.createStudySessions(savedPlan.id, sessionsFromStructure, userId);
 
     return {
       success: true,
@@ -857,7 +862,7 @@ KURALLAR:
   }
 
   async getPlan(userId: string, planId: string): Promise<any> {
-    const plan = await this.prisma.plan.findFirst({
+    let plan = await this.prisma.plan.findFirst({
       where: { id: planId, userId },
       include: {
         sessions: {
@@ -875,6 +880,24 @@ KURALLAR:
 
     if (!plan) {
       throw new NotFoundException('Plan not found');
+    }
+
+    // Eğer bu planda henüz session oluşmadıysa metadata.planStructure üzerinden backfill yap
+    if (!plan.sessions || plan.sessions.length === 0) {
+      const planStructure: any = (plan as any)?.metadata?.planStructure || {};
+      const sessionsFromStructure = Array.isArray(planStructure.sessions)
+        ? planStructure.sessions
+        : Array.isArray(planStructure.weeklyPlans)
+          ? planStructure.weeklyPlans.flatMap((w: any) => w?.sessions || [])
+          : [];
+      if (sessionsFromStructure.length > 0) {
+        await this.createStudySessions(plan.id, sessionsFromStructure, userId);
+        // Tekrar yükle
+        plan = await this.prisma.plan.findFirst({
+          where: { id: planId, userId },
+          include: { sessions: { orderBy: { startTime: 'asc' } }, user: { select: { id: true, name: true, studentProfile: true } } },
+        });
+      }
     }
 
     return {
