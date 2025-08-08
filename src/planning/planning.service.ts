@@ -169,6 +169,9 @@ export class PlanningService {
     // AI ile detaylı plan oluştur
     const aiPlanPrompt = this.createPlanPrompt(normalized, userContext);
     const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
+    if (!aiResponse || aiResponse.includes('AI servisi şu anda kullanılamıyor')) {
+      throw new ServiceUnavailableException('AI servisi kullanılamıyor');
+    }
     
     // AI yanıtı bazen markdown/çitler içerebilir; temizleyip parse etmeyi dene
     const cleaned = this.cleanAiJsonResponse(aiResponse);
