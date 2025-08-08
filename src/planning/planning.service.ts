@@ -743,9 +743,11 @@ BEKLENEN JSON ŞEMASI (örnek):
       optimalTimes.push(...userPreferences);
     }
     
+    const unique = [...new Set(optimalTimes)];
+    const timeSlots = unique.length > 0 ? unique : ['morning','afternoon','evening'];
     return {
-      preferredTimes: [...new Set(optimalTimes)],
-      avoidTimes: ['late_night'], // Geç saatlerden kaçın
+      preferredTimes: timeSlots,
+      avoidTimes: ['late_night'],
       flexibilityLevel: 'medium',
     };
   }
@@ -1032,9 +1034,17 @@ BEKLENEN JSON ŞEMASI (örnek):
         weeklyPlans.push({ week: weeklyPlans.length + 1, focus: undefined, sessions: [] });
       }
       const dayName = dayNames[d % 7];
+      let lastTopicsForDay: Record<string, string> = {};
       for (let k = 0; k < sessionsPerDay; k++) {
         const subject = subjects[(d * sessionsPerDay + k) % subjects.length];
-        const topic = this.pickTopicFromPool(subject, topicPool, preferredTopics) || (k === 0 ? 'Temel kavramlar' : 'Pekiştirme çalışması');
+        let topic = this.pickTopicFromPool(subject, topicPool, preferredTopics) || (k === 0 ? 'Temel kavramlar' : 'Pekiştirme çalışması');
+        // Aynı gün aynı konuda tekrar olmasın
+        if (lastTopicsForDay[subject] && lastTopicsForDay[subject] === topic) {
+          const list = topicPool[subject] || [];
+          const alt = list.find(t => t !== topic);
+          if (alt) topic = alt;
+        }
+        lastTopicsForDay[subject] = topic;
         weeklyPlans[weekIndex - 1].sessions.push({
           week: weekIndex,
           day: dayName,
@@ -1042,7 +1052,7 @@ BEKLENEN JSON ŞEMASI (örnek):
           topic: `${subject} - ${topic}`,
           durationInMinutes: sessionDuration,
           type: 'study',
-          difficulty: userContext.learningVelocity > 0.8 ? 'hard' : userContext.learningVelocity > 0.5 ? 'medium' : 'easy',
+          difficulty: d === 0 ? 'medium' : (d === 1 ? 'hard' : 'review'),
           objectives: ['Hedefe yönelik ilerleme'],
           resources: [],
           techniques: this.getTechniquesForLearningStyle(data.learningStyle),

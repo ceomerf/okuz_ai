@@ -3,9 +3,10 @@ import { SubscriptionService } from './subscription.service';
 import { SubscriptionController } from './subscription.controller';
 import { PaymentWebhookController } from './payment-webhook.controller';
 import { PrismaModule } from '../common/prisma/prisma.module';
+import { PlanningModule } from '../planning/planning.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, PlanningModule],
   controllers: [SubscriptionController, PaymentWebhookController],
   providers: [SubscriptionService],
   exports: [SubscriptionService],
