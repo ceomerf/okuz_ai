@@ -18,6 +18,8 @@ interface PlanGenerationData {
     breakDuration: number; // mola süresi
     difficulty: string; // "easy", "medium", "hard"
     focusAreas: string[]; // öncelikli konular
+    grade?: number | string;
+    curriculumTopicsBySubject?: Record<string, string[]>; // istemciden gönderilen müfredat konuları
   };
 }
 
@@ -523,6 +525,13 @@ export class PlanningService {
     const prefs = (data as any)?.preferences || {};
     const planDurationDays: number = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
     const minSessionsPerDay = 2;
+    const gradeNum = typeof prefs.grade === 'number' ? prefs.grade : parseInt(String(prefs.grade || '0')) || 0;
+    const topicPool = this.buildCurriculumTopicPool(
+      Array.isArray(data.subjects) ? data.subjects : [],
+      gradeNum || 11,
+      (data as any)?.preferences?.curriculumTopicsBySubject
+    );
+    const topicPoolJson = JSON.stringify(topicPool);
     return `
 Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSON.
 
@@ -532,6 +541,11 @@ PLAN KISITLARI:
 - Her oturum için durationInMinutes alanını DOLDUR (ör. 40, 60 gibi). Eğer duration alanı kullanıyorsan durationInMinutes yerine duration kullanabilirsin.
 - weeklyPlans yapısını kullan ve her haftada sessions dolu olsun. Her oturumda day alanı Pazartesi, Salı, Çarşamba, Perşembe, Cuma, Cumartesi veya Pazar olmalı.
 - Oturumlar kişiselleştirilmiş olmalı: güçlü alanlarda pekiştirme, zayıf alanlarda temel kavramlar ve tekrar.
+
+KONULAR HAVUZU (STRICT):
+- Aşağıdaki havuzdan konu seç. topic alanı SADECE bu havuzda listelenen konulardan biri olmalı.
+- Zayıf alanlarda (focusAreas) geçen konulara öncelik ver.
+${topicPoolJson}
 
 ÖĞRENCİ BİLGİLERİ:
 - Dersler: ${data.subjects.join(', ')}
@@ -940,11 +954,77 @@ BEKLENEN JSON ŞEMASI (örnek):
     };
   }
 
+  // Basit bir MEB müfredat havuzu (ileride veri kaynağına bağlanabilir)
+  private buildCurriculumTopicPool(
+    subjects: string[],
+    grade: number | string,
+    overrideTopics?: Record<string, string[]>
+  ): Record<string, string[]> {
+    const normalizedSubjects = (subjects || []).map(s => (s || '').toLowerCase());
+    const pool: Record<string, string[]> = {};
+    const add = (name: string, topics: string[]) => { pool[name] = topics; };
+
+    // Eğer istemci müfredat konularını gönderdi ise öncelik ver
+    if (overrideTopics && Object.keys(overrideTopics).length > 0) {
+      Object.entries(overrideTopics).forEach(([subject, topics]) => {
+        if (Array.isArray(topics) && topics.length > 0) {
+          add(subject, topics);
+        }
+      });
+    }
+
+    if (normalizedSubjects.includes('matematik')) {
+      add('Matematik', [
+        'Temel denklemler',
+        'Fonksiyon kavramı',
+        'Fonksiyon grafikleri',
+        'Problemler',
+        'Oran orantı',
+        'Limit tanımı',
+        'Süreklilik',
+      ]);
+    }
+
+    if (normalizedSubjects.includes('türkçe') || normalizedSubjects.includes('turkce')) {
+      add('Türkçe', [
+        'Paragraf anlama',
+        'Cümlede anlam',
+        'Anlama ve yorumlama',
+        'Dil bilgisi - Noktalama',
+        'Dil bilgisi - Yazım kuralları',
+      ]);
+    }
+
+    // Varsayılan: bilinmeyen dersler için genel başlıklar
+    subjects.forEach(s => {
+      if (!pool[s]) {
+        add(s, ['Giriş', 'Temel kavramlar', 'Pekiştirme uygulamaları']);
+      }
+    });
+
+    return pool;
+  }
+
+  private pickTopicFromPool(subject: string, pool: Record<string, string[]>, preferredTopics: string[]): string {
+    const list = pool[subject] || [];
+    if (list.length === 0) return 'Temel kavramlar';
+    // Önce tercih edilen (zayıf alan) konu eşleşmesi dene
+    const preferred = preferredTopics.find(pt => list.some(t => t.toLowerCase().includes(pt.toLowerCase())));
+    if (preferred) {
+      const match = list.find(t => t.toLowerCase().includes(preferred.toLowerCase()));
+      if (match) return match;
+    }
+    // Aksi halde sıradaki
+    return list[0];
+  }
+
   private generateFallbackPlan(planDurationDays: number, data: PlanGenerationData, userContext: any) {
     const dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
     const subjects = Array.isArray(data.subjects) && data.subjects.length > 0 ? data.subjects : ['Genel'];
     const sessionDuration = Math.max(30, Math.min(((data as any)?.preferences?.sessionDuration || 40), 120));
     const sessionsPerDay = 2;
+    const topicPool = this.buildCurriculumTopicPool(subjects, (data as any)?.preferences?.grade || 11);
+    const preferredTopics: string[] = Array.isArray((data as any)?.preferences?.focusAreas) ? (data as any).preferences.focusAreas : [];
     const weeklyPlans: Array<any> = [];
     for (let d = 0; d < planDurationDays; d++) {
       const weekIndex = Math.floor(d / 7) + 1;
@@ -954,7 +1034,7 @@ BEKLENEN JSON ŞEMASI (örnek):
       const dayName = dayNames[d % 7];
       for (let k = 0; k < sessionsPerDay; k++) {
         const subject = subjects[(d * sessionsPerDay + k) % subjects.length];
-        const topic = k === 0 ? 'Temel kavramlar' : 'Pekiştirme çalışması';
+        const topic = this.pickTopicFromPool(subject, topicPool, preferredTopics) || (k === 0 ? 'Temel kavramlar' : 'Pekiştirme çalışması');
         weeklyPlans[weekIndex - 1].sessions.push({
           week: weekIndex,
           day: dayName,
