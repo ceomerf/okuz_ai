@@ -13,24 +13,33 @@ export class GeminiService {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-      } as any,
-    });
+    const preferredModel = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
+    this.model = this.genAI.getGenerativeModel({ model: preferredModel });
   }
 
   async generateContent(prompt: string): Promise<string> {
     try {
-      const result = await this.model.generateContent(prompt);
+      const result = await this.model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }]}],
+        generationConfig: { responseMimeType: 'application/json' } as any,
+      });
       const response = await result.response;
       return response.text();
     } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Gemini API Error:', error);
+      console.error('Gemini API Error (primary model):', (error as any)?.message || error);
+      // Fallback: 1.5-flash ile bir deneme daha yap
+      try {
+        const fallback = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const result = await fallback.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }]}],
+          generationConfig: { responseMimeType: 'application/json' } as any,
+        });
+        const response = await result.response;
+        return response.text();
+      } catch (err2) {
+        console.error('Gemini API Error (fallback model):', (err2 as any)?.message || err2);
+        return 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
       }
-      return 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
     }
   }
 
