@@ -165,7 +165,7 @@ export class PlanningService {
     const userContext = await this.analyzeUserContext(userId);
     
     // AI ile detaylı plan oluştur
-    const aiPlanPrompt = this.createPlanPrompt(normalized, userContext);
+    const aiPlanPrompt = await this.createPlanPrompt(normalized, userContext);
     const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
     if (!aiResponse || aiResponse.includes('AI servisi şu anda kullanılamıyor')) {
       throw new ServiceUnavailableException('AI servisi kullanılamıyor');
@@ -214,7 +214,7 @@ export class PlanningService {
         ? (optimizedPlan as any).weeklyPlans.flatMap((w: any) => w?.sessions || [])
         : [];
     if (!Array.isArray(sessionsFromStructure) || sessionsFromStructure.length === 0) {
-      optimizedPlan = this.generateFallbackPlan(planDurationDays, normalized, userContext);
+      optimizedPlan = await this.generateFallbackPlan(planDurationDays, normalized, userContext);
       sessionsFromStructure = optimizedPlan.weeklyPlans?.flatMap((w: any) => w.sessions || []) || [];
       optimizedPlan.optimizationNotes = Array.isArray(optimizedPlan.optimizationNotes)
         ? [...optimizedPlan.optimizationNotes, 'AI boş yanıt verdiği için güvenli geri dönüş planı uygulandı']
@@ -225,10 +225,17 @@ export class PlanningService {
     
     // Veritabanına kaydet
     const inferredPlanType = planDurationDays >= 7 ? 'WEEKLY' : 'DAILY';
+    const learningStyleLabel = this.getLearningStyleDisplayName(normalized.learningStyle);
+    const suppressTitleByStyle = (normalized as any)?.suppressLearningStyleInTitle === true;
+    const isGenericStyle = suppressTitleByStyle || !normalized.learningStyle || ['visual', 'balanced', 'generic', 'personalized'].includes((normalized.learningStyle || '').toLowerCase());
+    const computedTitle = isGenericStyle
+      ? 'Kişiselleştirilmiş Çalışma Planı'
+      : `${learningStyleLabel} Öğrenme Planı`;
+
     const savedPlan = await this.prisma.plan.create({
       data: {
         userId,
-        title: `${this.getLearningStyleDisplayName(normalized.learningStyle)} Öğrenme Planı`,
+        title: computedTitle,
         description: `${normalized.subjects.join(', ')} dersleri için kişiselleştirilmiş plan`,
         type: inferredPlanType as any,
         subjects: normalized.subjects,
@@ -313,7 +320,7 @@ export class PlanningService {
       : (typeof data?.availableTime === 'number' ? Math.max(0, Math.round((data.availableTime as number) / 60)) : 2);
     const availableTime: number = dailyHours * 60; // dakika/gün
 
-    const learningStyle: string = data?.learningStyle || profile?.studentProfile?.learningStyle || 'visual';
+    const learningStyle: string = data?.learningStyle || profile?.studentProfile?.learningStyle || 'personalized';
 
     const preferredStudyTimes: string[] = Array.isArray(data?.preferredStudyTimes) ? data.preferredStudyTimes : [];
     const preferredSessionDuration: number = typeof data?.preferredSessionDuration === 'number' ? data.preferredSessionDuration : 40;
@@ -345,6 +352,8 @@ export class PlanningService {
         confidenceLevels,
         lastCompletedTopics,
       },
+      // UI tercihleri
+      suppressLearningStyleInTitle: !!data?.suppressLearningStyleInTitle,
     } as any;
 
     return this.generatePlan(normalized);
@@ -521,12 +530,12 @@ export class PlanningService {
     };
   }
 
-  private createPlanPrompt(data: PlanGenerationData, userContext: any): string {
+  private async createPlanPrompt(data: PlanGenerationData, userContext: any): Promise<string> {
     const prefs = (data as any)?.preferences || {};
     const planDurationDays: number = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
     const minSessionsPerDay = 2;
     const gradeNum = typeof prefs.grade === 'number' ? prefs.grade : parseInt(String(prefs.grade || '0')) || 0;
-    const topicPool = this.buildCurriculumTopicPool(
+    const topicPool = await this.buildCurriculumTopicPool(
       Array.isArray(data.subjects) ? data.subjects : [],
       gradeNum || 11,
       (data as any)?.preferences?.curriculumTopicsBySubject
@@ -957,50 +966,41 @@ BEKLENEN JSON ŞEMASI (örnek):
   }
 
   // Basit bir MEB müfredat havuzu (ileride veri kaynağına bağlanabilir)
-  private buildCurriculumTopicPool(
+  private async buildCurriculumTopicPool(
     subjects: string[],
-    grade: number | string,
+    grade: number,
     overrideTopics?: Record<string, string[]>
-  ): Record<string, string[]> {
-    const normalizedSubjects = (subjects || []).map(s => (s || '').toLowerCase());
+  ): Promise<Record<string, string[]>> {
     const pool: Record<string, string[]> = {};
-    const add = (name: string, topics: string[]) => { pool[name] = topics; };
-
-    // Eğer istemci müfredat konularını gönderdi ise öncelik ver
+    // Override öncelikli
     if (overrideTopics && Object.keys(overrideTopics).length > 0) {
       Object.entries(overrideTopics).forEach(([subject, topics]) => {
         if (Array.isArray(topics) && topics.length > 0) {
-          add(subject, topics);
+          pool[subject] = topics;
         }
       });
+      return pool;
     }
 
-    if (normalizedSubjects.includes('matematik')) {
-      add('Matematik', [
-        'Temel denklemler',
-        'Fonksiyon kavramı',
-        'Fonksiyon grafikleri',
-        'Problemler',
-        'Oran orantı',
-        'Limit tanımı',
-        'Süreklilik',
-      ]);
-    }
+    // Veritabanından uygun konuları çek
+    const normalizedSubjects = (subjects || []).map(s => (s || '').trim()).filter(Boolean);
+    const topicsFromDb = await this.prisma.mebTopic.findMany({
+      where: {
+        grade: grade,
+        OR: normalizedSubjects.map(s => ({ subject: { equals: s, mode: 'insensitive' as const } })),
+      },
+      orderBy: { topic: 'asc' },
+    });
 
-    if (normalizedSubjects.includes('türkçe') || normalizedSubjects.includes('turkce')) {
-      add('Türkçe', [
-        'Paragraf anlama',
-        'Cümlede anlam',
-        'Anlama ve yorumlama',
-        'Dil bilgisi - Noktalama',
-        'Dil bilgisi - Yazım kuralları',
-      ]);
-    }
-
-    // Varsayılan: bilinmeyen dersler için genel başlıklar
-    subjects.forEach(s => {
-      if (!pool[s]) {
-        add(s, ['Giriş', 'Temel kavramlar', 'Pekiştirme uygulamaları']);
+    subjects.forEach(subject => {
+      const normalizedSubject = (subject || '').trim();
+      const subjectTopics = topicsFromDb
+        .filter(t => (t.subject || '').toLowerCase() === normalizedSubject.toLowerCase())
+        .map(t => t.topic);
+      if (subjectTopics.length > 0) {
+        pool[subject] = subjectTopics;
+      } else {
+        pool[subject] = ['Giriş', 'Temel kavramlar', 'Pekiştirme uygulamaları'];
       }
     });
 
@@ -1020,12 +1020,15 @@ BEKLENEN JSON ŞEMASI (örnek):
     return list[0];
   }
 
-  private generateFallbackPlan(planDurationDays: number, data: PlanGenerationData, userContext: any) {
+  private async generateFallbackPlan(planDurationDays: number, data: PlanGenerationData, userContext: any) {
     const dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
     const subjects = Array.isArray(data.subjects) && data.subjects.length > 0 ? data.subjects : ['Genel'];
     const sessionDuration = Math.max(30, Math.min(((data as any)?.preferences?.sessionDuration || 40), 120));
     const sessionsPerDay = 2;
-    const topicPool = this.buildCurriculumTopicPool(subjects, (data as any)?.preferences?.grade || 11);
+    const gradeNum = typeof (data as any)?.preferences?.grade === 'number'
+      ? (data as any).preferences.grade
+      : parseInt(String((data as any)?.preferences?.grade || '0')) || 11;
+    const topicPool = await this.buildCurriculumTopicPool(subjects, gradeNum);
     const preferredTopics: string[] = Array.isArray((data as any)?.preferences?.focusAreas) ? (data as any).preferences.focusAreas : [];
     const weeklyPlans: Array<any> = [];
     for (let d = 0; d < planDurationDays; d++) {

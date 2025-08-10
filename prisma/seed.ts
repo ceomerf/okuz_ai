@@ -1,8 +1,84 @@
 import { PrismaClient } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const prisma = new PrismaClient();
 
 async function main() {
+  // MEB konularını seed et (lib/models/curriculum_data.dart kaynağından)
+  const mebTopicCount = await prisma.mebTopic.count();
+  if (mebTopicCount === 0) {
+    try {
+      let dartPath = path.resolve(__dirname, '../../lib/models/curriculum_data.dart');
+      if (!fs.existsSync(dartPath)) {
+        // Fallback: çalışılan dizin backend ise buradan hesapla
+        const alt = path.resolve(process.cwd(), '../lib/models/curriculum_data.dart');
+        if (fs.existsSync(alt)) {
+          dartPath = alt;
+        }
+      }
+      const dartContent = fs.readFileSync(dartPath, 'utf8');
+      // curriculum = [ ... ]; bloğunu yakala
+      const match = dartContent.match(/curriculum\s*=\s*\[(.*)\];/s);
+      if (match && match[1]) {
+        let jsonLike = `[${match[1]}]`;
+        // Satır içi yorumları ve gereksiz trailing virgülleri temizlemeye çalış
+        jsonLike = jsonLike.replace(/\n\s*\/\/.*$/gm, '');
+        // JSON.parse dene
+        const curriculum = JSON.parse(jsonLike);
+        type Level = { sinif_duzeyi: string; dersler: any[] };
+        const toGrade = (s: string): number => {
+          const m = (s || '').match(/(\d+)/);
+          return m ? parseInt(m[1], 10) : 0;
+        };
+        const upserts: Promise<any>[] = [];
+        (curriculum as Level[]).forEach((level) => {
+          const grade = toGrade(level.sinif_duzeyi);
+          (level.dersler || []).forEach((ders: any) => {
+            const subject: string = ders.ders_adi;
+            // Temalar
+            if (Array.isArray(ders.temalar)) {
+              ders.temalar.forEach((tema: any) => {
+                const unit = String(tema.tema_adi || 'Genel');
+                (tema.konular || []).forEach((topicName: string) => {
+                  const where = { grade_subject_topic: { grade, subject, topic: topicName } } as any;
+                  upserts.push(
+                    prisma.mebTopic.upsert({
+                      where,
+                      update: {},
+                      create: { grade, subject, unit, topic: topicName, outcomes: [], tytWeight: 0, aytWeight: 0 },
+                    })
+                  );
+                });
+              });
+            }
+            // Üniteler
+            if (Array.isArray(ders.uniteler)) {
+              ders.uniteler.forEach((unite: any) => {
+                const unit = String(unite.unite_adi || 'Genel');
+                (unite.konular || []).forEach((topicName: string) => {
+                  const where = { grade_subject_topic: { grade, subject, topic: topicName } } as any;
+                  upserts.push(
+                    prisma.mebTopic.upsert({
+                      where,
+                      update: {},
+                      create: { grade, subject, unit, topic: topicName, outcomes: [], tytWeight: 0, aytWeight: 0 },
+                    })
+                  );
+                });
+              });
+            }
+          });
+        });
+        await Promise.all(upserts);
+        console.log(`Seeded MebTopic from curriculum_data.dart: ${upserts.length} records`);
+      } else {
+        console.warn('curriculum_data.dart içinde curriculum dizisi bulunamadı. MebTopic seed atlandı.');
+      }
+    } catch (err) {
+      console.error('MebTopic seeding failed:', err);
+    }
+  }
   // Test kullanıcısını kontrol et, varsa kullan, yoksa oluştur
   let testUser = await prisma.user.findUnique({
     where: { email: 'test@okuz.ai' },
