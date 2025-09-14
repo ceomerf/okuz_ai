@@ -7,8 +7,8 @@ echo "🚀 Okuz AI Backend VPS Deployment başlatılıyor..."
 # Environment kontrolü
 if [ ! -f .env ]; then
     echo "❌ .env dosyası bulunamadı!"
-    echo "📝 env.example dosyasını .env olarak kopyalayın"
-    cp env.example .env
+    echo "📝 env.production dosyasını .env olarak kopyalayın"
+    cp env.production .env
     echo "⚠️  Lütfen .env dosyasını düzenleyin ve tekrar çalıştırın"
     exit 1
 fi

@@ -18,12 +18,14 @@ async function main() {
         }
       }
       const dartContent = fs.readFileSync(dartPath, 'utf8');
-      // curriculum = [ ... ]; bloğunu yakala
-      const match = dartContent.match(/curriculum\s*=\s*\[(.*)\];/s);
+      // curriculum = [ ... ]; bloğunu yakala (non-greedy)
+      const match = dartContent.match(/curriculum\s*=\s*\[(.*?)\];/s);
       if (match && match[1]) {
         let jsonLike = `[${match[1]}]`;
         // Satır içi yorumları ve gereksiz trailing virgülleri temizlemeye çalış
         jsonLike = jsonLike.replace(/\n\s*\/\/.*$/gm, '');
+        // Virgül + kapanışları düzelt
+        jsonLike = jsonLike.replace(/,\s*([\]}])/g, '$1');
         // JSON.parse dene
         const curriculum = JSON.parse(jsonLike);
         type Level = { sinif_duzeyi: string; dersler: any[] };
@@ -31,7 +33,7 @@ async function main() {
           const m = (s || '').match(/(\d+)/);
           return m ? parseInt(m[1], 10) : 0;
         };
-        const upserts: Promise<any>[] = [];
+        const rows: Array<{ grade: number; subject: string; unit: string; topic: string; outcomes: string[]; tytWeight: number; aytWeight: number }> = [];
         (curriculum as Level[]).forEach((level) => {
           const grade = toGrade(level.sinif_duzeyi);
           (level.dersler || []).forEach((ders: any) => {
@@ -41,14 +43,7 @@ async function main() {
               ders.temalar.forEach((tema: any) => {
                 const unit = String(tema.tema_adi || 'Genel');
                 (tema.konular || []).forEach((topicName: string) => {
-                  const where = { grade_subject_topic: { grade, subject, topic: topicName } } as any;
-                  upserts.push(
-                    prisma.mebTopic.upsert({
-                      where,
-                      update: {},
-                      create: { grade, subject, unit, topic: topicName, outcomes: [], tytWeight: 0, aytWeight: 0 },
-                    })
-                  );
+                  rows.push({ grade, subject, unit, topic: String(topicName), outcomes: [], tytWeight: 0, aytWeight: 0 });
                 });
               });
             }
@@ -57,21 +52,24 @@ async function main() {
               ders.uniteler.forEach((unite: any) => {
                 const unit = String(unite.unite_adi || 'Genel');
                 (unite.konular || []).forEach((topicName: string) => {
-                  const where = { grade_subject_topic: { grade, subject, topic: topicName } } as any;
-                  upserts.push(
-                    prisma.mebTopic.upsert({
-                      where,
-                      update: {},
-                      create: { grade, subject, unit, topic: topicName, outcomes: [], tytWeight: 0, aytWeight: 0 },
-                    })
-                  );
+                  rows.push({ grade, subject, unit, topic: String(topicName), outcomes: [], tytWeight: 0, aytWeight: 0 });
                 });
               });
             }
           });
         });
-        await Promise.all(upserts);
-        console.log(`Seeded MebTopic from curriculum_data.dart: ${upserts.length} records`);
+        // Duplicate'leri kaldır (grade, subject, topic bazında)
+        const uniqKey = (r: any) => `${r.grade}|${(r.subject||'').toLowerCase()}|${(r.topic||'').toLowerCase()}`;
+        const uniqMap = new Map<string, typeof rows[number]>();
+        rows.forEach(r => { if (!uniqMap.has(uniqKey(r))) uniqMap.set(uniqKey(r), r); });
+        const uniqueRows = Array.from(uniqMap.values());
+        // batch createMany
+        const batchSize = 1000;
+        for (let i = 0; i < uniqueRows.length; i += batchSize) {
+          const chunk = uniqueRows.slice(i, i + batchSize);
+          await prisma.mebTopic.createMany({ data: chunk, skipDuplicates: true });
+        }
+        console.log(`Seeded MebTopic from curriculum_data.dart: ${uniqueRows.length} unique records`);
       } else {
         console.warn('curriculum_data.dart içinde curriculum dizisi bulunamadı. MebTopic seed atlandı.');
       }
