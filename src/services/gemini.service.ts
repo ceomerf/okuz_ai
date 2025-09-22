@@ -85,6 +85,44 @@ export class GeminiService {
     }
   }
 
+  // Function Calling: Gemini'nin tool/function çağrılarını kullanarak yapılandırılmış argümanları döndür.
+  // toolName: çağrılacak fonksiyon adı, parametersSchema: JSON Schema (OpenAPI/JSON Schema benzeri), prompt: kullanıcı talimatı
+  async generateFunctionCall(toolName: string, parametersSchema: any, prompt: string): Promise<any> {
+    try {
+      const functionDeclarations = [{
+        name: toolName,
+        description: 'Save generated study plan into backend in a structured format',
+        parameters: parametersSchema,
+      }];
+
+      const model = this.genAI.getGenerativeModel({
+        model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash',
+      });
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }]}],
+        tools: [{ functionDeclarations }],
+        toolConfig: { functionCall: { name: toolName } },
+      } as any);
+
+      const response: any = await result.response;
+      const candidates: any[] = (response as any)?.candidates || [];
+      const parts: any[] = candidates[0]?.content?.parts || [];
+      const fnCall = parts.find((p: any) => p.functionCall);
+      if (fnCall && fnCall.functionCall && fnCall.functionCall.args) {
+        return fnCall.functionCall.args;
+      }
+      // Bazı sürümlerde functionCalls response.promptFeedback veya usageMetadata dışında dönebilir
+      // Emniyetli geri dönüş: text parse etmeyi deneme (son çare)
+      const fallbackText = response.text?.() || '';
+      try { return JSON.parse(fallbackText); } catch { return { error: 'NoFunctionCall' }; }
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Gemini Function Calling Error:', error);
+      }
+      return { error: 'FunctionCallFailed' };
+    }
+  }
+
   async generateEducationalContent(topic: string, level: string, type: string): Promise<any> {
     const prompt = `
     ${topic} konusu hakkında ${level} seviyesinde ${type} türünde eğitim içeriği oluştur.

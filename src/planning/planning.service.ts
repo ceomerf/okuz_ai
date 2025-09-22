@@ -60,7 +60,16 @@ export class PlanningService {
     topic: z.string().min(1),
     duration: z.number().positive().optional(),
     durationInMinutes: z.number().positive().optional(),
-    type: z.enum(['study', 'review', 'practice', 'exam']).optional(),
+    type: z.string().optional().transform((val) => {
+      // AI'ın döndürdüğü type'ları standart type'lara dönüştür
+      if (!val) return 'study';
+      const lowerVal = val.toLowerCase();
+      if (['study', 'review', 'practice', 'exam'].includes(lowerVal)) {
+        return lowerVal;
+      }
+      // Geçersiz type'ları 'study' olarak dönüştür
+      return 'study';
+    }),
     difficulty: z.string().optional(),
     week: z.number().int().positive().optional(),
     day: z.string().optional(),
@@ -98,6 +107,137 @@ export class PlanningService {
       cleaned = cleaned.substring(first, last + 1);
     }
     return cleaned;
+  }
+
+  // A) AI Analizi: userContext + normalized veriye göre zayıf/güçlü alanlar ve haftalık strateji çıkarır
+  private async aiAnalyzeUser(userContext: any, data: PlanGenerationData): Promise<any> {
+    const prompt = `Sadece geçerli JSON döndür. Açıklama yazma.
+{
+  "task": "analyze_user",
+  "student": {
+    "subjects": ${JSON.stringify(data.subjects)},
+    "goals": ${JSON.stringify(data.goals)},
+    "availableTime": ${data.availableTime},
+    "learningStyle": ${JSON.stringify(data.learningStyle)},
+    "currentLevel": ${JSON.stringify(data.currentLevel)}
+  },
+  "context": {
+    "weakAreas": ${JSON.stringify(userContext.weakAreas || [])},
+    "strongAreas": ${JSON.stringify(userContext.strongAreas || [])},
+    "topicSuccessRates": ${JSON.stringify(userContext.topicSuccessRates || {})},
+    "subjectPerformance": ${JSON.stringify(userContext.subjectPerformance || {})},
+    "preferredStudyHours": ${JSON.stringify(userContext.preferredStudyHours || [])},
+    "subjectTimeAllocation": ${JSON.stringify(userContext.subjectTimeAllocation || {})}
+  },
+  "expect": {
+    "weakTopicsTop3": ["<topic>", "<topic>", "<topic>"],
+    "strongSubjectsTop2": ["<subject>", "<subject>"],
+    "weeklyStrategy": "<one-week high-level strategy in Turkish>"
+  }
+}`;
+    const resp = await this.geminiService.generateContent(prompt);
+    const cleaned = this.cleanAiJsonResponse(resp);
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      const block = this.extractFirstJsonBlock(resp);
+      if (!block) return { weakTopicsTop3: [], strongSubjectsTop2: [], weeklyStrategy: '' };
+      try { return JSON.parse(block); } catch { return { weakTopicsTop3: [], strongSubjectsTop2: [], weeklyStrategy: '' }; }
+    }
+  }
+
+  // B) Stratejiye göre plan iskeleti üret (haftalık plan + oturumlar taslak)
+  private async buildPlanSkeletonFromStrategy(aiAnalysis: any, data: PlanGenerationData, userContext: any): Promise<any> {
+    const planDurationDays: number = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
+    const minSessionsPerDay = 2;
+    const subjects = Array.isArray(data.subjects) && data.subjects.length > 0 ? data.subjects : ['Genel'];
+    const preferredTopics: string[] = Array.isArray((data as any)?.preferences?.focusAreas) ? (data as any).preferences.focusAreas : (aiAnalysis?.weakTopicsTop3 || []);
+    const gradeNum = typeof (data as any)?.preferences?.grade === 'number'
+      ? (data as any).preferences.grade
+      : parseInt(String((data as any)?.preferences?.grade || '0')) || 11;
+    const topicPool = await this.buildCurriculumTopicPool(subjects, gradeNum, (data as any)?.preferences?.curriculumTopicsBySubject);
+
+    const weeklyPlans: any[] = [];
+    const dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    for (let d = 0; d < planDurationDays; d++) {
+      const weekIndex = Math.floor(d / 7) + 1;
+      while (weeklyPlans.length < weekIndex) {
+        weeklyPlans.push({ week: weeklyPlans.length + 1, focus: undefined, sessions: [] });
+      }
+      const dayName = dayNames[d % 7];
+      let lastTopicsForDay: Record<string, string> = {};
+      for (let k = 0; k < minSessionsPerDay; k++) {
+        const subject = subjects[(d * minSessionsPerDay + k) % subjects.length];
+        const topic = this.pickTopicFromPool(subject, topicPool, preferredTopics);
+        weeklyPlans[weekIndex - 1].sessions.push({
+          week: weekIndex,
+          day: dayName,
+          subject,
+          topic,
+          durationInMinutes: Math.max(30, Math.min(((data as any)?.preferences?.sessionDuration || 40), 120)),
+          type: 'study',
+          difficulty: 'medium',
+          objectives: [],
+          resources: [],
+          techniques: this.getTechniquesForLearningStyle(data.learningStyle),
+        });
+        lastTopicsForDay[subject] = topic;
+      }
+    }
+    return { weeklyPlans, planDurationDays, strategy: aiAnalysis?.weeklyStrategy || '' };
+  }
+
+  // C) AI ile seçili gün/oturumları detaylandır: hedefler, kaynaklar, teknikler vb.
+  private async detailSessionsWithAI(skeleton: any, data: PlanGenerationData): Promise<any> {
+    try {
+      const toDetail = [] as Array<{ week: number; day: string; subject: string; topic: string; }>;
+      (skeleton?.weeklyPlans || []).forEach((w: any) => {
+        const firstTwo = (w.sessions || []).slice(0, 2);
+        firstTwo.forEach((s: any) => toDetail.push({ week: w.week, day: s.day, subject: s.subject, topic: s.topic }));
+      });
+      for (const item of toDetail) {
+        const prompt = `Sadece geçerli JSON döndür. Açıklama yazma.
+{
+  "task": "detail_session",
+  "constraints": {
+    "durationMinutes": 120,
+    "technique": "Feynman",
+    "includeMiniTest": true,
+    "miniTestQuestions": 10
+  },
+  "session": {
+    "day": ${JSON.stringify(item.day)},
+    "subject": ${JSON.stringify(item.subject)},
+    "topic": ${JSON.stringify(item.topic)}
+  },
+  "expect": {
+    "objectives": ["...", "..."],
+    "resources": ["..."],
+    "techniques": ["Feynman", "..."],
+    "activities": [
+      {"type": "study", "minutes": 40, "note": "konu anlatımı"},
+      {"type": "practice", "minutes": 30, "note": "örnek soru"},
+      {"type": "quiz", "minutes": 20, "questions": 10}
+    ]
+  }
+}`;
+        const resp = await this.geminiService.generateContent(prompt);
+        const cleaned = this.cleanAiJsonResponse(resp);
+        let details: any = {};
+        try { details = JSON.parse(cleaned); } catch { const block = this.extractFirstJsonBlock(resp); if (block) { try { details = JSON.parse(block); } catch { details = {}; } } }
+        const weekRef = (skeleton.weeklyPlans || []).find((w: any) => w.week === item.week);
+        if (!weekRef) continue;
+        const sess = (weekRef.sessions || []).find((s: any) => s.day === item.day && s.subject === item.subject && s.topic === item.topic);
+        if (!sess) continue;
+        if (Array.isArray(details.objectives)) sess.objectives = details.objectives;
+        if (Array.isArray(details.resources)) sess.resources = details.resources;
+        if (Array.isArray(details.techniques)) sess.techniques = details.techniques;
+        if (Array.isArray(details.activities)) sess.metadata = { ...(sess.metadata || {}), activities: details.activities };
+      }
+      return skeleton;
+    } catch {
+      return skeleton;
+    }
   }
 
   private extractFirstJsonBlock(text: string): string | null {
@@ -143,6 +283,50 @@ export class PlanningService {
     }
   }
 
+  // Function Calling için: AI'nın çağıracağı fonksiyonun şema tanımı
+  private buildSavePlanFunctionSchema() {
+    return {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        description: { type: 'string' },
+        type: { type: 'string', enum: ['DAILY','WEEKLY','HOLIDAY','LONG_TERM'] },
+        planDurationDays: { type: 'number' },
+        weeklyPlans: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              week: { type: 'number' },
+              focus: { type: 'string' },
+              sessions: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    week: { type: 'number' },
+                    day: { type: 'string' },
+                    subject: { type: 'string' },
+                    topic: { type: 'string' },
+                    durationInMinutes: { type: 'number' },
+                    type: { type: 'string' },
+                    difficulty: { type: 'string' },
+                    objectives: { type: 'array', items: { type: 'string' } },
+                    resources: { type: 'array', items: { type: 'string' } },
+                    techniques: { type: 'array', items: { type: 'string' } },
+                  },
+                  required: ['day','subject','topic']
+                }
+              }
+            },
+            required: ['week','sessions']
+          }
+        }
+      },
+      required: ['title','type','weeklyPlans']
+    };
+  }
+
   async generatePlan(data: PlanGenerationData | (GeneratePlanDto & { userId: string })): Promise<any> {
     const normalized: PlanGenerationData = (data as any).availableTime != null
       ? (data as PlanGenerationData)
@@ -161,48 +345,60 @@ export class PlanningService {
     }
     const userId = normalized.userId;
 
-    // Kullanıcının mevcut verilerini analiz et
+    // Kullanıcının mevcut verilerini analiz et (zengin bağlam)
     const userContext = await this.analyzeUserContext(userId);
-    
-    // AI ile detaylı plan oluştur
-    const aiPlanPrompt = await this.createPlanPrompt(normalized, userContext);
-    const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
-    if (!aiResponse || aiResponse.includes('AI servisi şu anda kullanılamıyor')) {
-      throw new ServiceUnavailableException('AI servisi kullanılamıyor');
-    }
-    
-    // AI yanıtı bazen markdown/çitler içerebilir; temizleyip parse etmeyi dene
-    const cleaned = this.cleanAiJsonResponse(aiResponse);
-    let planStructureRaw: any;
+
+    // Çok-aşamalı AI etkileşimi: A) analiz, B) iskelet, C) detaylandırma (Function Calling destekli)
+    let planSkeleton: any;
     try {
-      planStructureRaw = JSON.parse(cleaned);
-    } catch (error) {
-      // Son bir kez daha: ilk JSON bloğunu ayrıştırmayı dene
-      const block = this.extractFirstJsonBlock(aiResponse);
-      if (block) {
-        try {
-          planStructureRaw = JSON.parse(block);
-        } catch {
-          console.error('AI JSON parse failed (block). Block preview:', block.slice(0, 200));
-          throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
-        }
-      } else {
-        console.error('AI JSON parse failed. Raw preview:', aiResponse?.slice(0, 200));
-        console.error('Cleaned preview:', cleaned?.slice(0, 200));
-        throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
+      const aiAnalysis = await this.aiAnalyzeUser(userContext, normalized);
+      planSkeleton = await this.buildPlanSkeletonFromStrategy(aiAnalysis, normalized, userContext);
+      planSkeleton = await this.detailSessionsWithAI(planSkeleton, normalized);
+
+      // Function Calling ile planı yapısal olarak almayı dene (JSON kırılganlığını azaltır)
+      const toolName = 'savePlanToDatabase';
+      const args = await this.geminiService.generateFunctionCall(
+        toolName,
+        this.buildSavePlanFunctionSchema(),
+        `Öğrenci için oluşturduğun planı ${toolName} fonksiyonuna uygun şekilde hazırla ve çağır. \nBağlam: ${JSON.stringify({
+          subjects: normalized.subjects,
+          goals: normalized.goals,
+          availableTime: normalized.availableTime,
+          learningStyle: normalized.learningStyle,
+          currentLevel: normalized.currentLevel,
+          userContext,
+        })}`
+      );
+      if (args && args.weeklyPlans) {
+        planSkeleton = { ...planSkeleton, ...args };
+      }
+    } catch (e) {
+      // Çok-aşama başarısız ise tek-adım promta geri dön
+      const aiPlanPrompt = await this.createPlanPrompt(normalized, userContext);
+      const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
+      if (!aiResponse || aiResponse.includes('AI servisi şu anda kullanılamıyor')) {
+        throw new ServiceUnavailableException('AI servisi kullanılamıyor');
+      }
+      const cleaned = this.cleanAiJsonResponse(aiResponse);
+      try {
+        planSkeleton = JSON.parse(cleaned);
+      } catch {
+        const block = this.extractFirstJsonBlock(aiResponse);
+        if (!block) throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
+        planSkeleton = JSON.parse(block);
       }
     }
 
-    // Zod ile güçlü doğrulama
-    const validationResult = this.aiPlanSchema.safeParse(planStructureRaw);
+    // Zod doğrulaması
+    const validationResult = this.aiPlanSchema.safeParse(planSkeleton);
     if (!validationResult.success) {
-      console.error('AI Response Validation Error:', validationResult.error);
-      throw new BadRequestException('AI servisinden geçersiz plan yapısı alındı.');
+      console.error('AI Skeleton Validation Error:', validationResult.error);
+      // skeleton geçersiz ise güvenli fallback üretimi
+      planSkeleton = await this.generateFallbackPlan(3, normalized, userContext);
     }
-    let planStructure = validationResult.data as any;
 
     // Plan optimizasyonu
-    let optimizedPlan = await this.optimizePlan(planStructure, normalized, userContext);
+    let optimizedPlan = await this.optimizePlan(planSkeleton as any, normalized, userContext);
     // Plan süresi (gün) - varsayılan 3
     const planDurationDays: number = Number((normalized as any)?.planDurationDays) > 0
       ? Number((normalized as any).planDurationDays)
@@ -489,29 +685,80 @@ export class PlanningService {
   }
 
   private async analyzeUserContext(userId: string) {
-    // Kullanıcının geçmiş performansını analiz et (paralel sorgular)
-    const [studySessions, quizResults, examResults] = await Promise.all([
+    // Daha zengin kullanıcı bağlamı: performans geçmişi, çalışma alışkanlıkları ve önceki plan verileri
+    const [studySessions, quizResults, examResults, plans] = await Promise.all([
       this.prisma.studySession.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        take: 50,
+        take: 200,
       }),
       this.prisma.quiz.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        take: 20,
+        take: 100,
       }),
       this.prisma.examResult.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      this.prisma.plan.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        include: { sessions: true },
         take: 10,
       }),
     ]);
 
-    // Performans analizi
+    // 1) Performans geçmişi (deneme netleri ve konu bazlı başarı)
     const subjectPerformance = this.analyzeSubjectPerformance(studySessions, quizResults, examResults);
+    const topicSuccessRates: Record<string, number> = {};
+    const topicBuckets: Record<string, number[]> = {};
+    quizResults.forEach((q: any) => {
+      const key = (q.topic || q.subject || 'Genel').toString();
+      const scorePct = q.totalScore && q.totalScore > 0 ? (q.score / q.totalScore) * 100 : 0;
+      if (!topicBuckets[key]) topicBuckets[key] = [];
+      topicBuckets[key].push(scorePct);
+    });
+    examResults.forEach((e: any) => {
+      const key = (e.topic || e.subject || 'Genel').toString();
+      const scorePct = e.totalScore && e.totalScore > 0 ? (e.score / e.totalScore) * 100 : 0;
+      if (!topicBuckets[key]) topicBuckets[key] = [];
+      topicBuckets[key].push(scorePct);
+    });
+    Object.keys(topicBuckets).forEach((k) => {
+      const arr = topicBuckets[k];
+      topicSuccessRates[k] = arr.length > 0 ? (arr.reduce((s, v) => s + v, 0) / arr.length) : 0;
+    });
+
+    // 2) Çalışma alışkanlıkları (verimli saatler, ders/konu bazlı zaman dağılımı)
     const timePatterns = this.analyzeStudyTimePatterns(studySessions);
     const learningVelocity = this.calculateLearningVelocity(studySessions);
+    const subjectTimeAllocation: Record<string, number> = {};
+    studySessions.forEach((s: any) => {
+      const subj = (s.subject || 'Genel').toString();
+      subjectTimeAllocation[subj] = (subjectTimeAllocation[subj] || 0) + (s.duration || 0);
+    });
+
+    // 3) Önceki plan verileri (tamamlama oranları, atlanan oturumlar)
+    const previousPlans = plans.map((p) => {
+      const total = p.sessions.length;
+      const completed = p.sessions.filter((s: any) => s.isCompleted).length;
+      const skipped = p.sessions.filter((s: any) => (s.metadata as any)?.skipped === true).length;
+      return {
+        id: p.id,
+        title: p.title,
+        type: p.type,
+        createdAt: p.createdAt,
+        totalSessions: total,
+        completedSessions: completed,
+        completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
+        skippedSessions: skipped,
+        totalStudyTime: p.sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0),
+      };
+    });
+    const overallSkipped = previousPlans.reduce((sum, x) => sum + x.skippedSessions, 0);
+
     const [weakAreas, strongAreas] = await Promise.all([
       this.identifyWeakAreas(userId),
       this.identifyStrongAreas(userId),
@@ -521,12 +768,27 @@ export class PlanningService {
       subjectPerformance,
       timePatterns,
       learningVelocity,
+      preferredStudyHours: this.getPreferredStudyHours(studySessions),
+      totalStudyTime: studySessions.reduce((sum, s) => sum + (s.duration || 0), 0),
+      averageSessionDuration: studySessions.length > 0 ?
+        studySessions.reduce((sum, s) => sum + (s.duration || 0), 0) / studySessions.length : 45,
+
+      topicSuccessRates,
+      examNets: examResults.map((e: any) => ({
+        id: e.id,
+        subject: e.subject,
+        score: e.score,
+        totalScore: e.totalScore,
+        date: e.createdAt,
+        percent: e.totalScore && e.totalScore > 0 ? (e.score / e.totalScore) * 100 : 0,
+      })),
+
+      subjectTimeAllocation,
+      previousPlans,
+      skippedSessionsCount: overallSkipped,
+
       weakAreas,
       strongAreas,
-      totalStudyTime: studySessions.reduce((sum, s) => sum + s.duration, 0),
-      averageSessionDuration: studySessions.length > 0 ? 
-        studySessions.reduce((sum, s) => sum + s.duration, 0) / studySessions.length : 45,
-      preferredStudyHours: this.getPreferredStudyHours(studySessions),
     };
   }
 
