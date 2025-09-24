@@ -18,27 +18,39 @@ export class GeminiService {
   }
 
   async generateContent(prompt: string): Promise<string> {
-    try {
-      const result = await this.model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }]}],
-      });
-      const response = await result.response;
-      return response.text();
-    } catch (error) {
-      console.error('Gemini API Error (primary model):', (error as any)?.message || error);
-      // Fallback: 1.5-flash ile bir deneme daha yap
+    const MAX_RETRIES = 3;
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const fallback = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const result = await fallback.generateContent({
+        const result = await this.model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }]}],
         });
         const response = await result.response;
         return response.text();
-      } catch (err2) {
-        console.error('Gemini API Error (fallback model):', (err2 as any)?.message || err2);
-        return 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
+      } catch (error) {
+        console.error(`Gemini API Error (Attempt ${attempt}/${MAX_RETRIES}):`, (error as any)?.message || error);
+        
+        if (attempt === MAX_RETRIES) {
+          // Son denemede de başarısız olursa fallback'e geç
+          try {
+            const fallback = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+            const result = await fallback.generateContent({
+              contents: [{ role: 'user', parts: [{ text: prompt }]}],
+            });
+            const response = await result.response;
+            return response.text();
+          } catch (err2) {
+            console.error('Gemini API Error (fallback model):', (err2 as any)?.message || err2);
+            return 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
+          }
+        }
+        
+        // Bir sonraki deneme için kısa bir süre bekle
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
       }
     }
+    
+    return 'AI servisi tüm denemelere rağmen yanıt vermedi.';
   }
 
   async generateContentStream(prompt: string): Promise<AsyncGenerator<string>> {
@@ -88,39 +100,52 @@ export class GeminiService {
   // Function Calling: Gemini'nin tool/function çağrılarını kullanarak yapılandırılmış argümanları döndür.
   // toolName: çağrılacak fonksiyon adı, parametersSchema: JSON Schema (OpenAPI/JSON Schema benzeri), prompt: kullanıcı talimatı
   async generateFunctionCall(toolName: string, parametersSchema: any, prompt: string): Promise<any> {
-    try {
-      const functionDeclarations = [{
-        name: toolName,
-        description: 'Save generated study plan into backend in a structured format',
-        parameters: parametersSchema,
-      }];
+    const MAX_RETRIES = 3;
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const functionDeclarations = [{
+          name: toolName,
+          description: 'Save generated study plan into backend in a structured format',
+          parameters: parametersSchema,
+        }];
 
-      const model = this.genAI.getGenerativeModel({
-        model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash',
-      });
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }]}],
-        tools: [{ functionDeclarations }],
-        toolConfig: { functionCall: { name: toolName } },
-      } as any);
+        const model = this.genAI.getGenerativeModel({
+          model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash',
+        });
+        const result = await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }]}],
+          tools: [{ functionDeclarations }],
+          toolConfig: { functionCall: { name: toolName } },
+        } as any);
 
-      const response: any = await result.response;
-      const candidates: any[] = (response as any)?.candidates || [];
-      const parts: any[] = candidates[0]?.content?.parts || [];
-      const fnCall = parts.find((p: any) => p.functionCall);
-      if (fnCall && fnCall.functionCall && fnCall.functionCall.args) {
-        return fnCall.functionCall.args;
+        const response: any = await result.response;
+        const candidates: any[] = (response as any)?.candidates || [];
+        const parts: any[] = candidates[0]?.content?.parts || [];
+        const fnCall = parts.find((p: any) => p.functionCall);
+        if (fnCall && fnCall.functionCall && fnCall.functionCall.args) {
+          return fnCall.functionCall.args;
+        }
+        // Bazı sürümlerde functionCalls response.promptFeedback veya usageMetadata dışında dönebilir
+        // Emniyetli geri dönüş: text parse etmeyi deneme (son çare)
+        const fallbackText = response.text?.() || '';
+        try { return JSON.parse(fallbackText); } catch { return { error: 'NoFunctionCall' }; }
+      } catch (error) {
+        console.error(`Gemini Function Calling Error (Attempt ${attempt}/${MAX_RETRIES}):`, (error as any)?.message || error);
+        
+        if (attempt === MAX_RETRIES) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('Gemini Function Calling Error:', error);
+          }
+          return { error: 'FunctionCallFailed' };
+        }
+        
+        // Bir sonraki deneme için kısa bir süre bekle
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
       }
-      // Bazı sürümlerde functionCalls response.promptFeedback veya usageMetadata dışında dönebilir
-      // Emniyetli geri dönüş: text parse etmeyi deneme (son çare)
-      const fallbackText = response.text?.() || '';
-      try { return JSON.parse(fallbackText); } catch { return { error: 'NoFunctionCall' }; }
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Gemini Function Calling Error:', error);
-      }
-      return { error: 'FunctionCallFailed' };
     }
+    
+    return { error: 'FunctionCallFailed' };
   }
 
   async generateEducationalContent(topic: string, level: string, type: string): Promise<any> {

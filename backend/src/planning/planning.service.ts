@@ -360,6 +360,22 @@ export class PlanningService {
     };
   }
 
+  // Dinamik strateji motoru - öğrencinin durumuna göre strateji üretir
+  private determineStrategicFocus(userContext: any, academicPeriod: string): string {
+    const { completionRate, learningVelocity } = userContext.previousPlans?.[0] || { completionRate: 100, learningVelocity: 0.5 };
+
+    if (completionRate < 50) {
+      return `STRATEJİK ODAK: Öğrenci önceki planlarında zorlanmış. Bu plan daha temel ve tekrar odaklı olmalı. Motivasyonu artırıcı ve başarı hissini pekiştirici seanslar ekle.`;
+    }
+    
+    if (academicPeriod === 'GENEL_TEKRAR') {
+      return `STRATEJİK ODAK: Sınava az kaldı. Yeni konu öğrenmeyi bırak. Program, SADECE genel tekrar ve deneme sınavı analizine odaklanmalıdır.`;
+    }
+    
+    // Varsayılan strateji
+    return `STRATEJİK ODAK: Şu an dönemin başındayız. Program, bu ayın yeni konularını öğrenmeye ve temel atmaya odaklanmalıdır.`;
+  }
+
   async generatePlan(data: PlanGenerationData | (GeneratePlanDto & { userId: string })): Promise<any> {
     const normalized: PlanGenerationData = (data as any).availableTime != null
       ? (data as PlanGenerationData)
@@ -442,22 +458,82 @@ export class PlanningService {
         skeleton = await this.detailSessionsWithAI(skeleton, normalized);
         planSkeleton = skeleton;
       } catch (_) {
-        const aiPlanPrompt = await this.createPlanPrompt(normalized, userContext);
-        console.log('[PLANNING] AI prompt hazırlandı, Gemini API çağrılıyor...');
-        console.time('geminiApiCall');
-        const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
-        console.timeEnd('geminiApiCall');
-        console.log('[PLANNING] Gemini API yanıt verdi, plan veritabanına kaydediliyor...');
-        if (!aiResponse || aiResponse.includes('AI servisi şu anda kullanılamıyor')) {
-          throw new ServiceUnavailableException('AI servisi kullanılamıyor');
-        }
-        const cleaned = this.cleanAiJsonResponse(aiResponse);
+        // Zincirleme AI çağrıları: 1) Strateji → 2) İskelet → 3) Detaylar
         try {
-          planSkeleton = JSON.parse(cleaned);
-        } catch {
-          const block = this.extractFirstJsonBlock(aiResponse);
-          if (!block) throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
-          planSkeleton = JSON.parse(block);
+          console.log('[PLANNING] Zincirleme AI çağrıları başlatılıyor...');
+          
+          // 1. Adım: Yüksek seviye strateji
+          console.time('strategyCall');
+          const strategyPrompt = await this.createHighLevelStrategyPrompt(userContext, normalized);
+          const strategyResponse = await this.geminiService.generateContent(strategyPrompt);
+          const strategy = JSON.parse(this.cleanAiJsonResponse(strategyResponse));
+          console.timeEnd('strategyCall');
+          console.log('[PLANNING] Strateji belirlendi:', strategy);
+          
+          // 2. Adım: Haftalık iskelet
+          console.time('skeletonCall');
+          const gradeNum = typeof normalized.preferences?.grade === 'number' ? normalized.preferences.grade : parseInt(String(normalized.preferences?.grade || '0')) || 0;
+          const topicPool = await this.buildCurriculumTopicPool(
+            Array.isArray(normalized.subjects) ? normalized.subjects : [],
+            gradeNum || 11,
+            normalized.preferences?.curriculumTopicsBySubject
+          );
+          const skeletonPrompt = await this.createWeeklySkeletonPrompt(strategy, topicPool);
+          const skeletonResponse = await this.geminiService.generateContent(skeletonPrompt);
+          const skeleton = JSON.parse(this.cleanAiJsonResponse(skeletonResponse));
+          console.timeEnd('skeletonCall');
+          console.log('[PLANNING] İskelet oluşturuldu:', skeleton);
+          
+          // 3. Adım: Seans detayları (her seans için)
+          console.time('detailsCall');
+          const detailedSessions = [];
+          for (const week of skeleton.weeklyPlans || []) {
+            for (const session of week.sessions || []) {
+              const detailsPrompt = await this.createSessionDetailsPrompt(session.topic, normalized.learningStyle);
+              const detailsResponse = await this.geminiService.generateContent(detailsPrompt);
+              const details = JSON.parse(this.cleanAiJsonResponse(detailsResponse));
+              
+              detailedSessions.push({
+                ...session,
+                objectives: details.objectives || [],
+                resources: details.resources || [],
+                techniques: details.techniques || []
+              });
+            }
+          }
+          
+          // Final plan oluştur
+          planSkeleton = {
+            weeklyPlans: skeleton.weeklyPlans.map((week: any, index: number) => ({
+              ...week,
+              sessions: detailedSessions.filter((s: any) => s.week === week.week)
+            })),
+            milestones: strategy.milestones || [],
+            adaptiveStrategies: strategy.adaptiveStrategies || []
+          };
+          console.timeEnd('detailsCall');
+          console.log('[PLANNING] Detaylar eklendi, plan tamamlandı');
+          
+        } catch (chainError) {
+          console.error('[PLANNING] Zincirleme AI çağrıları başarısız, fallback prompt kullanılıyor:', chainError);
+          // Fallback: Orijinal tek prompt
+          const aiPlanPrompt = await this.createPlanPrompt(normalized, userContext);
+          console.log('[PLANNING] AI prompt hazırlandı, Gemini API çağrılıyor...');
+          console.time('geminiApiCall');
+          const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
+          console.timeEnd('geminiApiCall');
+          console.log('[PLANNING] Gemini API yanıt verdi, plan veritabanına kaydediliyor...');
+          if (!aiResponse || aiResponse.includes('AI servisi şu anda kullanılamıyor')) {
+            throw new ServiceUnavailableException('AI servisi kullanılamıyor');
+          }
+          const cleaned = this.cleanAiJsonResponse(aiResponse);
+          try {
+            planSkeleton = JSON.parse(cleaned);
+          } catch {
+            const block = this.extractFirstJsonBlock(aiResponse);
+            if (!block) throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
+            planSkeleton = JSON.parse(block);
+          }
         }
       }
     }
@@ -873,6 +949,125 @@ export class PlanningService {
     };
   }
 
+  // Görev odaklı prompt fonksiyonları
+  private async createHighLevelStrategyPrompt(userContext: any, planContext: any): Promise<string> {
+    const currentMonth = new Date().getMonth() + 1;
+    const academicPeriod = (currentMonth >= 4 && currentMonth <= 6) ? 'GENEL_TEKRAR' : 'NORMAL';
+    const strategicGuidance = this.determineStrategicFocus(userContext, academicPeriod);
+    
+    return `
+Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSON.
+
+GÖREV: Haftalık strateji ve odak konularını belirle.
+
+STRATEJİK ODAK: ${strategicGuidance}
+
+ÖĞRENCİ BİLGİLERİ:
+- Dersler: ${planContext.subjects.join(', ')}
+- Hedefler: ${planContext.goals.join(', ')}
+- Günlük çalışma süresi: ${planContext.availableTime} dakika
+- Öğrenme stili: ${planContext.learningStyle}
+- Seviye: ${planContext.currentLevel}
+- Sınıf: ${planContext.preferences?.grade ?? ''}
+- Alan: ${planContext.preferences?.field ?? ''}
+- Zorluk/alanda zorlanmalar: ${(planContext.preferences?.focusAreas || []).join(', ')}
+- Güven düzeyleri: ${JSON.stringify(planContext.preferences?.confidenceLevels || {})}
+- Son tamamlanan konular: ${JSON.stringify(planContext.preferences?.lastCompletedTopics || {})}
+
+GEÇMİŞ PERFORMANS:
+- Toplam çalışma süresi: ${userContext.totalStudyTime} dakika
+- Ortalama seans süresi: ${userContext.averageSessionDuration} dakika
+- Güçlü alanlar: ${userContext.strongAreas.join(', ')}
+- Zayıf alanlar: ${userContext.weakAreas.join(', ')}
+- Tercih edilen çalışma saatleri: ${userContext.preferredStudyHours.join(', ')}
+
+BEKLENEN JSON ŞEMASI:
+{
+  "weeklyFocus": [
+    {
+      "week": 1,
+      "focus": "Haftalık odak konusu",
+      "prioritySubjects": ["Matematik", "Fizik"],
+      "keyTopics": ["Türev", "İntegral"],
+      "learningObjectives": ["Hedef 1", "Hedef 2"]
+    }
+  ],
+  "strategicNotes": [
+    "Stratejik not 1",
+    "Stratejik not 2"
+  ]
+}
+`;
+  }
+
+  private async createWeeklySkeletonPrompt(strategy: any, topicPool: any): Promise<string> {
+    const planDurationDays = strategy.planDurationDays || 3;
+    const minSessionsPerDay = 2;
+    const topicPoolJson = JSON.stringify(topicPool);
+    
+    return `
+Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSON.
+
+GÖREV: Stratejiye göre haftalık ders/konu iskeletini oluştur.
+
+STRATEJİ BİLGİLERİ:
+${JSON.stringify(strategy)}
+
+PLAN KISITLARI:
+- Plan süresi: ${planDurationDays} gün.
+- Her gün en az ${minSessionsPerDay} oturum üret. Oturumlar arasında mola öner.
+- Her oturum için durationInMinutes alanını DOLDUR (ör. 40, 60 gibi).
+- weeklyPlans yapısını kullan ve her haftada sessions dolu olsun. Her oturumda day alanı Pazartesi, Salı, Çarşamba, Perşembe, Cuma, Cumartesi veya Pazar olmalı.
+
+KONULAR HAVUZU (STRICT):
+- AI, konu seçimini SADECE ve SADECE aşağıdaki listeden yapmalıdır.
+${topicPoolJson}
+
+ZORUNLU KURALLAR (İHLAL EDİLEMEZ):
+1. SEVİYE KURALI: Bu plan 11. Sınıf YKS Sayısal öğrencisi içindir. Önereceğin TÜM konular, Türkiye'deki 11. Sınıf MEB müfredatıyla uyumlu olmalıdır.
+2. KONU SEÇİM KURALI: Üreteceğin her bir seansın "topic" alanı, aşağıda "KONULAR HAVUZU" içinde o ders için verilen listeden SEÇİLMİŞ GERÇEK BİR KONU ADI olmak zorundadır.
+3. TARİH BAZLI KONU SEÇİMİ: Şu an ${new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })} ayındayız. Plan, 11. sınıf müfredatının bu ayında işlenen konularına odaklanmalıdır.
+
+BEKLENEN JSON ŞEMASI:
+{
+  "weeklyPlans": [
+    {
+      "week": 1,
+      "focus": "Kişiselleştirilmiş odak",
+      "sessions": [
+        {
+          "day": "Pazartesi",
+          "subject": "Matematik",
+          "topic": "Türev",
+          "durationInMinutes": 60,
+          "type": "study",
+          "difficulty": "medium"
+        }
+      ]
+    }
+  ]
+}
+`;
+  }
+
+  private async createSessionDetailsPrompt(topic: string, learningStyle: string): Promise<string> {
+    return `
+Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSON.
+
+GÖREV: Tek bir seans için objectives, resources, techniques belirle.
+
+KONU: ${topic}
+ÖĞRENME STİLİ: ${learningStyle}
+
+BEKLENEN JSON ŞEMASI:
+{
+  "objectives": ["Hedef 1", "Hedef 2"],
+  "resources": ["Kaynak 1", "Kaynak 2"],
+  "techniques": ["Teknik 1", "Teknik 2"]
+}
+`;
+  }
+
   private async createPlanPrompt(data: PlanGenerationData, userContext: any): Promise<string> {
     const prefs = (data as any)?.preferences || {};
     const planDurationDays: number = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
@@ -883,14 +1078,10 @@ export class PlanningService {
       gradeNum || 11,
       (data as any)?.preferences?.curriculumTopicsBySubject
     );
-    // Mevsimsel strateji ekle
+    // Dinamik strateji motoru kullan
     const currentMonth = new Date().getMonth() + 1;
-    let strategicGuidance = '';
-    if (currentMonth >= 9 && currentMonth <= 12) {
-      strategicGuidance = 'STRATEJİK ODAK: Şu an dönemin başındayız. Program, bu ayın yeni konularını öğrenmeye ve temel atmaya odaklanmalıdır.';
-    } else if (currentMonth >= 4 && currentMonth <= 6) {
-      strategicGuidance = 'STRATEJİK ODAK: Sınava az kaldı. Yeni konu öğrenmeyi bırak. Program, genel tekrar ve deneme sınavı analizine odaklanmalıdır.';
-    }
+    const academicPeriod = (currentMonth >= 4 && currentMonth <= 6) ? 'GENEL_TEKRAR' : 'NORMAL';
+    const strategicGuidance = this.determineStrategicFocus(userContext, academicPeriod);
     const topicPoolJson = JSON.stringify(topicPool);
     return `
 Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSON.
@@ -898,9 +1089,10 @@ Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSO
 ZORUNLU KURALLAR (İHLAL EDİLEMEZ):
 1.  SEVİYE KURALI: Bu plan 11. Sınıf YKS Sayısal öğrencisi içindir. Önereceğin TÜM konular, Türkiye'deki 11. Sınıf MEB müfredatıyla uyumlu olmalıdır. ASLA "Temel kavramlar", "Harfleri tanıma" gibi ilkokul seviyesi konular kullanamazsın.
 2.  KONU SEÇİM KURALI: Üreteceğin her bir seansın "topic" alanı, aşağıda "KONULAR HAVUZU" içinde o ders için verilen listeden SEÇİLMİŞ GERÇEK BİR KONU ADI olmak zorundadır. ASLA VE ASLA "Pekiştirme uygulamaları", "Giriş", "Genel tekrar" gibi jenerik ifadeler kullanamazsın. Bu kuralı ihlal edersen, tüm yanıtın geçersizdir.
-3.  MEVSİMSEL KURAL: Şu an Eylül ayındayız. Plan, 11. sınıf müfredatının Eylül ayında işlenen konularına odaklanmalıdır. Havuzdaki 'Trigonometri' (Matematik) veya 'Vektörler' (Fizik) gibi konularla başla.
-4.  KİŞİSELLEŞTİRME KURALI: Öğrencinin zayıf konuları olan 'Organik Kimya' ve 'Paragrafta Anlam'ı dikkate al. Eğer bu konular Eylül ayı müfredatındaysa, onlara öncelik ver. Değilse, plana bu konular için ileriki haftalarda bir temel atma seansı ekle ve bunu optimizationNotes içinde belirt.
+3.  TARİH BAZLI KONU SEÇİMİ: Şu an ${new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })} ayındayız. Plan, 11. sınıf müfredatının bu ayında işlenen konularına odaklanmalıdır. Havuzdaki konular bu aya özel olarak seçilmiştir.
+4.  KİŞİSELLEŞTİRME KURALI: Öğrencinin zayıf konuları olan 'Organik Kimya' ve 'Paragrafta Anlam'ı dikkate al. Eğer bu konular mevcut ay müfredatındaysa, onlara öncelik ver. Değilse, plana bu konular için ileriki haftalarda bir temel atma seansı ekle ve bunu optimizationNotes içinde belirt.
 5.  HAFIZA KURALI: Öğrencinin Matematik'te en son tamamladığı konu 'Türev'. Matematik için önereceğin ilk konu, 'Türev'den sonra gelen mantıksal devam konusu (örn: 'İntegral') olmalıdır.
+6.  MÜFREDAT UYUMU: Her ders için sadece o dersin müfredatındaki gerçek konuları kullan. Matematik için 'Trigonometri', 'Türev', 'İntegral' gibi; Fizik için 'Vektörler', 'Kuvvet', 'Elektrik' gibi; Kimya için 'Atom', 'Kimyasal Bağlar', 'Organik Kimya' gibi spesifik konular.
 
 PLAN KISITLARI:
 - ${strategicGuidance}
@@ -1322,13 +1514,14 @@ BEKLENEN JSON ŞEMASI (örnek):
     };
   }
 
-  // Basit bir MEB müfredat havuzu (ileride veri kaynağına bağlanabilir)
+  // Tarih bazlı akıllı müfredat havuzu - mevcut aya göre konuları seçer
   private async buildCurriculumTopicPool(
     subjects: string[],
     grade: number,
     overrideTopics?: Record<string, string[]>
   ): Promise<Record<string, string[]>> {
     const pool: Record<string, string[]> = {};
+    
     // Override öncelikli
     if (overrideTopics && Object.keys(overrideTopics).length > 0) {
       Object.entries(overrideTopics).forEach(([subject, topics]) => {
@@ -1339,80 +1532,69 @@ BEKLENEN JSON ŞEMASI (örnek):
       return pool;
     }
 
-    // Not: Ay bazlı filtreleme şimdilik devre dışı (DB şeması 'month' olmayabilir)
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1; // 1-12
+    const currentYear = currentDate.getFullYear();
+    
+    // Eğitim yılı hesaplama (Eylül'den itibaren)
+    const academicYear = currentMonth >= 9 ? currentYear : currentYear - 1;
+    const academicMonth = currentMonth >= 9 ? currentMonth - 8 : currentMonth + 4; // Eylül=1, Ekim=2, ...
 
-    const normalizedSubjects = (subjects || []).map(s => (s || '').trim()).filter(Boolean);
-    const topicsFromDb = await this.prisma.mebTopic.findMany({
-      where: {
-        grade: grade,
-        OR: normalizedSubjects.map(s => ({ subject: { contains: s, mode: 'insensitive' as const } })),
+    // Mevcut aya göre müfredat konuları
+    const CURRICULUM_BY_MONTH: Record<number, Record<string, string[]>> = {
+      1: { // Eylül
+        'Matematik': ['Trigonometri', 'Logaritma', 'Limit ve Süreklilik'],
+        'Fizik': ['Vektörler', 'Kuvvet ve Hareket', 'İş ve Enerji'],
+        'Kimya': ['Atom ve Periyodik Sistem', 'Kimyasal Bağlar', 'Gazlar'],
+        'Biyoloji': ['Hücre Bölünmesi', 'Kalıtım', 'Ekosistem'],
+        'Türkçe': ['Paragrafta Anlam', 'Cümlede Anlam', 'Ses Bilgisi']
       },
-      orderBy: { topic: 'asc' },
-    });
-
-    // Ders adı alias haritası (11-12. sınıf için İleri dersler)
-    const SUBJECT_ALIASES: Record<number, Record<string, string>> = {
-      11: {
-        'Matematik': 'İleri Matematik',
-        'Fizik': 'İleri Fizik',
-        'Kimya': 'İleri Kimya',
-        'Biyoloji': 'İleri Biyoloji',
-        'Türkçe': 'Türk Dili ve Edebiyatı',
+      2: { // Ekim
+        'Matematik': ['Türev', 'Türev Uygulamaları', 'İntegral'],
+        'Fizik': ['Elektrik', 'Manyetizma', 'Dalgalar'],
+        'Kimya': ['Çözeltiler', 'Asitler ve Bazlar', 'Elektrokimya'],
+        'Biyoloji': ['Solunum', 'Fotosentez', 'Bitki Biyolojisi'],
+        'Türkçe': ['Yazım Kuralları', 'Noktalama İşaretleri', 'Anlatım Bozuklukları']
       },
-      12: {
-        'Matematik': 'İleri Matematik',
-        'Fizik': 'İleri Fizik',
-        'Kimya': 'İleri Kimya',
-        'Biyoloji': 'İleri Biyoloji',
-        'Türkçe': 'Türk Dili ve Edebiyatı',
+      3: { // Kasım
+        'Matematik': ['İntegral Uygulamaları', 'Diziler', 'Seriler'],
+        'Fizik': ['Optik', 'Modern Fizik', 'Atom Fiziği'],
+        'Kimya': ['Organik Kimya', 'Hidrokarbonlar', 'Fonksiyonel Gruplar'],
+        'Biyoloji': ['Hayvan Biyolojisi', 'İnsan Fizyolojisi', 'Genetik'],
+        'Türkçe': ['Edebiyat Tarihi', 'Şiir', 'Roman']
       },
+      4: { // Aralık
+        'Matematik': ['Olasılık', 'İstatistik', 'Geometri'],
+        'Fizik': ['Nükleer Fizik', 'Katıhal Fiziği', 'Termodinamik'],
+        'Kimya': ['Polimerler', 'Biyokimya', 'Çevre Kimyası'],
+        'Biyoloji': ['Evrim', 'Biyoteknoloji', 'Çevre Biyolojisi'],
+        'Türkçe': ['Tiyatro', 'Deneme', 'Eleştiri']
+      }
     };
 
+    const normalizedSubjects = (subjects || []).map(s => (s || '').trim()).filter(Boolean);
+    
+    // Mevcut aya göre konuları al
+    const currentMonthTopics = CURRICULUM_BY_MONTH[academicMonth] || CURRICULUM_BY_MONTH[1];
+    
     for (const subject of subjects) {
       const normalizedSubject = (subject || '').trim();
-      const alias = (SUBJECT_ALIASES[grade]?.[subject] || '').trim();
-      const subjectTopics = topicsFromDb
-        .filter(t => {
-          const dbSubject = (t.subject || '').toLowerCase();
-          const requestedSubject = normalizedSubject.toLowerCase();
-          const requestedAlias = alias.toLowerCase();
-          return (
-            dbSubject.includes(requestedSubject) || requestedSubject.includes(dbSubject) ||
-            (!!requestedAlias && (dbSubject.includes(requestedAlias) || requestedAlias.includes(dbSubject)))
-          );
-        })
-        .map(t => t.topic);
-      if (subjectTopics.length > 0) {
-        pool[subject] = subjectTopics;
+      
+      // Mevcut aya göre konuları al
+      const monthTopics = currentMonthTopics[normalizedSubject] || [];
+      
+      if (monthTopics.length > 0) {
+        pool[subject] = monthTopics;
       } else {
-        // Akıllı fallback: ay filtresi yoksa ders adı eşleşmesini genişlet
-        let altTopics = await this.prisma.mebTopic.findMany({
-          where: {
-            grade: grade,
-            OR: [normalizedSubject, alias].filter(Boolean).map(s => ({ subject: { contains: s as string, mode: 'insensitive' as const } })),
-          },
-          orderBy: { topic: 'asc' },
-        });
-
-        const altSubjectTopics = (altTopics || [])
-          .filter(t => {
-            const dbSubject = (t.subject || '').toLowerCase();
-            const requested = normalizedSubject.toLowerCase();
-            const requestedAlias = alias.toLowerCase();
-            return (
-              dbSubject.includes(requested) || requested.includes(dbSubject) ||
-              (!!requestedAlias && (dbSubject.includes(requestedAlias) || requestedAlias.includes(dbSubject)))
-            );
-          })
-          .map(t => t.topic);
-
-        if (altSubjectTopics.length > 0) {
-          pool[subject] = altSubjectTopics;
-        } else {
-          pool[subject] = ['Giriş', 'Temel kavramlar', 'Pekiştirme uygulamaları'];
-        }
+        // Fallback: genel konular
+        const fallbackTopics = {
+          'Matematik': ['Trigonometri', 'Türev', 'İntegral', 'Limit'],
+          'Fizik': ['Vektörler', 'Kuvvet', 'Elektrik', 'Manyetizma'],
+          'Kimya': ['Atom', 'Kimyasal Bağlar', 'Organik Kimya', 'Asitler'],
+          'Biyoloji': ['Hücre', 'Kalıtım', 'Solunum', 'Fotosentez'],
+          'Türkçe': ['Paragrafta Anlam', 'Cümlede Anlam', 'Yazım Kuralları']
+        };
+        pool[subject] = fallbackTopics[normalizedSubject] || ['Temel Konular'];
       }
     }
 

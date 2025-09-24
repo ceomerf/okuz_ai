@@ -476,5 +476,9 @@ model MebTopic {
   tytWeight Int      @default(0) // Konunun TYT'deki ortalama soru sayısı
   aytWeight Int      @default(0) // Konunun AYT'deki ortalama soru sayısı
 
+  // YENİ İLİŞKİLER - Many-to-many için ara tablo kullanımı
+  prerequisites MebTopic[] @relation("TopicPrerequisites")
+  leadsTo       MebTopic[] @relation("TopicPrerequisites")
+
   @@unique([grade, subject, topic])
 }
