@@ -1,0 +1,478 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  PARENT
+  TEACHER
+  ADMIN
+}
+
+enum PlanType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  HOLIDAY
+  LONG_TERM
+}
+
+enum AchievementType {
+  STUDY_STREAK
+  PERFECT_SCORE
+  COMPLETION
+  MILESTONE
+  SPECIAL
+}
+
+enum TaskType {
+  STUDY_SESSION
+  QUIZ
+  EXAM
+  PROJECT
+  READING
+  PRACTICE
+}
+
+enum NotificationType {
+  REMINDER
+  ACHIEVEMENT
+  PROGRESS
+  SYSTEM
+  INVITE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  FREE
+  PREMIUM
+  FAMILY
+  CANCELLED
+}
+
+enum SubscriptionPlan {
+  MONTHLY_PREMIUM
+  YEARLY_PREMIUM
+  FAMILY_PLAN
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Subscription fields
+  subscriptionStatus  SubscriptionStatus @default(TRIAL)
+  trialEndDate        DateTime?
+  subscriptionEndDate DateTime?
+
+  // Profile relations
+  studentProfile StudentProfile?
+  parentProfile  ParentProfile?
+
+  // Invites
+  sentInvites     Invite[] @relation("Inviter")
+  receivedInvites Invite[] @relation("Invitee")
+
+  // Plans
+  plans Plan[]
+
+  // Achievements
+  achievements Achievement[]
+
+  // Study sessions
+  studySessions StudySession[]
+
+  // Gamification
+  gamificationProfile GamificationProfile?
+
+  // Notifications
+  notifications Notification[]
+
+  // Tool usage
+  toolUsages ToolUsage[]
+
+  // Family connections
+  familyMembers FamilyMember[] @relation("Parent")
+  children      FamilyMember[] @relation("Child")
+
+  // Additional relations
+  examResults   ExamResult[]
+  learningPaths LearningPath[]
+  flashcards    Flashcard[]
+  conceptMaps   ConceptMap[]
+  quizzes       Quiz[]
+  studyGoals    StudyGoal[]
+  studyHabits   StudyHabit[]
+  subscriptions Subscription[]
+  payments      Payment[]
+}
+
+model StudentProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  grade         Int
+  field         String
+  goals         String[]
+  learningStyle String?
+  strengths     String[]
+  weaknesses    String[]
+  interests     String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ParentProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Invite {
+  id        String   @id @default(cuid())
+  inviterId String
+  inviteeId String?
+  email     String
+  token     String   @unique
+  type      String // "student" or "parent"
+  status    String   @default("pending") // "pending", "accepted", "expired"
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inviter User? @relation("Inviter", fields: [inviterId], references: [id])
+  invitee User? @relation("Invitee", fields: [inviteeId], references: [id])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  type        PlanType
+  subjects    String[]
+  goals       String[]
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions StudySession[]
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@index([userId, startDate])
+  @@index([userId, createdAt])
+  @@index([userId, type, isActive, endDate])
+}
+
+model StudySession {
+  id          String    @id @default(cuid())
+  planId      String?
+  userId      String
+  subject     String
+  topic       String
+  duration    Int // minutes
+  startTime   DateTime
+  endTime     DateTime?
+  isCompleted Boolean   @default(false)
+  performance Int? // 0-100
+  notes       String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  plan Plan? @relation(fields: [planId], references: [id])
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([planId])
+  @@index([startTime])
+  @@index([userId, startTime])
+  @@index([userId, createdAt])
+}
+
+model Achievement {
+  id          String          @id @default(cuid())
+  userId      String
+  title       String
+  description String
+  type        AchievementType
+  icon        String?
+  points      Int             @default(0)
+  metadata    Json?
+  unlockedAt  DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+}
+
+model GamificationProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  level            Int      @default(1)
+  experience       Int      @default(0)
+  energy           Int      @default(100)
+  maxEnergy        Int      @default(100)
+  streak           Int      @default(0)
+  totalPoints      Int      @default(0)
+  coins            Int      @default(0)
+  lastEnergyRefill DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+   @@index([userId])
+   @@index([createdAt])
+}
+
+model ToolUsage {
+  id        String   @id @default(cuid())
+  userId    String
+  toolName  String
+  input     String?
+  output    String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model FamilyMember {
+  id        String   @id @default(cuid())
+  parentId  String
+  childId   String
+  role      String // "parent", "child"
+  createdAt DateTime @default(now())
+
+  parent User @relation("Parent", fields: [parentId], references: [id], onDelete: Cascade)
+  child  User @relation("Child", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+}
+
+model ExamResult {
+  id         String   @id @default(cuid())
+  userId     String
+  subject    String
+  examType   String
+  score      Int
+  totalScore Int
+  duration   Int // minutes
+  answers    Json?
+  analysis   Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+}
+
+model LearningPath {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  subjects    String[]
+  topics      String[]
+  steps       Json
+  progress    Json?
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Flashcard {
+  id           String    @id @default(cuid())
+  userId       String
+  topic        String
+  front        String
+  back         String
+  difficulty   String    @default("medium")
+  isMastered   Boolean   @default(false)
+  lastReviewed DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ConceptMap {
+  id          String   @id @default(cuid())
+  userId      String
+  topic       String
+  concepts    Json
+  connections Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Quiz {
+  id          String    @id @default(cuid())
+  userId      String
+  topic       String
+  questions   Json
+  answers     Json?
+  score       Int?
+  totalScore  Int
+  duration    Int // minutes
+  isCompleted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+}
+
+model StudyGoal {
+  id          String    @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  target      Int
+  current     Int       @default(0)
+  unit        String // "hours", "pages", "questions", etc.
+  deadline    DateTime?
+  isCompleted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model StudyHabit {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  frequency   String // "daily", "weekly", "monthly"
+  target      Int
+  current     Int      @default(0)
+  streak      Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  userId    String
+  planType  SubscriptionPlan
+  status    SubscriptionStatus
+  startDate DateTime
+  endDate   DateTime?
+  isActive  Boolean            @default(true)
+  features  String[]
+  metadata  Json?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId])
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  subscriptionId  String?
+  amount          Float
+  currency        String        @default("TRY")
+  status          PaymentStatus @default(PENDING)
+  paymentMethod   String // "credit_card", "bank_transfer", etc.
+  transactionId   String? // External payment gateway transaction ID
+  gatewayResponse Json? // Full response from payment gateway
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@index([userId])
+  @@index([subscriptionId])
+}
+
+/// MEB müfredat konuları ve YKS ağırlıklarını tutar
+model MebTopic {
+  id        String   @id @default(cuid())
+  grade     Int      // Konunun ait olduğu sınıf (9, 10, 11, 12)
+  subject   String   // Dersin adı (Örn: "Matematik", "Türkçe")
+  unit      String   // Ünitenin/temanın adı (Örn: "Sayılar ve Cebir")
+  topic     String   // Konunun adı (Örn: "Üslü İfadeler ve Denklemler")
+  outcomes  String[] // Bu konuya ait MEB kazanımları (opsiyonel)
+  tytWeight Int      @default(0) // Konunun TYT'deki ortalama soru sayısı
+  aytWeight Int      @default(0) // Konunun AYT'deki ortalama soru sayısı
+
+  @@unique([grade, subject, topic])
+}
