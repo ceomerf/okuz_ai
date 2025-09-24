@@ -157,6 +157,10 @@ export class PlanningService {
       : parseInt(String((data as any)?.preferences?.grade || '0')) || 11;
     const topicPool = await this.buildCurriculumTopicPool(subjects, gradeNum, (data as any)?.preferences?.curriculumTopicsBySubject);
 
+    // Seed ve shuffle: kullanıcıya/haftaya göre tutarlı, kullanıcılar arasında farklı
+    const baseSeed = this.seedFrom((data as any)?.userId || 'anon', new Date());
+    const shuffledSubjects = this.shuffleWithSeed(subjects, baseSeed);
+
     const weeklyPlans: any[] = [];
     const dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
     for (let d = 0; d < planDurationDays; d++) {
@@ -166,15 +170,23 @@ export class PlanningService {
       }
       const dayName = dayNames[d % 7];
       let lastTopicsForDay: Record<string, string> = {};
+      // Gün bazlı offset: aynı paterni kırmak için
+      const dayStartOffset = (d + weekIndex + shuffledSubjects.length) % Math.max(1, shuffledSubjects.length);
       for (let k = 0; k < minSessionsPerDay; k++) {
-        const subject = subjects[(d * minSessionsPerDay + k) % subjects.length];
-        const topic = this.pickTopicFromPool(subject, topicPool, preferredTopics);
+        const subject = shuffledSubjects[(dayStartOffset + k) % shuffledSubjects.length];
+        const topic = this.pickTopicFromPool(subject, topicPool, preferredTopics, baseSeed + d * 10 + k, lastTopicsForDay);
+        // Süre varyasyonu (jitter) – sınırlar içinde
+        const baseDuration = Math.max(30, Math.min(((data as any)?.preferences?.sessionDuration || 40), 120));
+        const jitterRand = this.randomWithSeed(baseSeed + d * 100 + k)();
+        const jitter = Math.round((jitterRand - 0.5) * 20); // ±10 dakika
+        const durationInMinutes = Math.max(30, Math.min(baseDuration + jitter, 120));
+
         weeklyPlans[weekIndex - 1].sessions.push({
           week: weekIndex,
           day: dayName,
           subject,
           topic,
-          durationInMinutes: Math.max(30, Math.min(((data as any)?.preferences?.sessionDuration || 40), 120)),
+          durationInMinutes,
           type: 'study',
           difficulty: 'medium',
           objectives: [],
@@ -1326,7 +1338,42 @@ BEKLENEN JSON ŞEMASI (örnek):
     return pool;
   }
 
-  private pickTopicFromPool(subject: string, pool: Record<string, string[]>, preferredTopics: string[]): string {
+  // --- Seeded randomness helpers ---
+  private seedFrom(userId: string, date: Date): number {
+    const base = `${userId}-${date.toISOString().slice(0,10)}`;
+    let h = 2166136261;
+    for (let i = 0; i < base.length; i++) {
+      h ^= base.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h >>> 0;
+  }
+
+  private randomWithSeed(seed: number): () => number {
+    let s = (seed >>> 0) || 1;
+    return () => {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      return s / 0xffffffff;
+    };
+  }
+
+  private shuffleWithSeed<T>(arr: T[], seed: number): T[] {
+    const r = this.randomWithSeed(seed);
+    const copy = arr.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(r() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  private pickTopicFromPool(
+    subject: string,
+    pool: Record<string, string[]>,
+    preferredTopics: string[],
+    seed: number,
+    recentTopicBySubject: Record<string, string>
+  ): string {
     const list = pool[subject] || [];
     if (list.length === 0) return 'Temel kavramlar';
 
@@ -1341,13 +1388,21 @@ BEKLENEN JSON ŞEMASI (örnek):
       .filter(Boolean)
       .map(p => ({ raw: p, norm: normalize(String(p)) }));
 
-    // Önce tercih edilen (zayıf alan) konu eşleşmesi dene (iki yönlü contains)
+    // 1) Odak eşleşmesi (recent ile tekrar engeli)
     for (const pref of normalizedPrefs) {
       const hit = normalizedList.find(nt => nt.norm.includes(pref.norm) || pref.norm.includes(nt.norm));
-      if (hit) return hit.raw;
+      if (hit && hit.raw !== recentTopicBySubject[subject]) return hit.raw;
     }
 
-    // Aksi halde ilk konuyu döndür
+    // 2) Seeded çeşitlilik (başlangıç index) + round-robin, recent tekrarı engelle
+    const rand = this.randomWithSeed(seed);
+    let start = Math.floor(rand() * Math.max(1, list.length));
+    for (let i = 0; i < list.length; i++) {
+      const candidate = list[(start + i) % list.length];
+      if (candidate !== recentTopicBySubject[subject]) return candidate;
+    }
+
+    // 3) Son çare: ilk öğe
     return list[0];
   }
 
@@ -1362,6 +1417,9 @@ BEKLENEN JSON ŞEMASI (örnek):
     const topicPool = await this.buildCurriculumTopicPool(subjects, gradeNum);
     const preferredTopics: string[] = Array.isArray((data as any)?.preferences?.focusAreas) ? (data as any).preferences.focusAreas : [];
     const weeklyPlans: Array<any> = [];
+    // Seed ve shuffle fallback'te de kullanılmalı
+    const baseSeed = this.seedFrom((data as any)?.userId || 'anon', new Date());
+    const shuffledSubjects = this.shuffleWithSeed(subjects, baseSeed);
     for (let d = 0; d < planDurationDays; d++) {
       const weekIndex = Math.floor(d / 7) + 1;
       while (weeklyPlans.length < weekIndex) {
@@ -1369,9 +1427,10 @@ BEKLENEN JSON ŞEMASI (örnek):
       }
       const dayName = dayNames[d % 7];
       let lastTopicsForDay: Record<string, string> = {};
+      const dayStartOffset = (d + weekIndex + shuffledSubjects.length) % Math.max(1, shuffledSubjects.length);
       for (let k = 0; k < sessionsPerDay; k++) {
-        const subject = subjects[(d * sessionsPerDay + k) % subjects.length];
-        let topic = this.pickTopicFromPool(subject, topicPool, preferredTopics) || (k === 0 ? 'Temel kavramlar' : 'Pekiştirme çalışması');
+        const subject = shuffledSubjects[(dayStartOffset + k) % shuffledSubjects.length];
+        let topic = this.pickTopicFromPool(subject, topicPool, preferredTopics, baseSeed + d * 10 + k, lastTopicsForDay) || (k === 0 ? 'Temel kavramlar' : 'Pekiştirme çalışması');
         // Aynı gün aynı konuda tekrar olmasın
         if (lastTopicsForDay[subject] && lastTopicsForDay[subject] === topic) {
           const list = topicPool[subject] || [];
@@ -1384,7 +1443,8 @@ BEKLENEN JSON ŞEMASI (örnek):
           day: dayName,
           subject,
           topic: `${subject} - ${topic}`,
-          durationInMinutes: sessionDuration,
+          // Jitter
+          durationInMinutes: Math.max(30, Math.min(sessionDuration + Math.round((this.randomWithSeed(baseSeed + d * 100 + k)() - 0.5) * 20), 120)),
           type: 'study',
           difficulty: d === 0 ? 'medium' : (d === 1 ? 'hard' : 'review'),
           objectives: ['Hedefe yönelik ilerleme'],
@@ -1397,7 +1457,7 @@ BEKLENEN JSON ŞEMASI (örnek):
       weeklyPlans,
       milestones: this.generateMilestones(data.subjects, data.goals),
       adaptiveStrategies: this.generateAdaptiveStrategies(data.learningStyle),
-      optimizationNotes: ['Kullanıcı tercihleri ve performansına göre otomatik baz plan'],
+      optimizationNotes: ['Kullanıcı tercihleri ve performansına göre otomatik baz plan (seeded variety)'],
       planDurationDays,
     };
   }
