@@ -15,6 +15,10 @@ class PlanContextDto {
   targetExam?: string;
 
   @IsOptional()
+  @IsString()
+  learningStyle?: string;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   weaknesses?: string[];
@@ -52,6 +56,10 @@ class PlanContextDto {
   @IsOptional()
   @IsString()
   curriculumPreference?: string;
+
+  @IsOptional()
+  @IsString()
+  studyGoal?: string;
 }
 
 export class CreateFromOnboardingDto {
