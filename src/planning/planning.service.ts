@@ -569,28 +569,29 @@ export class PlanningService {
     });
 
     // Onboarding alanlarını derle
-    const selectedSubjects: string[] = data?.selectedSubjects || data?.subjects || profile?.studentProfile?.goals || ['Matematik', 'Türkçe'];
-    const weaknesses: string[] = data?.weaknesses || profile?.studentProfile?.weaknesses || [];
+    const ctx = (data as any)?.planContext || {};
+    const selectedSubjects: string[] = ctx?.selectedSubjects || data?.selectedSubjects || data?.subjects || profile?.studentProfile?.goals || ['Matematik', 'Türkçe'];
+    const weaknesses: string[] = ctx?.weaknesses || data?.weaknesses || profile?.studentProfile?.weaknesses || [];
     const goals: string[] = (data?.goals && Array.isArray(data.goals) && data.goals.length > 0)
       ? data.goals
       : (selectedSubjects.length > 0
           ? selectedSubjects.slice(0, 3).map((s: string) => `${s} temel kavramlarını tamamla`)
           : ['Temel hedefler']);
 
-    const dailyHours: number = typeof data?.dailyHours === 'number' ? data.dailyHours
-      : (typeof data?.availableTime === 'number' ? Math.max(0, Math.round((data.availableTime as number) / 60)) : 2);
+    const dailyHours: number = typeof ctx?.dailyHours === 'number' ? ctx.dailyHours
+      : (typeof data?.dailyHours === 'number' ? data.dailyHours : (typeof data?.availableTime === 'number' ? Math.max(0, Math.round((data.availableTime as number) / 60)) : 2));
     const availableTime: number = dailyHours * 60; // dakika/gün
 
-    const learningStyle: string = data?.learningStyle || profile?.studentProfile?.learningStyle || 'personalized';
+    const learningStyle: string = data?.learningStyle || ctx?.learningStyle || profile?.studentProfile?.learningStyle || 'personalized';
 
-    const preferredStudyTimes: string[] = Array.isArray(data?.preferredStudyTimes) ? data.preferredStudyTimes : [];
-    const preferredSessionDuration: number = typeof data?.preferredSessionDuration === 'number' ? data.preferredSessionDuration : 40;
-    const studyDays: number[] = Array.isArray(data?.studyDays) ? data.studyDays : [];
-    const confidenceLevels = data?.confidenceLevels || {};
-    const lastCompletedTopics = data?.lastCompletedTopics || {};
-    const gradeStr: string = (data?.grade ?? profile?.studentProfile?.grade ?? '').toString();
+    const preferredStudyTimes: string[] = Array.isArray(ctx?.preferredStudyTimes) ? ctx.preferredStudyTimes : (Array.isArray(data?.preferredStudyTimes) ? data.preferredStudyTimes : []);
+    const preferredSessionDuration: number = typeof ctx?.preferredSessionDuration === 'number' ? ctx.preferredSessionDuration : (typeof data?.preferredSessionDuration === 'number' ? data.preferredSessionDuration : 40);
+    const studyDays: number[] = Array.isArray(ctx?.studyDays) ? ctx.studyDays : (Array.isArray(data?.studyDays) ? data.studyDays : []);
+    const confidenceLevels = ctx?.confidenceLevels || data?.confidenceLevels || {};
+    const lastCompletedTopics = ctx?.lastCompletedTopics || data?.lastCompletedTopics || {};
+    const gradeStr: string = (ctx?.grade ?? data?.grade ?? profile?.studentProfile?.grade ?? '').toString();
     const gradeNum: number = parseInt(gradeStr) || 0;
-    const academicTrack: string = data?.academicTrack || profile?.studentProfile?.field || '';
+    const academicTrack: string = ctx?.academicTrack || data?.academicTrack || profile?.studentProfile?.field || '';
 
     const currentLevel: string = gradeNum >= 11 ? 'advanced' : (gradeNum >= 9 ? 'medium' : 'beginner');
 
