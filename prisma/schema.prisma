@@ -462,3 +462,17 @@ model Payment {
   @@index([userId])
   @@index([subscriptionId])
 }
+
+/// MEB müfredat konuları ve YKS ağırlıklarını tutar
+model MebTopic {
+  id        String   @id @default(cuid())
+  grade     Int      // Konunun ait olduğu sınıf (9, 10, 11, 12)
+  subject   String   // Dersin adı (Örn: "Matematik", "Türkçe")
+  unit      String   // Ünitenin/temanın adı (Örn: "Sayılar ve Cebir")
+  topic     String   // Konunun adı (Örn: "Üslü İfadeler ve Denklemler")
+  outcomes  String[] // Bu konuya ait MEB kazanımları (opsiyonel)
+  tytWeight Int      @default(0) // Konunun TYT'deki ortalama soru sayısı
+  aytWeight Int      @default(0) // Konunun AYT'deki ortalama soru sayısı
+
+  @@unique([grade, subject, topic])
+}

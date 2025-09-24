@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { z } from 'zod';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { SUBJECT_ALIASES } from './planning.constants';
 import { GeminiService } from '../services/gemini.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { GeneratePlanDto } from './dto/generate-plan.dto';
@@ -58,33 +59,42 @@ export class PlanningService {
   private readonly aiSessionSchema = z.object({
     subject: z.string().min(1),
     topic: z.string().min(1),
-    duration: z.number().positive().optional(),
-    durationInMinutes: z.number().positive().optional(),
-    type: z.enum(['study', 'review', 'practice', 'exam']).optional(),
+    // Süre zorunlu: dakika
+    durationInMinutes: z.number().int().positive(),
+    // Tür zorunlu ve normalize edilir
+    type: z.string().min(1).transform((val) => {
+      const lowerVal = (val || 'study').toLowerCase();
+      return ['study', 'review', 'practice', 'exam'].includes(lowerVal) ? lowerVal : 'study';
+    }),
+    // Zorluk isteğe bağlı
     difficulty: z.string().optional(),
-    week: z.number().int().positive().optional(),
-    day: z.string().optional(),
-    objectives: z.array(z.string()).optional(),
-    resources: z.array(z.string()).optional(),
-    techniques: z.array(z.string()).optional(),
+    // Konumlandırma
+    week: z.number().int().positive(),
+    day: z.string().min(1),
+    // Pedagojik alanlar zorunlu
+    objectives: z.array(z.string()).min(1),
+    resources: z.array(z.string()).min(1),
+    techniques: z.array(z.string()).min(1),
   });
 
   private readonly aiWeeklyPlanSchema = z.object({
     week: z.number().int().positive(),
-    focus: z.string().min(1).optional(),
-    sessions: z.array(this.aiSessionSchema).optional(),
+    focus: z.string().min(1),
+    sessions: z.array(this.aiSessionSchema).min(1),
   });
 
-  private readonly aiPlanSchema = z.union([
-    z.object({
-      sessions: z.array(this.aiSessionSchema).optional(),
-      weeklyPlans: z.array(this.aiWeeklyPlanSchema).optional(),
-    }),
-    z.object({
-      weeklyPlans: z.array(this.aiWeeklyPlanSchema).optional(),
-      sessions: z.array(this.aiSessionSchema).optional(),
-    }),
-  ]);
+  private readonly aiPlanSchema = z.object({
+    // Haftalık yapıyı zorunlu kıl
+    weeklyPlans: z.array(this.aiWeeklyPlanSchema).min(1),
+    // Milestones ve adaptif stratejiler zorunlu
+    milestones: z.array(z.object({
+      week: z.number().int().positive(),
+      goal: z.string().min(1),
+      assessment: z.string().min(1),
+      criteria: z.string().min(1),
+    })).min(1),
+    adaptiveStrategies: z.array(z.string()).min(1),
+  });
 
   private cleanAiJsonResponse(text: string): string {
     if (!text) return text;
@@ -98,6 +108,149 @@ export class PlanningService {
       cleaned = cleaned.substring(first, last + 1);
     }
     return cleaned;
+  }
+
+  // A) AI Analizi: userContext + normalized veriye göre zayıf/güçlü alanlar ve haftalık strateji çıkarır
+  private async aiAnalyzeUser(userContext: any, data: PlanGenerationData): Promise<any> {
+    const prompt = `Sadece geçerli JSON döndür. Açıklama yazma.
+{
+  "task": "analyze_user",
+  "student": {
+    "subjects": ${JSON.stringify(data.subjects)},
+    "goals": ${JSON.stringify(data.goals)},
+    "availableTime": ${data.availableTime},
+    "learningStyle": ${JSON.stringify(data.learningStyle)},
+    "currentLevel": ${JSON.stringify(data.currentLevel)}
+  },
+  "context": {
+    "weakAreas": ${JSON.stringify(userContext.weakAreas || [])},
+    "strongAreas": ${JSON.stringify(userContext.strongAreas || [])},
+    "topicSuccessRates": ${JSON.stringify(userContext.topicSuccessRates || {})},
+    "subjectPerformance": ${JSON.stringify(userContext.subjectPerformance || {})},
+    "preferredStudyHours": ${JSON.stringify(userContext.preferredStudyHours || [])},
+    "subjectTimeAllocation": ${JSON.stringify(userContext.subjectTimeAllocation || {})}
+  },
+  "expect": {
+    "weakTopicsTop3": ["<topic>", "<topic>", "<topic>"],
+    "strongSubjectsTop2": ["<subject>", "<subject>"],
+    "weeklyStrategy": "<one-week high-level strategy in Turkish>"
+  }
+}`;
+    const resp = await this.geminiService.generateContent(prompt);
+    const cleaned = this.cleanAiJsonResponse(resp);
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      const block = this.extractFirstJsonBlock(resp);
+      if (!block) return { weakTopicsTop3: [], strongSubjectsTop2: [], weeklyStrategy: '' };
+      try { return JSON.parse(block); } catch { return { weakTopicsTop3: [], strongSubjectsTop2: [], weeklyStrategy: '' }; }
+    }
+  }
+
+  // B) Stratejiye göre plan iskeleti üret (haftalık plan + oturumlar taslak)
+  private async buildPlanSkeletonFromStrategy(aiAnalysis: any, data: PlanGenerationData, userContext: any): Promise<any> {
+    const planDurationDays: number = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
+    const minSessionsPerDay = 2;
+    const subjects = Array.isArray(data.subjects) && data.subjects.length > 0 ? data.subjects : ['Genel'];
+    const preferredTopics: string[] = Array.isArray((data as any)?.preferences?.focusAreas) ? (data as any).preferences.focusAreas : (aiAnalysis?.weakTopicsTop3 || []);
+    const gradeNum = typeof (data as any)?.preferences?.grade === 'number'
+      ? (data as any).preferences.grade
+      : parseInt(String((data as any)?.preferences?.grade || '0')) || 11;
+    const topicPool = await this.buildCurriculumTopicPool(subjects, gradeNum, (data as any)?.preferences?.curriculumTopicsBySubject);
+
+    // Seed ve shuffle: kullanıcıya/haftaya göre tutarlı, kullanıcılar arasında farklı
+    const baseSeed = this.seedFrom((data as any)?.userId || 'anon');
+    const shuffledSubjects = this.shuffleWithSeed(subjects, baseSeed);
+
+    const weeklyPlans: any[] = [];
+    const dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    for (let d = 0; d < planDurationDays; d++) {
+      const weekIndex = Math.floor(d / 7) + 1;
+      while (weeklyPlans.length < weekIndex) {
+        weeklyPlans.push({ week: weeklyPlans.length + 1, focus: undefined, sessions: [] });
+      }
+      const dayName = dayNames[d % 7];
+      let lastTopicsForDay: Record<string, string> = {};
+      // Gün bazlı offset: aynı paterni kırmak için
+      const dayStartOffset = (d + weekIndex + shuffledSubjects.length) % Math.max(1, shuffledSubjects.length);
+      for (let k = 0; k < minSessionsPerDay; k++) {
+        const subject = shuffledSubjects[(dayStartOffset + k) % shuffledSubjects.length];
+        const topic = this.pickTopicFromPool(subject, topicPool, preferredTopics, baseSeed + d * 10 + k, lastTopicsForDay);
+        // Süre varyasyonu (jitter) – sınırlar içinde
+        const baseDuration = Math.max(30, Math.min(((data as any)?.preferences?.sessionDuration || 40), 120));
+        const jitterRand = this.randomWithSeed(baseSeed + d * 100 + k)();
+        const jitter = Math.round((jitterRand - 0.5) * 20); // ±10 dakika
+        const durationInMinutes = Math.max(30, Math.min(baseDuration + jitter, 120));
+
+        weeklyPlans[weekIndex - 1].sessions.push({
+          week: weekIndex,
+          day: dayName,
+          subject,
+          topic,
+          durationInMinutes,
+          type: 'study',
+          difficulty: 'medium',
+          objectives: [],
+          resources: [],
+          techniques: this.getTechniquesForLearningStyle(data.learningStyle),
+        });
+        lastTopicsForDay[subject] = topic;
+      }
+    }
+    return { weeklyPlans, planDurationDays, strategy: aiAnalysis?.weeklyStrategy || '' };
+  }
+
+  // C) AI ile seçili gün/oturumları detaylandır: hedefler, kaynaklar, teknikler vb.
+  private async detailSessionsWithAI(skeleton: any, data: PlanGenerationData): Promise<any> {
+    try {
+      const toDetail = [] as Array<{ week: number; day: string; subject: string; topic: string; }>;
+      (skeleton?.weeklyPlans || []).forEach((w: any) => {
+        const firstTwo = (w.sessions || []).slice(0, 2);
+        firstTwo.forEach((s: any) => toDetail.push({ week: w.week, day: s.day, subject: s.subject, topic: s.topic }));
+      });
+      for (const item of toDetail) {
+        const prompt = `Sadece geçerli JSON döndür. Açıklama yazma.
+{
+  "task": "detail_session",
+  "constraints": {
+    "durationMinutes": 120,
+    "technique": "Feynman",
+    "includeMiniTest": true,
+    "miniTestQuestions": 10
+  },
+  "session": {
+    "day": ${JSON.stringify(item.day)},
+    "subject": ${JSON.stringify(item.subject)},
+    "topic": ${JSON.stringify(item.topic)}
+  },
+  "expect": {
+    "objectives": ["...", "..."],
+    "resources": ["..."],
+    "techniques": ["Feynman", "..."],
+    "activities": [
+      {"type": "study", "minutes": 40, "note": "konu anlatımı"},
+      {"type": "practice", "minutes": 30, "note": "örnek soru"},
+      {"type": "quiz", "minutes": 20, "questions": 10}
+    ]
+  }
+}`;
+        const resp = await this.geminiService.generateContent(prompt);
+        const cleaned = this.cleanAiJsonResponse(resp);
+        let details: any = {};
+        try { details = JSON.parse(cleaned); } catch { const block = this.extractFirstJsonBlock(resp); if (block) { try { details = JSON.parse(block); } catch { details = {}; } } }
+        const weekRef = (skeleton.weeklyPlans || []).find((w: any) => w.week === item.week);
+        if (!weekRef) continue;
+        const sess = (weekRef.sessions || []).find((s: any) => s.day === item.day && s.subject === item.subject && s.topic === item.topic);
+        if (!sess) continue;
+        if (Array.isArray(details.objectives)) sess.objectives = details.objectives;
+        if (Array.isArray(details.resources)) sess.resources = details.resources;
+        if (Array.isArray(details.techniques)) sess.techniques = details.techniques;
+        if (Array.isArray(details.activities)) sess.metadata = { ...(sess.metadata || {}), activities: details.activities };
+      }
+      return skeleton;
+    } catch {
+      return skeleton;
+    }
   }
 
   private extractFirstJsonBlock(text: string): string | null {
@@ -143,6 +296,67 @@ export class PlanningService {
     }
   }
 
+  // Function Calling için: AI'nın çağıracağı fonksiyonun şema tanımı
+  private buildSavePlanFunctionSchema() {
+    return {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        description: { type: 'string' },
+        type: { type: 'string', enum: ['DAILY','WEEKLY','HOLIDAY','LONG_TERM'] },
+        planDurationDays: { type: 'number' },
+        weeklyPlans: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'object',
+            properties: {
+              week: { type: 'number' },
+              focus: { type: 'string' },
+              sessions: {
+                type: 'array',
+                minItems: 1,
+                items: {
+                  type: 'object',
+                  properties: {
+                    week: { type: 'number' },
+                    day: { type: 'string' },
+                    subject: { type: 'string' },
+                    topic: { type: 'string' },
+                    durationInMinutes: { type: 'number' },
+                    type: { type: 'string', enum: ['study','review','practice','exam'] },
+                    difficulty: { type: 'string' },
+                    objectives: { type: 'array', minItems: 1, items: { type: 'string' } },
+                    resources: { type: 'array', minItems: 1, items: { type: 'string' } },
+                    techniques: { type: 'array', minItems: 1, items: { type: 'string' } },
+                  },
+                  required: ['week','day','subject','topic','durationInMinutes','type','objectives','resources','techniques']
+                }
+              }
+            },
+            required: ['week','focus','sessions']
+          }
+        },
+        milestones: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'object',
+            properties: {
+              week: { type: 'number' },
+              goal: { type: 'string' },
+              assessment: { type: 'string' },
+              criteria: { type: 'string' },
+            },
+            required: ['week','goal','assessment','criteria']
+          }
+        },
+        adaptiveStrategies: { type: 'array', minItems: 1, items: { type: 'string' } },
+      },
+      required: ['title','type','weeklyPlans','milestones','adaptiveStrategies']
+    };
+  }
+
   async generatePlan(data: PlanGenerationData | (GeneratePlanDto & { userId: string })): Promise<any> {
     const normalized: PlanGenerationData = (data as any).availableTime != null
       ? (data as PlanGenerationData)
@@ -161,49 +375,104 @@ export class PlanningService {
     }
     const userId = normalized.userId;
 
-    // Kullanıcının mevcut verilerini analiz et
-    const userContext = await this.analyzeUserContext(userId);
-    
-    // AI ile detaylı plan oluştur
-    const aiPlanPrompt = this.createPlanPrompt(normalized, userContext);
-    const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
-    if (!aiResponse || aiResponse.includes('AI servisi şu anda kullanılamıyor')) {
-      throw new ServiceUnavailableException('AI servisi kullanılamıyor');
-    }
-    
-    // AI yanıtı bazen markdown/çitler içerebilir; temizleyip parse etmeyi dene
-    const cleaned = this.cleanAiJsonResponse(aiResponse);
-    let planStructureRaw: any;
+    // Zengin, taze payload verisini önceliklendir. userContext sadece tamamlayıcı olsun.
+    let userContext: any = {
+      subjectPerformance: {},
+      timePatterns: {},
+      learningVelocity: 0.5,
+      preferredStudyHours: [],
+      totalStudyTime: 0,
+      averageSessionDuration: (normalized.preferences?.sessionDuration || 40),
+      topicSuccessRates: {},
+      examNets: [],
+      subjectTimeAllocation: {},
+      previousPlans: [],
+      skippedSessionsCount: 0,
+      weakAreas: Array.isArray(normalized.preferences?.focusAreas) ? normalized.preferences!.focusAreas : [],
+      strongAreas: [],
+    };
     try {
-      planStructureRaw = JSON.parse(cleaned);
-    } catch (error) {
-      // Son bir kez daha: ilk JSON bloğunu ayrıştırmayı dene
-      const block = this.extractFirstJsonBlock(aiResponse);
-      if (block) {
-        try {
-          planStructureRaw = JSON.parse(block);
-        } catch {
-          console.error('AI JSON parse failed (block). Block preview:', block.slice(0, 200));
-          throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
+      console.time('analyzeUserContext');
+      const dbContext = await this.analyzeUserContext(userId);
+      console.timeEnd('analyzeUserContext');
+      // Taze veride olmayan alanları DB bağlamıyla tamamla (override yok)
+      userContext = {
+        ...dbContext,
+        weakAreas: userContext.weakAreas?.length ? userContext.weakAreas : dbContext.weakAreas,
+        preferredStudyHours: (userContext.preferredStudyHours && userContext.preferredStudyHours.length > 0)
+          ? userContext.preferredStudyHours
+          : dbContext.preferredStudyHours,
+      };
+      console.log('[PLANNING] Kullanıcı geçmişi analiz edildi.');
+    } catch (_) {
+      // DB bağlamı alınamazsa taze veri ile devam et
+    }
+
+    // Çok-aşamalı AI etkileşimi: A) analiz, B) iskelet, C) detaylandırma (Function Calling destekli)
+    // Ana akış: Function Calling (yapısal garanti). Başarısız olursa klasik prompt/parse fallback.
+    let planSkeleton: any;
+    try {
+      const toolName = 'savePlanToDatabase';
+      const args = await this.geminiService.generateFunctionCall(
+        toolName,
+        this.buildSavePlanFunctionSchema(),
+        `Sadece ${toolName} fonksiyonunu uygun parametrelerle çağır. Açıklama yazma.\n` +
+        `Bağlam: ${JSON.stringify({
+          subjects: normalized.subjects,
+          goals: normalized.goals,
+          availableTime: normalized.availableTime,
+          learningStyle: normalized.learningStyle,
+          currentLevel: normalized.currentLevel,
+          preferences: normalized.preferences,
+          userContext,
+        })}`
+      );
+      if (!args || !args.weeklyPlans) {
+        throw new Error('FunctionCallMissingWeeklyPlans');
+      }
+      planSkeleton = args;
+    } catch (e) {
+      // Fallback: Çok-aşamalı analiz + tek-adım prompt → JSON parse
+      try {
+        const aiAnalysis = await this.aiAnalyzeUser(userContext, normalized);
+        let skeleton = await this.buildPlanSkeletonFromStrategy(aiAnalysis, normalized, userContext);
+        skeleton = await this.detailSessionsWithAI(skeleton, normalized);
+        planSkeleton = skeleton;
+      } catch (_) {
+        const aiPlanPrompt = await this.createPlanPrompt(normalized, userContext);
+        console.log('[PLANNING] AI prompt hazırlandı, Gemini API çağrılıyor...');
+        console.time('geminiApiCall');
+        const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
+        console.timeEnd('geminiApiCall');
+        console.log('[PLANNING] Gemini API yanıt verdi, plan veritabanına kaydediliyor...');
+        if (!aiResponse || aiResponse.includes('AI servisi şu anda kullanılamıyor')) {
+          throw new ServiceUnavailableException('AI servisi kullanılamıyor');
         }
-      } else {
-        console.error('AI JSON parse failed. Raw preview:', aiResponse?.slice(0, 200));
-        console.error('Cleaned preview:', cleaned?.slice(0, 200));
-        throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
+        const cleaned = this.cleanAiJsonResponse(aiResponse);
+        try {
+          planSkeleton = JSON.parse(cleaned);
+        } catch {
+          const block = this.extractFirstJsonBlock(aiResponse);
+          if (!block) throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
+          planSkeleton = JSON.parse(block);
+        }
       }
     }
 
-    // Zod ile güçlü doğrulama
-    const validationResult = this.aiPlanSchema.safeParse(planStructureRaw);
+    // Zod doğrulaması
+    const validationResult = this.aiPlanSchema.safeParse(planSkeleton);
     if (!validationResult.success) {
-      console.error('AI Response Validation Error:', validationResult.error);
-      throw new BadRequestException('AI servisinden geçersiz plan yapısı alındı.');
+      console.error('AI Skeleton Validation Error:', validationResult.error);
+      // skeleton geçersiz ise güvenli fallback üretimi (istemciden gelen süreyi kullan)
+      const fallbackDays = Number((normalized as any)?.planDurationDays) > 0
+        ? Number((normalized as any).planDurationDays)
+        : 3;
+      planSkeleton = await this.generateFallbackPlan(fallbackDays, normalized, userContext);
     }
-    let planStructure = validationResult.data as any;
 
     // Plan optimizasyonu
-    let optimizedPlan = await this.optimizePlan(planStructure, normalized, userContext);
-    // Plan süresi (gün) - varsayılan 3
+    let optimizedPlan = await this.optimizePlan(planSkeleton as any, normalized, userContext);
+    // Plan süresi (gün): normalized içinden alınır ve korunur
     const planDurationDays: number = Number((normalized as any)?.planDurationDays) > 0
       ? Number((normalized as any).planDurationDays)
       : 3;
@@ -214,7 +483,7 @@ export class PlanningService {
         ? (optimizedPlan as any).weeklyPlans.flatMap((w: any) => w?.sessions || [])
         : [];
     if (!Array.isArray(sessionsFromStructure) || sessionsFromStructure.length === 0) {
-      optimizedPlan = this.generateFallbackPlan(planDurationDays, normalized, userContext);
+      optimizedPlan = await this.generateFallbackPlan(planDurationDays, normalized, userContext);
       sessionsFromStructure = optimizedPlan.weeklyPlans?.flatMap((w: any) => w.sessions || []) || [];
       optimizedPlan.optimizationNotes = Array.isArray(optimizedPlan.optimizationNotes)
         ? [...optimizedPlan.optimizationNotes, 'AI boş yanıt verdiği için güvenli geri dönüş planı uygulandı']
@@ -225,10 +494,17 @@ export class PlanningService {
     
     // Veritabanına kaydet
     const inferredPlanType = planDurationDays >= 7 ? 'WEEKLY' : 'DAILY';
+    const learningStyleLabel = this.getLearningStyleDisplayName(normalized.learningStyle);
+    const suppressTitleByStyle = (normalized as any)?.suppressLearningStyleInTitle === true;
+    const isGenericStyle = suppressTitleByStyle || !normalized.learningStyle || ['visual', 'balanced', 'generic', 'personalized'].includes((normalized.learningStyle || '').toLowerCase());
+    const computedTitle = isGenericStyle
+      ? 'Kişiselleştirilmiş Çalışma Planı'
+      : `${learningStyleLabel} Öğrenme Planı`;
+
     const savedPlan = await this.prisma.plan.create({
       data: {
         userId,
-        title: `${this.getLearningStyleDisplayName(normalized.learningStyle)} Öğrenme Planı`,
+        title: computedTitle,
         description: `${normalized.subjects.join(', ')} dersleri için kişiselleştirilmiş plan`,
         type: inferredPlanType as any,
         subjects: normalized.subjects,
@@ -301,28 +577,29 @@ export class PlanningService {
     });
 
     // Onboarding alanlarını derle
-    const selectedSubjects: string[] = data?.selectedSubjects || data?.subjects || profile?.studentProfile?.goals || ['Matematik', 'Türkçe'];
-    const weaknesses: string[] = data?.weaknesses || profile?.studentProfile?.weaknesses || [];
+    const ctx = (data as any)?.planContext || {};
+    const selectedSubjects: string[] = ctx?.selectedSubjects || data?.selectedSubjects || data?.subjects || profile?.studentProfile?.goals || ['Matematik', 'Türkçe'];
+    const weaknesses: string[] = ctx?.weaknesses || data?.weaknesses || profile?.studentProfile?.weaknesses || [];
     const goals: string[] = (data?.goals && Array.isArray(data.goals) && data.goals.length > 0)
       ? data.goals
       : (selectedSubjects.length > 0
           ? selectedSubjects.slice(0, 3).map((s: string) => `${s} temel kavramlarını tamamla`)
           : ['Temel hedefler']);
 
-    const dailyHours: number = typeof data?.dailyHours === 'number' ? data.dailyHours
-      : (typeof data?.availableTime === 'number' ? Math.max(0, Math.round((data.availableTime as number) / 60)) : 2);
+    const dailyHours: number = typeof ctx?.dailyHours === 'number' ? ctx.dailyHours
+      : (typeof data?.dailyHours === 'number' ? data.dailyHours : (typeof data?.availableTime === 'number' ? Math.max(0, Math.round((data.availableTime as number) / 60)) : 2));
     const availableTime: number = dailyHours * 60; // dakika/gün
 
-    const learningStyle: string = data?.learningStyle || profile?.studentProfile?.learningStyle || 'visual';
+    const learningStyle: string = data?.learningStyle || ctx?.learningStyle || profile?.studentProfile?.learningStyle || 'personalized';
 
-    const preferredStudyTimes: string[] = Array.isArray(data?.preferredStudyTimes) ? data.preferredStudyTimes : [];
-    const preferredSessionDuration: number = typeof data?.preferredSessionDuration === 'number' ? data.preferredSessionDuration : 40;
-    const studyDays: number[] = Array.isArray(data?.studyDays) ? data.studyDays : [];
-    const confidenceLevels = data?.confidenceLevels || {};
-    const lastCompletedTopics = data?.lastCompletedTopics || {};
-    const gradeStr: string = (data?.grade ?? profile?.studentProfile?.grade ?? '').toString();
+    const preferredStudyTimes: string[] = Array.isArray(ctx?.preferredStudyTimes) ? ctx.preferredStudyTimes : (Array.isArray(data?.preferredStudyTimes) ? data.preferredStudyTimes : []);
+    const preferredSessionDuration: number = typeof ctx?.preferredSessionDuration === 'number' ? ctx.preferredSessionDuration : (typeof data?.preferredSessionDuration === 'number' ? data.preferredSessionDuration : 40);
+    const studyDays: number[] = Array.isArray(ctx?.studyDays) ? ctx.studyDays : (Array.isArray(data?.studyDays) ? data.studyDays : []);
+    const confidenceLevels = ctx?.confidenceLevels || data?.confidenceLevels || {};
+    const lastCompletedTopics = ctx?.lastCompletedTopics || data?.lastCompletedTopics || {};
+    const gradeStr: string = (ctx?.grade ?? data?.grade ?? profile?.studentProfile?.grade ?? '').toString();
     const gradeNum: number = parseInt(gradeStr) || 0;
-    const academicTrack: string = data?.academicTrack || profile?.studentProfile?.field || '';
+    const academicTrack: string = ctx?.academicTrack || data?.academicTrack || profile?.studentProfile?.field || '';
 
     const currentLevel: string = gradeNum >= 11 ? 'advanced' : (gradeNum >= 9 ? 'medium' : 'beginner');
 
@@ -333,6 +610,10 @@ export class PlanningService {
       learningStyle,
       currentLevel,
       userId,
+      // Frontend'den gelen plan süresi (gün) bilgisi varsa aynen geçir
+      ...(typeof data?.planDurationDays === 'number' && data.planDurationDays > 0
+        ? { planDurationDays: Number(data.planDurationDays) }
+        : {}),
       preferences: {
         studyTimes: preferredStudyTimes,
         sessionDuration: preferredSessionDuration,
@@ -345,6 +626,8 @@ export class PlanningService {
         confidenceLevels,
         lastCompletedTopics,
       },
+      // UI tercihleri
+      suppressLearningStyleInTitle: !!data?.suppressLearningStyleInTitle,
     } as any;
 
     return this.generatePlan(normalized);
@@ -480,29 +763,80 @@ export class PlanningService {
   }
 
   private async analyzeUserContext(userId: string) {
-    // Kullanıcının geçmiş performansını analiz et (paralel sorgular)
-    const [studySessions, quizResults, examResults] = await Promise.all([
+    // Daha zengin kullanıcı bağlamı: performans geçmişi, çalışma alışkanlıkları ve önceki plan verileri
+    const [studySessions, quizResults, examResults, plans] = await Promise.all([
       this.prisma.studySession.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        take: 50,
+        take: 200,
       }),
       this.prisma.quiz.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        take: 20,
+        take: 100,
       }),
       this.prisma.examResult.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      this.prisma.plan.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        include: { sessions: true },
         take: 10,
       }),
     ]);
 
-    // Performans analizi
+    // 1) Performans geçmişi (deneme netleri ve konu bazlı başarı)
     const subjectPerformance = this.analyzeSubjectPerformance(studySessions, quizResults, examResults);
+    const topicSuccessRates: Record<string, number> = {};
+    const topicBuckets: Record<string, number[]> = {};
+    quizResults.forEach((q: any) => {
+      const key = (q.topic || q.subject || 'Genel').toString();
+      const scorePct = q.totalScore && q.totalScore > 0 ? (q.score / q.totalScore) * 100 : 0;
+      if (!topicBuckets[key]) topicBuckets[key] = [];
+      topicBuckets[key].push(scorePct);
+    });
+    examResults.forEach((e: any) => {
+      const key = (e.topic || e.subject || 'Genel').toString();
+      const scorePct = e.totalScore && e.totalScore > 0 ? (e.score / e.totalScore) * 100 : 0;
+      if (!topicBuckets[key]) topicBuckets[key] = [];
+      topicBuckets[key].push(scorePct);
+    });
+    Object.keys(topicBuckets).forEach((k) => {
+      const arr = topicBuckets[k];
+      topicSuccessRates[k] = arr.length > 0 ? (arr.reduce((s, v) => s + v, 0) / arr.length) : 0;
+    });
+
+    // 2) Çalışma alışkanlıkları (verimli saatler, ders/konu bazlı zaman dağılımı)
     const timePatterns = this.analyzeStudyTimePatterns(studySessions);
     const learningVelocity = this.calculateLearningVelocity(studySessions);
+    const subjectTimeAllocation: Record<string, number> = {};
+    studySessions.forEach((s: any) => {
+      const subj = (s.subject || 'Genel').toString();
+      subjectTimeAllocation[subj] = (subjectTimeAllocation[subj] || 0) + (s.duration || 0);
+    });
+
+    // 3) Önceki plan verileri (tamamlama oranları, atlanan oturumlar)
+    const previousPlans = plans.map((p) => {
+      const total = p.sessions.length;
+      const completed = p.sessions.filter((s: any) => s.isCompleted).length;
+      const skipped = p.sessions.filter((s: any) => (s.metadata as any)?.skipped === true).length;
+      return {
+        id: p.id,
+        title: p.title,
+        type: p.type,
+        createdAt: p.createdAt,
+        totalSessions: total,
+        completedSessions: completed,
+        completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
+        skippedSessions: skipped,
+        totalStudyTime: p.sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0),
+      };
+    });
+    const overallSkipped = previousPlans.reduce((sum, x) => sum + x.skippedSessions, 0);
+
     const [weakAreas, strongAreas] = await Promise.all([
       this.identifyWeakAreas(userId),
       this.identifyStrongAreas(userId),
@@ -512,21 +846,36 @@ export class PlanningService {
       subjectPerformance,
       timePatterns,
       learningVelocity,
+      preferredStudyHours: this.getPreferredStudyHours(studySessions),
+      totalStudyTime: studySessions.reduce((sum, s) => sum + (s.duration || 0), 0),
+      averageSessionDuration: studySessions.length > 0 ?
+        studySessions.reduce((sum, s) => sum + (s.duration || 0), 0) / studySessions.length : 45,
+
+      topicSuccessRates,
+      examNets: examResults.map((e: any) => ({
+        id: e.id,
+        subject: e.subject,
+        score: e.score,
+        totalScore: e.totalScore,
+        date: e.createdAt,
+        percent: e.totalScore && e.totalScore > 0 ? (e.score / e.totalScore) * 100 : 0,
+      })),
+
+      subjectTimeAllocation,
+      previousPlans,
+      skippedSessionsCount: overallSkipped,
+
       weakAreas,
       strongAreas,
-      totalStudyTime: studySessions.reduce((sum, s) => sum + s.duration, 0),
-      averageSessionDuration: studySessions.length > 0 ? 
-        studySessions.reduce((sum, s) => sum + s.duration, 0) / studySessions.length : 45,
-      preferredStudyHours: this.getPreferredStudyHours(studySessions),
     };
   }
 
-  private createPlanPrompt(data: PlanGenerationData, userContext: any): string {
+  private async createPlanPrompt(data: PlanGenerationData, userContext: any): Promise<string> {
     const prefs = (data as any)?.preferences || {};
     const planDurationDays: number = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
     const minSessionsPerDay = 2;
     const gradeNum = typeof prefs.grade === 'number' ? prefs.grade : parseInt(String(prefs.grade || '0')) || 0;
-    const topicPool = this.buildCurriculumTopicPool(
+    const topicPool = await this.buildCurriculumTopicPool(
       Array.isArray(data.subjects) ? data.subjects : [],
       gradeNum || 11,
       (data as any)?.preferences?.curriculumTopicsBySubject
@@ -534,6 +883,10 @@ export class PlanningService {
     const topicPoolJson = JSON.stringify(topicPool);
     return `
 Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSON.
+
+ZORUNLU KURALLAR (İHLAL EDİLMEZ):
+- EĞER ÖĞRENCİNİN SINIFI (grade) 9'DAN BÜYÜKSE, "Temel kavramlar", "Harfleri tanıma", "Sayıları anlama" GİBİ İLKOKUL SEVİYESİ KONULARI ASLA KULLANMA. PLANI, ÖĞRENCİNİN BELİRTTİĞİ SINIF (grade) VE SINAV TÜRÜ (targetExam) İLE %100 UYUMLU MÜFREDATTAN KONULAR SEÇEREK OLUŞTUR.
+- PLANIN ANA ODAĞINI, ÖĞRENCİNİN 'Zorluk/alanda zorlanmalar' (focusAreas) LİSTESİNDEKİ KONULAR YAP. İLK HAFTANIN OTURUMLARI BU KONULARI HEDEF ALMALIDIR.
 
 PLAN KISITLARI:
 - Plan süresi: ${planDurationDays} gün.
@@ -543,8 +896,8 @@ PLAN KISITLARI:
 - Oturumlar kişiselleştirilmiş olmalı: güçlü alanlarda pekiştirme, zayıf alanlarda temel kavramlar ve tekrar.
 
 KONULAR HAVUZU (STRICT):
-- Aşağıdaki havuzdan konu seç. topic alanı SADECE bu havuzda listelenen konulardan biri olmalı.
-- Zayıf alanlarda (focusAreas) geçen konulara öncelik ver.
+- Aşağıdaki havuzdan konu seç. \`topic\` alanı SADECE bu havuzda listelenen konulardan biri olmalı.
+- YENİ TALİMAT: Zayıf alanlarda (focusAreas) belirtilen bir konu, havuzdaki bir konuyla birebir aynı olmasa bile, anlamsal olarak en yakın olanı seç. Örneğin, zayıf alan 'Organik Kimya' ise, havuzdan 'Organik Bileşikler' konusunu seçmek önceliğindir.
 ${topicPoolJson}
 
 ÖĞRENCİ BİLGİLERİ:
@@ -957,77 +1310,149 @@ BEKLENEN JSON ŞEMASI (örnek):
   }
 
   // Basit bir MEB müfredat havuzu (ileride veri kaynağına bağlanabilir)
-  private buildCurriculumTopicPool(
+  private async buildCurriculumTopicPool(
     subjects: string[],
-    grade: number | string,
+    grade: number,
     overrideTopics?: Record<string, string[]>
-  ): Record<string, string[]> {
-    const normalizedSubjects = (subjects || []).map(s => (s || '').toLowerCase());
+  ): Promise<Record<string, string[]>> {
     const pool: Record<string, string[]> = {};
-    const add = (name: string, topics: string[]) => { pool[name] = topics; };
-
-    // Eğer istemci müfredat konularını gönderdi ise öncelik ver
+    // Override öncelikli
     if (overrideTopics && Object.keys(overrideTopics).length > 0) {
       Object.entries(overrideTopics).forEach(([subject, topics]) => {
         if (Array.isArray(topics) && topics.length > 0) {
-          add(subject, topics);
+          pool[subject] = topics;
         }
       });
+      return pool;
     }
 
-    if (normalizedSubjects.includes('matematik')) {
-      add('Matematik', [
-        'Temel denklemler',
-        'Fonksiyon kavramı',
-        'Fonksiyon grafikleri',
-        'Problemler',
-        'Oran orantı',
-        'Limit tanımı',
-        'Süreklilik',
-      ]);
-    }
+    // Veritabanından uygun konuları çek
+    const normalizedSubjects = (subjects || []).map(s => (s || '').trim()).filter(Boolean);
 
-    if (normalizedSubjects.includes('türkçe') || normalizedSubjects.includes('turkce')) {
-      add('Türkçe', [
-        'Paragraf anlama',
-        'Cümlede anlam',
-        'Anlama ve yorumlama',
-        'Dil bilgisi - Noktalama',
-        'Dil bilgisi - Yazım kuralları',
-      ]);
-    }
+    // Alias mantığını uygula: hem orijinal hem alias isimlerle sorgula
+    const subjectsToQuery = new Set<string>();
+    const gradeAliases = SUBJECT_ALIASES[grade] || {};
+    normalizedSubjects.forEach(s => {
+      subjectsToQuery.add(s);
+      if (gradeAliases[s]) {
+        subjectsToQuery.add(gradeAliases[s]);
+      }
+    });
 
-    // Varsayılan: bilinmeyen dersler için genel başlıklar
-    subjects.forEach(s => {
-      if (!pool[s]) {
-        add(s, ['Giriş', 'Temel kavramlar', 'Pekiştirme uygulamaları']);
+    const topicsFromDb = await this.prisma.mebTopic.findMany({
+      where: {
+        grade: grade,
+        OR: Array.from(subjectsToQuery).map(s => ({ subject: { equals: s, mode: 'insensitive' as const } })),
+      },
+      orderBy: { topic: 'asc' },
+    });
+
+    subjects.forEach(subject => {
+      const normalizedSubject = (subject || '').trim().toLowerCase();
+      const alias = (gradeAliases[subject] || subject).toLowerCase();
+      const subjectTopics = topicsFromDb
+        .filter(t => {
+          const dbSubject = (t.subject || '').toLowerCase();
+          return dbSubject === normalizedSubject || dbSubject === alias;
+        })
+        .map(t => t.topic);
+      if (subjectTopics.length > 0) {
+        pool[subject] = [...new Set(subjectTopics)];
+      } else {
+        pool[subject] = ['Giriş', 'Temel kavramlar', 'Pekiştirme uygulamaları'];
       }
     });
 
     return pool;
   }
 
-  private pickTopicFromPool(subject: string, pool: Record<string, string[]>, preferredTopics: string[]): string {
+  // --- Seeded randomness helpers ---
+  private seedFrom(userId: string): number {
+    const base = userId;
+    let h = 2166136261;
+    for (let i = 0; i < base.length; i++) {
+      h ^= base.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h >>> 0;
+  }
+
+  private randomWithSeed(seed: number): () => number {
+    let s = (seed >>> 0) || 1;
+    return () => {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      return s / 0xffffffff;
+    };
+  }
+
+  private shuffleWithSeed<T>(arr: T[], seed: number): T[] {
+    const r = this.randomWithSeed(seed);
+    const copy = arr.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(r() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  private pickTopicFromPool(
+    subject: string,
+    pool: Record<string, string[]>,
+    preferredTopics: string[],
+    seed: number,
+    recentTopicBySubject: Record<string, string>
+  ): string {
     const list = pool[subject] || [];
     if (list.length === 0) return 'Temel kavramlar';
-    // Önce tercih edilen (zayıf alan) konu eşleşmesi dene
-    const preferred = preferredTopics.find(pt => list.some(t => t.toLowerCase().includes(pt.toLowerCase())));
-    if (preferred) {
-      const match = list.find(t => t.toLowerCase().includes(preferred.toLowerCase()));
-      if (match) return match;
+
+    const normalizeAndTokenize = (s: string): Set<string> => new Set((s || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .split(/\s+/)
+    );
+
+    const normalizedList = list.map(t => ({ raw: t, tokens: normalizeAndTokenize(t) }));
+    const normalizedPrefs = (preferredTopics || [])
+      .filter(Boolean)
+      .map(p => ({ raw: p, tokens: normalizeAndTokenize(String(p)) }));
+
+    // 1) Odak eşleşmesi (kelime kesişimi) ve recent tekrarı engelle
+    for (const pref of normalizedPrefs) {
+      const hit = normalizedList.find(nt => {
+        const intersection = new Set([...nt.tokens].filter(x => pref.tokens.has(x)));
+        return intersection.size > 0;
+      });
+      if (hit && hit.raw !== recentTopicBySubject[subject]) return hit.raw;
     }
-    // Aksi halde sıradaki
+
+    // 2) Seeded çeşitlilik (başlangıç index) + round-robin, recent tekrarı engelle
+    const rand = this.randomWithSeed(seed);
+    let start = Math.floor(rand() * Math.max(1, list.length));
+    for (let i = 0; i < list.length; i++) {
+      const candidate = list[(start + i) % list.length];
+      if (candidate !== recentTopicBySubject[subject]) return candidate;
+    }
+
+    // 3) Son çare: ilk öğe
     return list[0];
   }
 
-  private generateFallbackPlan(planDurationDays: number, data: PlanGenerationData, userContext: any) {
+  private async generateFallbackPlan(planDurationDays: number, data: PlanGenerationData, userContext: any) {
     const dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
     const subjects = Array.isArray(data.subjects) && data.subjects.length > 0 ? data.subjects : ['Genel'];
     const sessionDuration = Math.max(30, Math.min(((data as any)?.preferences?.sessionDuration || 40), 120));
     const sessionsPerDay = 2;
-    const topicPool = this.buildCurriculumTopicPool(subjects, (data as any)?.preferences?.grade || 11);
+    const gradeNum = typeof (data as any)?.preferences?.grade === 'number'
+      ? (data as any).preferences.grade
+      : parseInt(String((data as any)?.preferences?.grade || '0')) || 11;
+    const topicPool = await this.buildCurriculumTopicPool(subjects, gradeNum);
     const preferredTopics: string[] = Array.isArray((data as any)?.preferences?.focusAreas) ? (data as any).preferences.focusAreas : [];
     const weeklyPlans: Array<any> = [];
+    // Seed ve shuffle fallback'te de kullanılmalı
+    const baseSeed = this.seedFrom((data as any)?.userId || 'anon');
+    const shuffledSubjects = this.shuffleWithSeed(subjects, baseSeed);
     for (let d = 0; d < planDurationDays; d++) {
       const weekIndex = Math.floor(d / 7) + 1;
       while (weeklyPlans.length < weekIndex) {
@@ -1035,9 +1460,10 @@ BEKLENEN JSON ŞEMASI (örnek):
       }
       const dayName = dayNames[d % 7];
       let lastTopicsForDay: Record<string, string> = {};
+      const dayStartOffset = (d + weekIndex + shuffledSubjects.length) % Math.max(1, shuffledSubjects.length);
       for (let k = 0; k < sessionsPerDay; k++) {
-        const subject = subjects[(d * sessionsPerDay + k) % subjects.length];
-        let topic = this.pickTopicFromPool(subject, topicPool, preferredTopics) || (k === 0 ? 'Temel kavramlar' : 'Pekiştirme çalışması');
+        const subject = shuffledSubjects[(dayStartOffset + k) % shuffledSubjects.length];
+        let topic = this.pickTopicFromPool(subject, topicPool, preferredTopics, baseSeed + d * 10 + k, lastTopicsForDay) || (k === 0 ? 'Temel kavramlar' : 'Pekiştirme çalışması');
         // Aynı gün aynı konuda tekrar olmasın
         if (lastTopicsForDay[subject] && lastTopicsForDay[subject] === topic) {
           const list = topicPool[subject] || [];
@@ -1050,7 +1476,8 @@ BEKLENEN JSON ŞEMASI (örnek):
           day: dayName,
           subject,
           topic: `${subject} - ${topic}`,
-          durationInMinutes: sessionDuration,
+          // Jitter
+          durationInMinutes: Math.max(30, Math.min(sessionDuration + Math.round((this.randomWithSeed(baseSeed + d * 100 + k)() - 0.5) * 20), 120)),
           type: 'study',
           difficulty: d === 0 ? 'medium' : (d === 1 ? 'hard' : 'review'),
           objectives: ['Hedefe yönelik ilerleme'],
@@ -1063,7 +1490,7 @@ BEKLENEN JSON ŞEMASI (örnek):
       weeklyPlans,
       milestones: this.generateMilestones(data.subjects, data.goals),
       adaptiveStrategies: this.generateAdaptiveStrategies(data.learningStyle),
-      optimizationNotes: ['Kullanıcı tercihleri ve performansına göre otomatik baz plan'],
+      optimizationNotes: ['Kullanıcı tercihleri ve performansına göre otomatik baz plan (seeded variety)'],
       planDurationDays,
     };
   }

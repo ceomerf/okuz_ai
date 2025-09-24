@@ -796,69 +796,115 @@ Sen, karmaşık konuları görsel ve sezgisel "Bilgi Ağaçları"na dönüştür
       const gradeLine = data.grade ? `Sınıf: ${data.grade}.` : '';
 
       const prompt = `
-      ${gradeLine} ${subjectLine}
-      "${data.topic}" konusu için ${count} adet ${data.difficulty} zorlukta soru oluştur.
-      Soruları doğrudan bu konuya ve bu dersin müfredat bağlamına uygun üret.
-      
-      Format:
+${gradeLine} ${subjectLine}
+"${data.topic}" konusu için ${count} adet ${data.difficulty} zorlukta çoktan seçmeli soru oluştur.
+Soruları doğrudan bu konuya ve bu dersin müfredat bağlamına uygun üret.
+
+SADECE AŞAĞIDAKİ JSON'U DÖN. Açıklama ekleme, markdown veya kod bloğu KULLANMA.
+{
+  "quiz": {
+    "topic": "${data.topic}",
+    "difficulty": "${data.difficulty}",
+    "questions": [
       {
-        "quiz": {
-          "topic": "${data.topic}",
-          "difficulty": "${data.difficulty}",
-          "questions": [
+        "question": "Soru metni",
+        "options": ["A", "B", "C", "D"],
+        "correctAnswer": "A",
+        "explanation": "Açıklama",
+        "timeLimit": 60
+      }
+    ]
+  }
+}
+`;
+
+      // Yapılandırılmış içerik iste
+      const parsed = await this.geminiService.generateStructuredContent(prompt, {
+        quiz: {
+          topic: data.topic,
+          difficulty: data.difficulty,
+          questions: [
             {
-              "question": "Soru metni",
-              "options": ["A", "B", "C", "D"],
-              "correctAnswer": "A",
-              "explanation": "Açıklama",
-              "timeLimit": 60
+              question: 'string',
+              options: ['string'],
+              correctAnswer: 'string',
+              explanation: 'string',
+              timeLimit: 60
             }
           ]
         }
-      }
-      `;
+      });
 
-      const response = await this.geminiService.generateContent(prompt);
-      
-      let quiz;
-      try {
-        // Clean the response first
-        let cleanResponse = response.trim();
-        
-        // Remove markdown code blocks
-        if (cleanResponse.includes('```json')) {
-          cleanResponse = cleanResponse.replace(/```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleanResponse.includes('```')) {
-          cleanResponse = cleanResponse.replace(/```\s*/, '').replace(/\s*```$/, '');
+      // Soruları topla
+      const rawQuestions: any[] = (parsed?.quiz?.questions || parsed?.questions || []);
+
+      // Gerekirse tamamlayıcı üretim dene
+      if (!Array.isArray(rawQuestions) || rawQuestions.length < count) {
+        const needed = count - (Array.isArray(rawQuestions) ? rawQuestions.length : 0);
+        if (needed > 0) {
+          try {
+            const extra = await this.geminiService.generateQuestions(data.topic, data.difficulty, needed);
+            const extraList: any[] = Array.isArray(extra) ? extra : (extra?.questions || []);
+            if (Array.isArray(rawQuestions)) {
+              rawQuestions.push(...extraList);
+            }
+          } catch (e) {
+            this.logger.warn(`Ek soru üretilemedi: ${(e as any)?.message || e}`);
+          }
         }
-        
-        // Remove any remaining markdown formatting
-        cleanResponse = cleanResponse.replace(/^```/, '').replace(/```$/, '');
-        
-        quiz = JSON.parse(cleanResponse);
-      } catch (parseError) {
-        this.logger.warn(`Live quiz JSON parse hatası: ${parseError.message}`);
-        this.logger.debug(`Orijinal response: ${response}`);
-        quiz = {
+      }
+
+      // Normalize et ve doğru indeksini belirle
+      const normalized = (Array.isArray(rawQuestions) ? rawQuestions : []).map((q: any, idx: number) => {
+        const question = (q?.question ?? q?.questionText ?? '').toString();
+        const options: string[] = Array.isArray(q?.options) ? q.options.map((o: any) => o?.toString?.() ?? String(o)) : [];
+        const correctAnswer = (q?.correctAnswer ?? q?.answer ?? '').toString();
+        let correctIndex: number = typeof q?.correctIndex === 'number' ? q.correctIndex : -1;
+        if (correctIndex < 0 && correctAnswer) {
+          const ans = correctAnswer.trim();
+          if (ans.length === 1) {
+            const code = ans.toUpperCase().charCodeAt(0) - 65; // A=0
+            if (code >= 0 && code < options.length) correctIndex = code;
+          }
+          if (correctIndex < 0) {
+            const byText = options.findIndex(o => o.trim() === ans);
+            if (byText >= 0) correctIndex = byText;
+          }
+        }
+        if (correctIndex < 0 && options.length > 0) correctIndex = 0;
+
+        return {
+          id: `q-${Date.now()}-${idx}`,
+          question,
+          options,
+          correctAnswer,
+          correctIndex,
+          explanation: (q?.explanation ?? '').toString(),
+          timeLimit: typeof q?.timeLimit === 'number' ? q.timeLimit : 60,
+        };
+      });
+
+      // İstenen sayıya kırp/doldur
+      let questions = normalized.slice(0, count);
+      if (questions.length < count && questions.length > 0) {
+        const base = [...questions];
+        while (questions.length < count) {
+          const clone = { ...base[questions.length % base.length] };
+          clone.id = `${clone.id}-c${questions.length}`;
+          questions.push(clone);
+        }
+      }
+
+      return {
+        success: true,
+        questions, // düz liste: frontend kolay tüketim için
+        quiz: {
           quiz: {
             topic: data.topic,
             difficulty: data.difficulty,
-            questions: [
-              {
-                question: `${data.topic} konusu hakkında temel soru`,
-                options: ["A", "B", "C", "D"],
-                correctAnswer: "A",
-                explanation: "Temel açıklama",
-                timeLimit: 60
-              }
-            ]
+            questions,
           }
-        };
-      }
-      
-      return {
-        success: true,
-        quiz: quiz
+        }
       };
     } catch (error) {
       console.error('Live quiz oluşturma hatası:', error);

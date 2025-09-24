@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -8,7 +9,7 @@ import * as compression from 'compression';
 import rateLimit from 'express-rate-limit';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Güvenlik ve performans middleware'leri
   app.use(helmet());
@@ -65,6 +66,9 @@ async function bootstrap() {
       persistAuthorization: true,
     },
   });
+
+  // Reverse proxy arkasında doğru client IP ve forwarded header'ları kullanmak için
+  app.set('trust proxy', 1);
 
   const port = process.env.PORT || 3002; // Port 3002'ye değiştirdik
   await app.listen(port);
