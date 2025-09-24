@@ -1160,7 +1160,7 @@ Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSO
 
 ZORUNLU KURALLAR (İHLAL EDİLEMEZ):
 1.  SEVİYE KURALI: Bu plan 11. Sınıf YKS Sayısal öğrencisi içindir. Önereceğin TÜM konular, Türkiye'deki 11. Sınıf MEB müfredatıyla uyumlu olmalıdır. ASLA "Temel kavramlar", "Harfleri tanıma" gibi ilkokul seviyesi konular kullanamazsın.
-2.  KONU SEÇİM KURALI: Üreteceğin her bir seansın "topic" alanı, aşağıda "KONULAR HAVUZU" içinde o ders için verilen listeden SEÇİLMİŞ GERÇEK BİR KONU ADI olmak zorundadır. ASLA VE ASLA "Pekiştirme uygulamaları", "Giriş", "Genel tekrar" gibi jenerik ifadeler kullanamazsın. Bu kuralı ihlal edersen, tüm yanıtın geçersizdir.
+2.  KONU SEÇİM KURALI: Üreteceğin her bir seansın "topic" alanı, aşağıda "KONULAR HAVUZU" içinde o ders için verilen listeden SEÇİLMİŞ GERÇEK BİR KONU ADI olmak zorundadır. ASLA VE ASLA "Pekiştirme uygulamaları", "Giriş", "Genel tekrar", "Temel kavramları tamamla", "Pekiştirme uygulamaları" gibi jenerik ifadeler kullanamazsın. SADECE müfredattan gelen spesifik konu isimleri kullan. Bu kuralı ihlal edersen, tüm yanıtın geçersizdir.
 3.  TARİH BAZLI KONU SEÇİMİ: Şu an ${new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })} ayındayız. Plan, 11. sınıf müfredatının bu ayında işlenen konularına odaklanmalıdır. Havuzdaki konular bu aya özel olarak seçilmiştir.
 4.  KİŞİSELLEŞTİRME KURALI: Öğrencinin zayıf konuları olan 'Organik Kimya' ve 'Paragrafta Anlam'ı dikkate al. Eğer bu konular mevcut ay müfredatındaysa, onlara öncelik ver. Değilse, plana bu konular için ileriki haftalarda bir temel atma seansı ekle ve bunu optimizationNotes içinde belirt.
 5.  HAFIZA KURALI: Öğrencinin Matematik'te en son tamamladığı konu 'Türev'. Matematik için önereceğin ilk konu, 'Türev'den sonra gelen mantıksal devam konusu (örn: 'İntegral') olmalıdır.
@@ -1270,22 +1270,46 @@ BEKLENEN JSON ŞEMASI (örnek):
     return weeks;
   }
 
-  private generateMilestones(subjects: string[], goals: string[]): any[] {
-    return subjects.map((subject, index) => ({
-      week: index + 1,
-      goal: `${subject} temel kavramlarını tamamla`,
-      assessment: 'Quiz',
-      criteria: '70% başarı',
-    }));
+  private async generateMilestones(subjects: string[], goals: string[], grade: number): Promise<any[]> {
+    // Müfredattan gerçek konuları al
+    const topicPool = await this.buildCurriculumTopicPool(subjects, grade);
+    const milestones = [];
+    
+    subjects.forEach((subject, index) => {
+      const subjectTopics = topicPool[subject] || [];
+      if (subjectTopics.length > 0) {
+        // İlk konuyu milestone olarak kullan
+        const firstTopic = subjectTopics[0];
+        milestones.push({
+          week: index + 1,
+          goal: `${subject} - ${firstTopic} konusunu tamamla`,
+          assessment: 'Quiz',
+          criteria: '70% başarı',
+        });
+      }
+    });
+    
+    return milestones;
   }
 
-  private generateAdaptiveStrategies(learningStyle: string): string[] {
-    return [
+  private generateAdaptiveStrategies(learningStyle: string, subjects: string[]): string[] {
+    const strategies = [
       'Zorlandığında konuyu böl ve küçük parçalarda çalış',
       'Başarılı olduğunda zorluk seviyesini artır',
       'Motivasyon düştüğünde kısa molalar ver',
-      `${learningStyle} öğrenme stiline uygun materyaller kullan`,
     ];
+    
+    // Öğrenme stiline özel stratejiler
+    const styleStrategies = {
+      'visual': ['Görsel diyagramlar ve şemalar kullan', 'Renk kodlaması yap', 'Grafik ve tabloları incele'],
+      'auditory': ['Sesli tekrar yap', 'Grup tartışmaları organize et', 'Podcast ve sesli materyaller kullan'],
+      'kinesthetic': ['Pratik uygulamalar yap', 'Deney ve laboratuvar çalışmaları', 'Hareket halinde öğren'],
+      'reading': ['Detaylı notlar al', 'Özet çıkar', 'Kitap ve makale oku'],
+    };
+    
+    const subjectStrategies = subjects.map(subject => `${subject} dersinde aktif öğrenme teknikleri kullan`);
+    
+    return [...strategies, ...(styleStrategies[learningStyle] || styleStrategies['visual']), ...subjectStrategies];
   }
 
   private async optimizePlan(planStructure: any, data: PlanGenerationData, userContext: any) {
@@ -1629,37 +1653,15 @@ BEKLENEN JSON ŞEMASI (örnek):
         pool[subject] = subjectTopics.length > 0 ? subjectTopics : [];
       });
 
-      // Eğer hiç konu bulunamadıysa, fallback konuları kullan
+      // Eğer hiç konu bulunamadıysa, hata ver
       const hasAnyTopics = Object.values(pool).some(topics => topics.length > 0);
       if (!hasAnyTopics) {
-        console.log('[PLANNING] Veritabanından konu bulunamadı, fallback konuları kullanılıyor');
-        const fallbackTopics = {
-          'Matematik': ['Trigonometri', 'Türev', 'İntegral', 'Limit'],
-          'Fizik': ['Vektörler', 'Kuvvet', 'Elektrik', 'Manyetizma'],
-          'Kimya': ['Atom', 'Kimyasal Bağlar', 'Organik Kimya', 'Asitler'],
-          'Biyoloji': ['Hücre', 'Kalıtım', 'Solunum', 'Fotosentez'],
-          'Türkçe': ['Paragrafta Anlam', 'Cümlede Anlam', 'Yazım Kuralları']
-        };
-        
-        subjects.forEach(subject => {
-          pool[subject] = fallbackTopics[subject] || ['Temel Konular'];
-        });
+        throw new Error(`[PLANNING] ${grade}. sınıf için ${subjects.join(', ')} derslerinde hiç konu bulunamadı. Müfredat veritabanı boş olabilir.`);
       }
 
     } catch (error) {
       console.error('[PLANNING] Veritabanından müfredat çekme hatası:', error);
-      // Hata durumunda fallback konuları kullan
-      const fallbackTopics = {
-        'Matematik': ['Trigonometri', 'Türev', 'İntegral', 'Limit'],
-        'Fizik': ['Vektörler', 'Kuvvet', 'Elektrik', 'Manyetizma'],
-        'Kimya': ['Atom', 'Kimyasal Bağlar', 'Organik Kimya', 'Asitler'],
-        'Biyoloji': ['Hücre', 'Kalıtım', 'Solunum', 'Fotosentez'],
-        'Türkçe': ['Paragrafta Anlam', 'Cümlede Anlam', 'Yazım Kuralları']
-      };
-      
-      subjects.forEach(subject => {
-        pool[subject] = fallbackTopics[subject] || ['Temel Konular'];
-      });
+      throw new Error(`[PLANNING] Müfredat verilerine erişilemiyor: ${error.message}`);
     }
 
     return pool;
@@ -1705,59 +1707,7 @@ BEKLENEN JSON ŞEMASI (örnek):
     return list;
   }
 
-  private async generateFallbackPlan(planDurationDays: number, data: PlanGenerationData, userContext: any) {
-    const dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
-    const subjects = Array.isArray(data.subjects) && data.subjects.length > 0 ? data.subjects : ['Genel'];
-    const sessionDuration = Math.max(30, Math.min(((data as any)?.preferences?.sessionDuration || 40), 120));
-    const sessionsPerDay = 2;
-    const gradeNum = typeof (data as any)?.preferences?.grade === 'number'
-      ? (data as any).preferences.grade
-      : parseInt(String((data as any)?.preferences?.grade || '0')) || 11;
-    const topicPool = await this.buildCurriculumTopicPool(subjects, gradeNum);
-    const preferredTopics: string[] = Array.isArray((data as any)?.preferences?.focusAreas) ? (data as any).preferences.focusAreas : [];
-    const weeklyPlans: Array<any> = [];
-    // Seed ve shuffle fallback'te de kullanılmalı
-    const baseSeed = this.seedFrom((data as any)?.userId || 'anon');
-    const shuffledSubjects = this.shuffleWithSeed(subjects, baseSeed);
-    for (let d = 0; d < planDurationDays; d++) {
-      const weekIndex = Math.floor(d / 7) + 1;
-      while (weeklyPlans.length < weekIndex) {
-        weeklyPlans.push({ week: weeklyPlans.length + 1, focus: undefined, sessions: [] });
-      }
-      const dayName = dayNames[d % 7];
-      let lastTopicsForDay: Record<string, string> = {};
-      const dayStartOffset = (d + weekIndex + shuffledSubjects.length) % Math.max(1, shuffledSubjects.length);
-      for (let k = 0; k < sessionsPerDay; k++) {
-        const subject = shuffledSubjects[(dayStartOffset + k) % shuffledSubjects.length];
-        const topicList = this.pickTopicFromPool(
-          subject,
-          topicPool
-        );
-        const topic = subject; // Geçici: seçim AI'a devredildi
-        lastTopicsForDay[subject] = topic;
-        weeklyPlans[weekIndex - 1].sessions.push({
-          week: weekIndex,
-          day: dayName,
-          subject,
-          topic: `${subject} - ${topic}`,
-          // Jitter
-          durationInMinutes: Math.max(30, Math.min(sessionDuration + Math.round((this.randomWithSeed(baseSeed + d * 100 + k)() - 0.5) * 20), 120)),
-          type: 'study',
-          difficulty: d === 0 ? 'medium' : (d === 1 ? 'hard' : 'review'),
-          objectives: ['Hedefe yönelik ilerleme'],
-          resources: [],
-          techniques: this.getTechniquesForLearningStyle(data.learningStyle),
-        });
-      }
-    }
-    return {
-      weeklyPlans,
-      milestones: this.generateMilestones(data.subjects, data.goals),
-      adaptiveStrategies: this.generateAdaptiveStrategies(data.learningStyle),
-      optimizationNotes: ['Kullanıcı tercihleri ve performansına göre otomatik baz plan (seeded variety)'],
-      planDurationDays,
-    };
-  }
+  // Fallback plan kaldırıldı - artık sadece gerçek müfredat kullanılıyor
 
   private async generateRecommendations(data: PlanGenerationData, userContext: any) {
     const recommendations = [];
