@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PlanningService } from './planning.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GeneratePlanDto } from './dto/generate-plan.dto';
+import { CreateFromOnboardingDto } from './dto/create-from-onboarding.dto';
 import { IsArray, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min, MinLength } from 'class-validator';
 import { RescheduleSessionDto } from './dto/reschedule-session.dto';
 
@@ -160,7 +161,7 @@ export class PlanningController {
   // Create plan from onboarding
   @Post('create-from-onboarding')
   @ApiOperation({ summary: 'Create initial plan using onboarding data' })
-  async createFromOnboarding(@Request() req, @Body() data: any) {
+  async createFromOnboarding(@Request() req, @Body() data: CreateFromOnboardingDto) {
     return this.planningService.createPlanFromOnboarding(req.user.id, data);
   }
 

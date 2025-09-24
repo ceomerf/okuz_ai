@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -26,6 +27,7 @@ import { RealtimeModule } from './realtime/realtime.module';
       envFilePath: '.env',
     }),
     PrismaModule,
+    ScheduleModule.forRoot(),
     GeminiModule,
     AuthModule,
     UsersModule,
