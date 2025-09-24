@@ -174,7 +174,14 @@ export class PlanningService {
       const dayStartOffset = (d + weekIndex + shuffledSubjects.length) % Math.max(1, shuffledSubjects.length);
       for (let k = 0; k < minSessionsPerDay; k++) {
         const subject = shuffledSubjects[(dayStartOffset + k) % shuffledSubjects.length];
-        const topic = this.pickTopicFromPool(subject, topicPool, preferredTopics, baseSeed + d * 10 + k, lastTopicsForDay);
+        const topic = this.pickTopicFromPool(
+          subject,
+          topicPool,
+          preferredTopics,
+          baseSeed + d * 10 + k,
+          lastTopicsForDay,
+          (data as any)?.preferences?.lastCompletedTopics || {}
+        );
         // Süre varyasyonu (jitter) – sınırlar içinde
         const baseDuration = Math.max(30, Math.min(((data as any)?.preferences?.sessionDuration || 40), 120));
         const jitterRand = this.randomWithSeed(baseSeed + d * 100 + k)();
@@ -879,6 +886,14 @@ export class PlanningService {
       gradeNum || 11,
       (data as any)?.preferences?.curriculumTopicsBySubject
     );
+    // Mevsimsel strateji ekle
+    const currentMonth = new Date().getMonth() + 1;
+    let strategicGuidance = '';
+    if (currentMonth >= 9 && currentMonth <= 12) {
+      strategicGuidance = 'STRATEJİK ODAK: Şu an dönemin başındayız. Program, bu ayın yeni konularını öğrenmeye ve temel atmaya odaklanmalıdır.';
+    } else if (currentMonth >= 4 && currentMonth <= 6) {
+      strategicGuidance = 'STRATEJİK ODAK: Sınava az kaldı. Yeni konu öğrenmeyi bırak. Program, genel tekrar ve deneme sınavı analizine odaklanmalıdır.';
+    }
     const topicPoolJson = JSON.stringify(topicPool);
     return `
 Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSON.
@@ -888,6 +903,7 @@ ZORUNLU KURALLAR (İHLAL EDİLMEZ):
 - PLANIN ANA ODAĞINI, ÖĞRENCİNİN 'Zorluk/alanda zorlanmalar' (focusAreas) LİSTESİNDEKİ KONULAR YAP. İLK HAFTANIN OTURUMLARI BU KONULARI HEDEF ALMALIDIR.
 
 PLAN KISITLARI:
+- ${strategicGuidance}
 - Plan süresi: ${planDurationDays} gün.
 - Her gün en az ${minSessionsPerDay} oturum üret. Oturumlar arasında mola öner.
 - Her oturum için durationInMinutes alanını DOLDUR (ör. 40, 60 gibi). Eğer duration alanı kullanıyorsan durationInMinutes yerine duration kullanabilirsin.
@@ -1325,7 +1341,10 @@ BEKLENEN JSON ŞEMASI (örnek):
       return pool;
     }
 
-    // Veritabanından uygun konuları çek
+    // Not: Ay bazlı filtreleme şimdilik devre dışı (DB şeması 'month' olmayabilir)
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1; // 1-12
+
     const normalizedSubjects = (subjects || []).map(s => (s || '').trim()).filter(Boolean);
     const topicsFromDb = await this.prisma.mebTopic.findMany({
       where: {
@@ -1335,21 +1354,69 @@ BEKLENEN JSON ŞEMASI (örnek):
       orderBy: { topic: 'asc' },
     });
 
-    subjects.forEach(subject => {
+    // Ders adı alias haritası (11-12. sınıf için İleri dersler)
+    const SUBJECT_ALIASES: Record<number, Record<string, string>> = {
+      11: {
+        'Matematik': 'İleri Matematik',
+        'Fizik': 'İleri Fizik',
+        'Kimya': 'İleri Kimya',
+        'Biyoloji': 'İleri Biyoloji',
+        'Türkçe': 'Türk Dili ve Edebiyatı',
+      },
+      12: {
+        'Matematik': 'İleri Matematik',
+        'Fizik': 'İleri Fizik',
+        'Kimya': 'İleri Kimya',
+        'Biyoloji': 'İleri Biyoloji',
+        'Türkçe': 'Türk Dili ve Edebiyatı',
+      },
+    };
+
+    for (const subject of subjects) {
       const normalizedSubject = (subject || '').trim();
+      const alias = (SUBJECT_ALIASES[grade]?.[subject] || '').trim();
       const subjectTopics = topicsFromDb
         .filter(t => {
           const dbSubject = (t.subject || '').toLowerCase();
           const requestedSubject = normalizedSubject.toLowerCase();
-          return dbSubject.includes(requestedSubject) || requestedSubject.includes(dbSubject);
+          const requestedAlias = alias.toLowerCase();
+          return (
+            dbSubject.includes(requestedSubject) || requestedSubject.includes(dbSubject) ||
+            (!!requestedAlias && (dbSubject.includes(requestedAlias) || requestedAlias.includes(dbSubject)))
+          );
         })
         .map(t => t.topic);
       if (subjectTopics.length > 0) {
         pool[subject] = subjectTopics;
       } else {
-        pool[subject] = ['Giriş', 'Temel kavramlar', 'Pekiştirme uygulamaları'];
+        // Akıllı fallback: ay filtresi yoksa ders adı eşleşmesini genişlet
+        let altTopics = await this.prisma.mebTopic.findMany({
+          where: {
+            grade: grade,
+            OR: [normalizedSubject, alias].filter(Boolean).map(s => ({ subject: { contains: s as string, mode: 'insensitive' as const } })),
+          },
+          orderBy: { topic: 'asc' },
+        });
+
+        const altSubjectTopics = (altTopics || [])
+          .filter(t => {
+            const dbSubject = (t.subject || '').toLowerCase();
+            const requested = normalizedSubject.toLowerCase();
+            const requestedAlias = alias.toLowerCase();
+            return (
+              dbSubject.includes(requested) || requested.includes(dbSubject) ||
+              (!!requestedAlias && (dbSubject.includes(requestedAlias) || requestedAlias.includes(dbSubject)))
+            );
+          })
+          .map(t => t.topic);
+
+        if (altSubjectTopics.length > 0) {
+          pool[subject] = altSubjectTopics;
+        } else {
+          pool[subject] = ['Giriş', 'Temel kavramlar', 'Pekiştirme uygulamaları'];
+        }
       }
-    });
+    }
 
     return pool;
   }
@@ -1388,7 +1455,8 @@ BEKLENEN JSON ŞEMASI (örnek):
     pool: Record<string, string[]>,
     preferredTopics: string[],
     seed: number,
-    recentTopicBySubject: Record<string, string>
+    recentTopicBySubject: Record<string, string>,
+    lastCompletedTopics?: Record<string, string[]>
   ): string {
     const list = pool[subject] || [];
     if (list.length === 0) return 'Temel kavramlar';
@@ -1404,22 +1472,68 @@ BEKLENEN JSON ŞEMASI (örnek):
       .filter(Boolean)
       .map(p => ({ raw: p, norm: normalize(String(p)) }));
 
-    // 1) Odak eşleşmesi (recent ile tekrar engeli)
+    // 0) Geçmişte tamamlanan konuları ele
+    const completedSet = new Set((lastCompletedTopics?.[subject] || []).map(x => normalize(String(x))));
+    const filteredList = normalizedList.filter(nt => !completedSet.has(nt.norm));
+    const effectiveList = filteredList.length > 0 ? filteredList : normalizedList;
+
+    // 0.5) Basit devam konusu ipuçları (heuristic)
+    const NEXT_TOPIC_HINTS: Record<string, Record<string, string[]>> = {
+      'Matematik': {
+        'türev': ['integral', 'türev uygulamaları'],
+        'limit': ['türev'],
+        'integral': ['integral uygulamaları'],
+      },
+      'Türkçe': {
+        'paragraf': ['paragraf anlam bilgisi', 'paragrafta anlam', 'anlatım teknikleri'],
+      },
+      'Kimya': {
+        'organik kimya': ['organik bileşikler', 'hidrokarbonlar', 'fonksiyonel gruplar'],
+      },
+    };
+    const lc = (s: string) => normalize(s);
+    const lastCompleted = (lastCompletedTopics?.[subject] || []).map(lc);
+    const nextHints = lastCompleted.flatMap(c => NEXT_TOPIC_HINTS[subject]?.[c] || []);
+    if (nextHints.length > 0) {
+      const nextHit = effectiveList.find(nt => nextHints.some(h => nt.norm.includes(lc(h)) || lc(h).includes(nt.norm)));
+      if (nextHit && nextHit.raw !== recentTopicBySubject[subject]) return nextHit.raw;
+    }
+
+    // 1) Odak eşleşmesi (token tabanlı benzerlik + includes)
+    const tokenize = (s: string) => new Set((s || '').split(/\s+/).filter(Boolean));
+    let bestMatch: { raw: string; norm: string } | null = null;
+    let highestScore = 0.5; // minimum benzerlik eşiği
     for (const pref of normalizedPrefs) {
-      const hit = normalizedList.find(nt => nt.norm.includes(pref.norm) || pref.norm.includes(nt.norm));
-      if (hit && hit.raw !== recentTopicBySubject[subject]) return hit.raw;
+      // Önce hızlı includes kontrolü
+      const quick = effectiveList.find(nt => nt.norm.includes(pref.norm) || pref.norm.includes(nt.norm));
+      if (quick && quick.raw !== recentTopicBySubject[subject]) return quick.raw;
+      // Sonra token Jaccard
+      const prefTokens = tokenize(pref.norm);
+      for (const item of effectiveList) {
+        const itemTokens = tokenize(item.norm);
+        const intersection = new Set([...itemTokens].filter(x => prefTokens.has(x)));
+        const union = new Set([...itemTokens, ...prefTokens]);
+        const score = union.size === 0 ? 0 : intersection.size / union.size;
+        if (score > highestScore) {
+          highestScore = score;
+          bestMatch = item;
+        }
+      }
+    }
+    if (bestMatch && bestMatch.raw !== recentTopicBySubject[subject]) {
+      return bestMatch.raw;
     }
 
     // 2) Seeded çeşitlilik (başlangıç index) + round-robin, recent tekrarı engelle
     const rand = this.randomWithSeed(seed);
-    let start = Math.floor(rand() * Math.max(1, list.length));
-    for (let i = 0; i < list.length; i++) {
-      const candidate = list[(start + i) % list.length];
+    let start = Math.floor(rand() * Math.max(1, effectiveList.length));
+    for (let i = 0; i < effectiveList.length; i++) {
+      const candidate = effectiveList[(start + i) % effectiveList.length].raw;
       if (candidate !== recentTopicBySubject[subject]) return candidate;
     }
 
     // 3) Son çare: ilk öğe
-    return list[0];
+    return (effectiveList[0]?.raw) || list[0];
   }
 
   private async generateFallbackPlan(planDurationDays: number, data: PlanGenerationData, userContext: any) {
@@ -1446,7 +1560,14 @@ BEKLENEN JSON ŞEMASI (örnek):
       const dayStartOffset = (d + weekIndex + shuffledSubjects.length) % Math.max(1, shuffledSubjects.length);
       for (let k = 0; k < sessionsPerDay; k++) {
         const subject = shuffledSubjects[(dayStartOffset + k) % shuffledSubjects.length];
-        let topic = this.pickTopicFromPool(subject, topicPool, preferredTopics, baseSeed + d * 10 + k, lastTopicsForDay) || (k === 0 ? 'Temel kavramlar' : 'Pekiştirme çalışması');
+        let topic = this.pickTopicFromPool(
+          subject,
+          topicPool,
+          preferredTopics,
+          baseSeed + d * 10 + k,
+          lastTopicsForDay,
+          (data as any)?.preferences?.lastCompletedTopics || {}
+        ) || (k === 0 ? 'Temel kavramlar' : 'Pekiştirme çalışması');
         // Aynı gün aynı konuda tekrar olmasın
         if (lastTopicsForDay[subject] && lastTopicsForDay[subject] === topic) {
           const list = topicPool[subject] || [];

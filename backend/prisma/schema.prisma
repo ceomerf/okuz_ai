@@ -470,6 +470,8 @@ model MebTopic {
   subject   String   // Dersin adı (Örn: "Matematik", "Türkçe")
   unit      String   // Ünitenin/temanın adı (Örn: "Sayılar ve Cebir")
   topic     String   // Konunun adı (Örn: "Üslü İfadeler ve Denklemler")
+  
+  month     Int?     // YENİ ALAN: Konunun işlendiği ay (9=Eylül, 10=Ekim, ..., 6=Haziran)
   outcomes  String[] // Bu konuya ait MEB kazanımları (opsiyonel)
   tytWeight Int      @default(0) // Konunun TYT'deki ortalama soru sayısı
   aytWeight Int      @default(0) // Konunun AYT'deki ortalama soru sayısı

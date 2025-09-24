@@ -33,7 +33,15 @@ async function main() {
           const m = (s || '').match(/(\d+)/);
           return m ? parseInt(m[1], 10) : 0;
         };
-        const rows: Array<{ grade: number; subject: string; unit: string; topic: string; outcomes: string[]; tytWeight: number; aytWeight: number }> = [];
+        const rows: Array<{ grade: number; subject: string; unit: string; topic: string; month?: number; outcomes: string[]; tytWeight: number; aytWeight: number }> = [];
+        // Akademik ay sırası: Eyl(9)→Eki(10)→Kas(11)→Ara(12)→Oca(1)→...→Haz(6)
+        const academicMonthOrder = [9,10,11,12,1,2,3,4,5,6];
+        const nextAcademicMonth = (current: number): number => {
+          const idx = academicMonthOrder.indexOf(current);
+          return academicMonthOrder[(idx >= 0 ? idx + 1 : 0) % academicMonthOrder.length];
+        };
+        // Konu sırasına göre yaklaşık ay atamak için ders bazlı sayaç
+        const subjectToApproxMonth: Record<string, number> = {};
         (curriculum as Level[]).forEach((level) => {
           const grade = toGrade(level.sinif_duzeyi);
           (level.dersler || []).forEach((ders: any) => {
@@ -42,8 +50,22 @@ async function main() {
             if (Array.isArray(ders.temalar)) {
               ders.temalar.forEach((tema: any) => {
                 const unit = String(tema.tema_adi || 'Genel');
-                (tema.konular || []).forEach((topicName: string) => {
-                  rows.push({ grade, subject, unit, topic: String(topicName), outcomes: [], tytWeight: 0, aytWeight: 0 });
+                (tema.konular || []).forEach((k: any) => {
+                  let topicName: string;
+                  let monthVal: number | undefined = undefined;
+                  if (k && typeof k === 'object') {
+                    topicName = String(k.topic || k.name || k.title || 'Konu');
+                    if (typeof k.month === 'number') monthVal = k.month;
+                  } else {
+                    topicName = String(k);
+                  }
+                  // Ay verilmemişse, ders bazlı artan ay dağıtımı uygula
+                  if (monthVal == null) {
+                    const currentApprox = subjectToApproxMonth[subject] ?? 9;
+                    monthVal = currentApprox;
+                    subjectToApproxMonth[subject] = nextAcademicMonth(currentApprox);
+                  }
+                  rows.push({ grade, subject, unit, topic: topicName, month: monthVal, outcomes: [], tytWeight: 0, aytWeight: 0 });
                 });
               });
             }
@@ -51,8 +73,21 @@ async function main() {
             if (Array.isArray(ders.uniteler)) {
               ders.uniteler.forEach((unite: any) => {
                 const unit = String(unite.unite_adi || 'Genel');
-                (unite.konular || []).forEach((topicName: string) => {
-                  rows.push({ grade, subject, unit, topic: String(topicName), outcomes: [], tytWeight: 0, aytWeight: 0 });
+                (unite.konular || []).forEach((k: any) => {
+                  let topicName: string;
+                  let monthVal: number | undefined = undefined;
+                  if (k && typeof k === 'object') {
+                    topicName = String(k.topic || k.name || k.title || 'Konu');
+                    if (typeof k.month === 'number') monthVal = k.month;
+                  } else {
+                    topicName = String(k);
+                  }
+                  if (monthVal == null) {
+                    const currentApprox = subjectToApproxMonth[subject] ?? 9;
+                    monthVal = currentApprox;
+                    subjectToApproxMonth[subject] = nextAcademicMonth(currentApprox);
+                  }
+                  rows.push({ grade, subject, unit, topic: topicName, month: monthVal, outcomes: [], tytWeight: 0, aytWeight: 0 });
                 });
               });
             }
