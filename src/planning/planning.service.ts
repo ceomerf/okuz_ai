@@ -443,8 +443,11 @@ export class PlanningService {
     const validationResult = this.aiPlanSchema.safeParse(planSkeleton);
     if (!validationResult.success) {
       console.error('AI Skeleton Validation Error:', validationResult.error);
-      // skeleton geçersiz ise güvenli fallback üretimi
-      planSkeleton = await this.generateFallbackPlan(3, normalized, userContext);
+      // skeleton geçersiz ise güvenli fallback üretimi (istemciden gelen süreyi kullan)
+      const fallbackDays = Number((normalized as any)?.planDurationDays) > 0
+        ? Number((normalized as any).planDurationDays)
+        : 3;
+      planSkeleton = await this.generateFallbackPlan(fallbackDays, normalized, userContext);
     }
 
     // Plan optimizasyonu
@@ -586,6 +589,10 @@ export class PlanningService {
       learningStyle,
       currentLevel,
       userId,
+      // Frontend'den gelen plan süresi (gün) bilgisi varsa aynen geçir
+      ...(typeof data?.planDurationDays === 'number' && data.planDurationDays > 0
+        ? { planDurationDays: Number(data.planDurationDays) }
+        : {}),
       preferences: {
         studyTimes: preferredStudyTimes,
         sessionDuration: preferredSessionDuration,
