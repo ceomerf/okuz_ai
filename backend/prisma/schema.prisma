@@ -467,18 +467,24 @@ model Payment {
 model MebTopic {
   id        String   @id @default(cuid())
   grade     Int      // Konunun ait olduğu sınıf (9, 10, 11, 12)
-  subject   String   // Dersin adı (Örn: "Matematik", "Türkçe")
+  subject   String   // Dersin normalize edilmiş adı (Örn: "Matematik", "Türkçe")
   unit      String   // Ünitenin/temanın adı (Örn: "Sayılar ve Cebir")
   topic     String   // Konunun adı (Örn: "Üslü İfadeler ve Denklemler")
   
-  month     Int?     // YENİ ALAN: Konunun işlendiği ay (9=Eylül, 10=Ekim, ..., 6=Haziran)
+  // YENİ VE GELİŞMİŞ ALANLAR
+  month     Int?     // Konunun işlendiği ay (9=Eylül, 10=Ekim, ..., 6=Haziran)
+  officialSubjectName String? // MEB'deki resmi adı (örn: "İleri Matematik")
+  modelYear String?  // Müfredat yılı (örn: "2025-2026 Maarif Modeli")
+  
+  // YKS ağırlıkları
   outcomes  String[] // Bu konuya ait MEB kazanımları (opsiyonel)
   tytWeight Int      @default(0) // Konunun TYT'deki ortalama soru sayısı
   aytWeight Int      @default(0) // Konunun AYT'deki ortalama soru sayısı
 
-  // YENİ İLİŞKİLER - Many-to-many için ara tablo kullanımı
-  prerequisites MebTopic[] @relation("TopicPrerequisites")
-  leadsTo       MebTopic[] @relation("TopicPrerequisites")
+  // İLİŞKİLER (Hafıza için)
+  prerequisiteTopicId String?    // Bu konudan önce bilinmesi gereken konunun ID'si
+  prerequisiteTopic   MebTopic?  @relation("TopicPrerequisites", fields: [prerequisiteTopicId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  leadsToTopics       MebTopic[] @relation("TopicPrerequisites")
 
-  @@unique([grade, subject, topic])
+  @@unique([grade, subject, topic, modelYear])
 }

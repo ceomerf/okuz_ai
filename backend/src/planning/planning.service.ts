@@ -394,7 +394,7 @@ export class PlanningService {
     }
     const userId = normalized.userId;
 
-    // Zengin, taze payload verisini önceliklendir. userContext sadece tamamlayıcı olsun.
+    // Kullanıcı bağlamını hazırla
     let userContext: any = {
       subjectPerformance: {},
       timePatterns: {},
@@ -410,11 +410,11 @@ export class PlanningService {
       weakAreas: Array.isArray(normalized.preferences?.focusAreas) ? normalized.preferences!.focusAreas : [],
       strongAreas: [],
     };
+    
     try {
       console.time('analyzeUserContext');
       const dbContext = await this.analyzeUserContext(userId);
       console.timeEnd('analyzeUserContext');
-      // Taze veride olmayan alanları DB bağlamıyla tamamla (override yok)
       userContext = {
         ...dbContext,
         weakAreas: userContext.weakAreas?.length ? userContext.weakAreas : dbContext.weakAreas,
@@ -427,149 +427,37 @@ export class PlanningService {
       // DB bağlamı alınamazsa taze veri ile devam et
     }
 
-    // Çok-aşamalı AI etkileşimi: A) analiz, B) iskelet, C) detaylandırma (Function Calling destekli)
-    // Ana akış: Function Calling (yapısal garanti). Başarısız olursa klasik prompt/parse fallback.
-    let planSkeleton: any;
-    try {
-      const toolName = 'savePlanToDatabase';
-      const args = await this.geminiService.generateFunctionCall(
-        toolName,
-        this.buildSavePlanFunctionSchema(),
-        `Sadece ${toolName} fonksiyonunu uygun parametrelerle çağır. Açıklama yazma.\n` +
-        `Bağlam: ${JSON.stringify({
-          subjects: normalized.subjects,
-          goals: normalized.goals,
-          availableTime: normalized.availableTime,
-          learningStyle: normalized.learningStyle,
-          currentLevel: normalized.currentLevel,
-          preferences: normalized.preferences,
-          userContext,
-        })}`
-      );
-      if (!args || !args.weeklyPlans) {
-        throw new Error('FunctionCallMissingWeeklyPlans');
-      }
-      planSkeleton = args;
-    } catch (e) {
-      // Fallback: Çok-aşamalı analiz + tek-adım prompt → JSON parse
-      try {
-        const aiAnalysis = await this.aiAnalyzeUser(userContext, normalized);
-        let skeleton = await this.buildPlanSkeletonFromStrategy(aiAnalysis, normalized, userContext);
-        skeleton = await this.detailSessionsWithAI(skeleton, normalized);
-        planSkeleton = skeleton;
-      } catch (_) {
-        // Zincirleme AI çağrıları: 1) Strateji → 2) İskelet → 3) Detaylar
-        try {
-          console.log('[PLANNING] Zincirleme AI çağrıları başlatılıyor...');
-          
-          // 1. Adım: Yüksek seviye strateji
-          console.time('strategyCall');
-          const strategyPrompt = await this.createHighLevelStrategyPrompt(userContext, normalized);
-          const strategyResponse = await this.geminiService.generateContent(strategyPrompt);
-          const strategy = JSON.parse(this.cleanAiJsonResponse(strategyResponse));
-          console.timeEnd('strategyCall');
-          console.log('[PLANNING] Strateji belirlendi:', strategy);
-          
-          // 2. Adım: Haftalık iskelet
-          console.time('skeletonCall');
-          const gradeNum = typeof normalized.preferences?.grade === 'number' ? normalized.preferences.grade : parseInt(String(normalized.preferences?.grade || '0')) || 0;
-          const topicPool = await this.buildCurriculumTopicPool(
-            Array.isArray(normalized.subjects) ? normalized.subjects : [],
-            gradeNum || 11,
-            normalized.preferences?.curriculumTopicsBySubject
-          );
-          const skeletonPrompt = await this.createWeeklySkeletonPrompt(strategy, topicPool);
-          const skeletonResponse = await this.geminiService.generateContent(skeletonPrompt);
-          const skeleton = JSON.parse(this.cleanAiJsonResponse(skeletonResponse));
-          console.timeEnd('skeletonCall');
-          console.log('[PLANNING] İskelet oluşturuldu:', skeleton);
-          
-          // 3. Adım: Seans detayları (her seans için)
-          console.time('detailsCall');
-          const detailedSessions = [];
-          for (const week of skeleton.weeklyPlans || []) {
-            for (const session of week.sessions || []) {
-              const detailsPrompt = await this.createSessionDetailsPrompt(session.topic, normalized.learningStyle);
-              const detailsResponse = await this.geminiService.generateContent(detailsPrompt);
-              const details = JSON.parse(this.cleanAiJsonResponse(detailsResponse));
-              
-              detailedSessions.push({
-                ...session,
-                objectives: details.objectives || [],
-                resources: details.resources || [],
-                techniques: details.techniques || []
-              });
-            }
-          }
-          
-          // Final plan oluştur
-          planSkeleton = {
-            weeklyPlans: skeleton.weeklyPlans.map((week: any, index: number) => ({
-              ...week,
-              sessions: detailedSessions.filter((s: any) => s.week === week.week)
-            })),
-            milestones: strategy.milestones || [],
-            adaptiveStrategies: strategy.adaptiveStrategies || []
-          };
-          console.timeEnd('detailsCall');
-          console.log('[PLANNING] Detaylar eklendi, plan tamamlandı');
-          
-        } catch (chainError) {
-          console.error('[PLANNING] Zincirleme AI çağrıları başarısız, fallback prompt kullanılıyor:', chainError);
-          // Fallback: Orijinal tek prompt
-          const aiPlanPrompt = await this.createPlanPrompt(normalized, userContext);
-          console.log('[PLANNING] AI prompt hazırlandı, Gemini API çağrılıyor...');
-          console.time('geminiApiCall');
-          const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
-          console.timeEnd('geminiApiCall');
-          console.log('[PLANNING] Gemini API yanıt verdi, plan veritabanına kaydediliyor...');
-          if (!aiResponse || aiResponse.includes('AI servisi şu anda kullanılamıyor')) {
-            throw new ServiceUnavailableException('AI servisi kullanılamıyor');
-          }
-          const cleaned = this.cleanAiJsonResponse(aiResponse);
-          try {
-            planSkeleton = JSON.parse(cleaned);
-          } catch {
-            const block = this.extractFirstJsonBlock(aiResponse);
-            if (!block) throw new BadRequestException('AI plan çıktısı geçersiz JSON formatında.');
-            planSkeleton = JSON.parse(block);
-          }
-        }
-      }
-    }
+    // YENİ MANTIK: Deterministik montaj hattı
+    console.log('[PLANNING] Deterministik plan oluşturma başlatılıyor...');
+    
+    // ADIM A: Öğrencinin durumuna göre çalışılacak SPESİFİK konuların listesini çıkar
+    console.time('determineTopics');
+    const topicList = await this.determineTopicsToStudy(normalized, userContext);
+    console.timeEnd('determineTopics');
+    console.log('[PLANNING] Çalışılacak konular belirlendi:', topicList);
 
-    // Zod doğrulaması
-    const validationResult = this.aiPlanSchema.safeParse(planSkeleton);
-    if (!validationResult.success) {
-      console.error('AI Skeleton Validation Error:', validationResult.error);
-      // skeleton geçersiz ise güvenli fallback üretimi (istemciden gelen süreyi kullan)
-      const fallbackDays = Number((normalized as any)?.planDurationDays) > 0
-        ? Number((normalized as any).planDurationDays)
-        : 3;
-      planSkeleton = await this.generateFallbackPlan(fallbackDays, normalized, userContext);
-    }
+    // ADIM B: Bu konu listesine göre haftalık seans iskeletini, AI OLMADAN, tamamen kod ile oluştur
+    console.time('buildSkeleton');
+    const planSkeleton = this.buildDeterministicSkeleton(topicList, normalized);
+    console.timeEnd('buildSkeleton');
+    console.log('[PLANNING] Deterministik iskelet oluşturuldu');
 
-    // Plan optimizasyonu
-    let optimizedPlan = await this.optimizePlan(planSkeleton as any, normalized, userContext);
-    // Plan süresi (gün): normalized içinden alınır ve korunur
+    // ADIM C: Oluşturulan bu iskeletin her bir seansını, AI'a tek tek sorarak zenginleştir
+    console.time('enrichWithAI');
+    const finalPlanStructure = await this.enrichSkeletonWithAI(planSkeleton, normalized.learningStyle);
+    console.timeEnd('enrichWithAI');
+    console.log('[PLANNING] AI ile detaylar zenginleştirildi');
+
+    // ADIM D: Nihai planı veritabanına kaydet ve döndür
     const planDurationDays: number = Number((normalized as any)?.planDurationDays) > 0
       ? Number((normalized as any).planDurationDays)
       : 3;
-    // Eğer AI oturum üretmediyse, güvenli bir geri dönüş planı oluştur
-    let sessionsFromStructure = Array.isArray((optimizedPlan as any)?.sessions)
-      ? (optimizedPlan as any).sessions
-      : Array.isArray((optimizedPlan as any)?.weeklyPlans)
-        ? (optimizedPlan as any).weeklyPlans.flatMap((w: any) => w?.sessions || [])
-        : [];
-    if (!Array.isArray(sessionsFromStructure) || sessionsFromStructure.length === 0) {
-      optimizedPlan = await this.generateFallbackPlan(planDurationDays, normalized, userContext);
-      sessionsFromStructure = optimizedPlan.weeklyPlans?.flatMap((w: any) => w.sessions || []) || [];
-      optimizedPlan.optimizationNotes = Array.isArray(optimizedPlan.optimizationNotes)
-        ? [...optimizedPlan.optimizationNotes, 'AI boş yanıt verdiği için güvenli geri dönüş planı uygulandı']
-        : ['AI boş yanıt verdiği için güvenli geri dönüş planı uygulandı'];
-    }
-    // Plan yapısına süre bilgisini ekle (timeline hesaplaması için)
-    (optimizedPlan as any).planDurationDays = planDurationDays;
+    
+    // Plan yapısına süre bilgisini ekle
+    (finalPlanStructure as any).planDurationDays = planDurationDays;
+    
+    // Seansları çıkar
+    const sessionsFromStructure = finalPlanStructure.weeklyPlans?.flatMap((w: any) => w?.sessions || []) || [];
     
     // Veritabanına kaydet
     const inferredPlanType = planDurationDays >= 7 ? 'WEEKLY' : 'DAILY';
@@ -595,7 +483,7 @@ export class PlanningService {
           availableTime: normalized.availableTime,
           preferences: normalized.preferences,
           aiGenerated: true,
-          planStructure: optimizedPlan,
+          planStructure: finalPlanStructure,
           planDurationDays,
         },
       },
@@ -610,8 +498,8 @@ export class PlanningService {
         id: savedPlan.id,
         title: savedPlan.title,
         description: savedPlan.description,
-        structure: optimizedPlan,
-        timeline: this.generateTimeline(optimizedPlan),
+        structure: finalPlanStructure,
+        timeline: this.generateTimeline(finalPlanStructure),
         recommendations: await this.generateRecommendations(normalized, userContext),
       },
       message: 'Kişiselleştirilmiş planınız başarıyla oluşturuldu!',
@@ -947,6 +835,190 @@ export class PlanningService {
       weakAreas,
       strongAreas,
     };
+  }
+
+  // YENİ MANTIK: Deterministik konu seçim beyni
+  private async determineTopicsToStudy(data: PlanGenerationData, userContext: any): Promise<string[]> {
+    const { subjects, preferences } = data;
+    const planContext = (data as any)?.planContext || {};
+    const { grade, weaknesses, lastCompletedTopics } = planContext;
+    const currentMonth = new Date().getMonth() + 1;
+
+    console.log('[PLANNING] Konu seçimi başlatılıyor...', { subjects, grade, weaknesses, lastCompletedTopics });
+
+    // 1. Müfredat kütüphanesinden bu ayın ve öğrencinin seviyesine uygun TÜM konuları çek
+    const gradeNum = typeof grade === 'number' ? grade : parseInt(String(grade || '0')) || 11;
+    const topicPool = await this.buildCurriculumTopicPool(subjects, gradeNum, (data as any)?.preferences?.curriculumTopicsBySubject);
+    console.log('[PLANNING] Müfredat havuzu oluşturuldu:', Object.keys(topicPool));
+
+    // 2. Önce, zayıf olarak belirtilen konuları bu havuzdan bul ve listeye ekle
+    const weakTopicsToStudy = this.findMatchingTopics(weaknesses || [], topicPool);
+    console.log('[PLANNING] Zayıf konular bulundu:', weakTopicsToStudy);
+
+    // 3. Ardından, en son tamamlanan konudan sonraki mantıksal konuları bul ve listeye ekle
+    const nextLogicalTopics = this.findNextTopics(lastCompletedTopics || {}, topicPool);
+    console.log('[PLANNING] Sonraki mantıksal konular bulundu:', nextLogicalTopics);
+
+    // 4. Kalan süreyi, bu ayın müfredatındaki diğer konularla doldur
+    const allAvailableTopics = Object.values(topicPool).flat();
+    const usedTopics = [...weakTopicsToStudy, ...nextLogicalTopics];
+    const remainingTopics = allAvailableTopics.filter(topic => !usedTopics.includes(topic));
+    
+    // Plan süresine göre ek konular seç
+    const planDurationDays = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
+    const sessionsPerDay = 2;
+    const totalSessions = planDurationDays * sessionsPerDay;
+    const neededTopics = Math.max(0, totalSessions - usedTopics.length);
+    
+    const otherTopics = remainingTopics.slice(0, neededTopics);
+    console.log('[PLANNING] Ek konular seçildi:', otherTopics);
+
+    // 5. Bu üç listeden oluşan nihai, sıralı ve SPESİFİK konu listesini döndür
+    const finalTopicList = [...weakTopicsToStudy, ...nextLogicalTopics, ...otherTopics];
+    const uniqueTopics = [...new Set(finalTopicList)]; // Tekrarları kaldır
+    
+    console.log('[PLANNING] Final konu listesi:', uniqueTopics);
+    return uniqueTopics;
+  }
+
+  // Zayıf konuları müfredat havuzunda bul
+  private findMatchingTopics(weaknesses: string[], topicPool: any): string[] {
+    const foundTopics: string[] = [];
+    
+    for (const weakness of weaknesses) {
+      // Her ders için zayıf konuyu ara
+      for (const [subject, topics] of Object.entries(topicPool)) {
+        const matchingTopics = (topics as string[]).filter(topic => 
+          topic.toLowerCase().includes(weakness.toLowerCase()) ||
+          weakness.toLowerCase().includes(topic.toLowerCase())
+        );
+        foundTopics.push(...matchingTopics);
+      }
+    }
+    
+    return [...new Set(foundTopics)]; // Tekrarları kaldır
+  }
+
+  // Son tamamlanan konulardan sonraki mantıksal konuları bul
+  private findNextTopics(lastCompletedTopics: Record<string, string>, topicPool: any): string[] {
+    const nextTopics: string[] = [];
+    
+    for (const [subject, lastTopic] of Object.entries(lastCompletedTopics)) {
+      const subjectTopics = topicPool[subject] || [];
+      const lastIndex = subjectTopics.indexOf(lastTopic);
+      
+      if (lastIndex !== -1 && lastIndex < subjectTopics.length - 1) {
+        // Sonraki konuyu al
+        nextTopics.push(subjectTopics[lastIndex + 1]);
+      }
+    }
+    
+    return nextTopics;
+  }
+
+  // Deterministik iskelet üretici - AI olmadan
+  private buildDeterministicSkeleton(topics: string[], data: PlanGenerationData): any {
+    const planDurationDays = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
+    const sessionsPerDay = 2;
+    const totalSessions = planDurationDays * sessionsPerDay;
+    
+    const sessions = [];
+    const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    
+    let topicIndex = 0;
+    for (let day = 0; day < planDurationDays; day++) {
+      const dayName = days[day % 7];
+      
+      for (let session = 0; session < sessionsPerDay; session++) {
+        if (topicIndex >= topics.length) break;
+        
+        const topicToAssign = topics[topicIndex % topics.length];
+        const subject = this.determineSubjectFromTopic(topicToAssign, data.subjects);
+        
+        sessions.push({
+          week: 1,
+          day: dayName,
+          subject: subject,
+          topic: topicToAssign, // <-- ARTIK SPESİFİK BİR KONU ADI VAR
+          durationInMinutes: 45 + (session * 5), // 45, 50 dakika
+          type: 'study',
+          difficulty: 'medium',
+          objectives: [], // AI ile doldurulacak
+          resources: [], // AI ile doldurulacak
+          techniques: [] // AI ile doldurulacak
+        });
+        
+        topicIndex++;
+      }
+    }
+    
+    return {
+      weeklyPlans: [{
+        week: 1,
+        focus: 'Kişiselleştirilmiş odak',
+        sessions: sessions
+      }],
+      milestones: [
+        { week: 1, goal: 'Temel kavramları kavra', assessment: 'Quiz', criteria: '70% başarı' }
+      ],
+      adaptiveStrategies: [
+        'Zorlandığında konuyu böl',
+        'Başarılı olduğunda zorluk seviyesini artır'
+      ]
+    };
+  }
+
+  // Konuya göre ders adını belirle
+  private determineSubjectFromTopic(topic: string, subjects: string[]): string {
+    // Basit eşleştirme mantığı
+    const topicLower = topic.toLowerCase();
+    
+    if (topicLower.includes('matematik') || topicLower.includes('sayı') || topicLower.includes('denklem')) {
+      return subjects.includes('Matematik') ? 'Matematik' : subjects[0];
+    }
+    if (topicLower.includes('türkçe') || topicLower.includes('dil') || topicLower.includes('paragraf')) {
+      return subjects.includes('Türkçe') ? 'Türkçe' : subjects[0];
+    }
+    if (topicLower.includes('fizik') || topicLower.includes('kuvvet') || topicLower.includes('elektrik')) {
+      return subjects.includes('Fizik') ? 'Fizik' : subjects[0];
+    }
+    if (topicLower.includes('kimya') || topicLower.includes('atom') || topicLower.includes('organik')) {
+      return subjects.includes('Kimya') ? 'Kimya' : subjects[0];
+    }
+    
+    return subjects[0]; // Varsayılan
+  }
+
+  // AI'ı "asistan" olarak kullan - sadece detay zenginleştirme
+  private async enrichSkeletonWithAI(skeleton: any, learningStyle: string): Promise<any> {
+    console.log('[PLANNING] AI ile detay zenginleştirme başlatılıyor...');
+    
+    for (const week of skeleton.weeklyPlans) {
+      for (const session of week.sessions) {
+        try {
+          // AI'a çok basit ve net bir soru sor
+          const prompt = `Bir 11. sınıf öğrencisi için '${session.topic}' konusunda, '${learningStyle}' öğrenme stiline uygun, 3 adet spesifik 'hedef' (objectives) ve 3 adet 'çalışma tekniği' (techniques) öner. Sadece JSON formatında döndür: {"objectives": ["hedef1", "hedef2", "hedef3"], "techniques": ["teknik1", "teknik2", "teknik3"]}`;
+          
+          const details = await this.geminiService.generateContent(prompt);
+          const cleaned = this.cleanAiJsonResponse(details);
+          const parsedDetails = JSON.parse(cleaned);
+          
+          session.objectives = parsedDetails.objectives || [];
+          session.techniques = parsedDetails.techniques || [];
+          session.resources = ['Ders kitabı', 'Notlar', 'Online kaynaklar']; // Basit kaynak listesi
+          
+          console.log(`[PLANNING] ${session.topic} için detaylar eklendi`);
+        } catch (error) {
+          console.error(`[PLANNING] ${session.topic} için AI detay ekleme başarısız:`, error);
+          // Fallback detaylar
+          session.objectives = ['Konuyu anla', 'Temel kavramları öğren'];
+          session.techniques = ['Not al', 'Tekrar et', 'Pratik yap'];
+          session.resources = ['Ders kitabı', 'Notlar'];
+        }
+      }
+    }
+    
+    return skeleton;
   }
 
   // Görev odaklı prompt fonksiyonları
@@ -1514,7 +1586,7 @@ BEKLENEN JSON ŞEMASI (örnek):
     };
   }
 
-  // Tarih bazlı akıllı müfredat havuzu - mevcut aya göre konuları seçer
+  // Veritabanı tabanlı akıllı müfredat havuzu - mevcut aya göre konuları seçer
   private async buildCurriculumTopicPool(
     subjects: string[],
     grade: number,
@@ -1534,59 +1606,33 @@ BEKLENEN JSON ŞEMASI (örnek):
 
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1; // 1-12
-    const currentYear = currentDate.getFullYear();
     
-    // Eğitim yılı hesaplama (Eylül'den itibaren)
-    const academicYear = currentMonth >= 9 ? currentYear : currentYear - 1;
-    const academicMonth = currentMonth >= 9 ? currentMonth - 8 : currentMonth + 4; // Eylül=1, Ekim=2, ...
+    // Mevcut ay ve geçen ay konularını al (daha geniş seçenek için)
+    const targetMonths = [currentMonth, currentMonth - 1, currentMonth + 1].filter(m => m >= 1 && m <= 12);
 
-    // Mevcut aya göre müfredat konuları
-    const CURRICULUM_BY_MONTH: Record<number, Record<string, string[]>> = {
-      1: { // Eylül
-        'Matematik': ['Trigonometri', 'Logaritma', 'Limit ve Süreklilik'],
-        'Fizik': ['Vektörler', 'Kuvvet ve Hareket', 'İş ve Enerji'],
-        'Kimya': ['Atom ve Periyodik Sistem', 'Kimyasal Bağlar', 'Gazlar'],
-        'Biyoloji': ['Hücre Bölünmesi', 'Kalıtım', 'Ekosistem'],
-        'Türkçe': ['Paragrafta Anlam', 'Cümlede Anlam', 'Ses Bilgisi']
-      },
-      2: { // Ekim
-        'Matematik': ['Türev', 'Türev Uygulamaları', 'İntegral'],
-        'Fizik': ['Elektrik', 'Manyetizma', 'Dalgalar'],
-        'Kimya': ['Çözeltiler', 'Asitler ve Bazlar', 'Elektrokimya'],
-        'Biyoloji': ['Solunum', 'Fotosentez', 'Bitki Biyolojisi'],
-        'Türkçe': ['Yazım Kuralları', 'Noktalama İşaretleri', 'Anlatım Bozuklukları']
-      },
-      3: { // Kasım
-        'Matematik': ['İntegral Uygulamaları', 'Diziler', 'Seriler'],
-        'Fizik': ['Optik', 'Modern Fizik', 'Atom Fiziği'],
-        'Kimya': ['Organik Kimya', 'Hidrokarbonlar', 'Fonksiyonel Gruplar'],
-        'Biyoloji': ['Hayvan Biyolojisi', 'İnsan Fizyolojisi', 'Genetik'],
-        'Türkçe': ['Edebiyat Tarihi', 'Şiir', 'Roman']
-      },
-      4: { // Aralık
-        'Matematik': ['Olasılık', 'İstatistik', 'Geometri'],
-        'Fizik': ['Nükleer Fizik', 'Katıhal Fiziği', 'Termodinamik'],
-        'Kimya': ['Polimerler', 'Biyokimya', 'Çevre Kimyası'],
-        'Biyoloji': ['Evrim', 'Biyoteknoloji', 'Çevre Biyolojisi'],
-        'Türkçe': ['Tiyatro', 'Deneme', 'Eleştiri']
-      }
-    };
+    try {
+      // Veritabanından konuları çek
+      const topicsFromDb = await this.prisma.mebTopic.findMany({
+        where: {
+          grade: grade,
+          subject: { in: subjects, mode: 'insensitive' },
+        },
+        orderBy: { topic: 'asc' },
+      });
 
-    const normalizedSubjects = (subjects || []).map(s => (s || '').trim()).filter(Boolean);
-    
-    // Mevcut aya göre konuları al
-    const currentMonthTopics = CURRICULUM_BY_MONTH[academicMonth] || CURRICULUM_BY_MONTH[1];
-    
-    for (const subject of subjects) {
-      const normalizedSubject = (subject || '').trim();
-      
-      // Mevcut aya göre konuları al
-      const monthTopics = currentMonthTopics[normalizedSubject] || [];
-      
-      if (monthTopics.length > 0) {
-        pool[subject] = monthTopics;
-      } else {
-        // Fallback: genel konular
+      // Konuları ders bazında grupla
+      subjects.forEach(subject => {
+        const subjectTopics = topicsFromDb
+          .filter(t => t.subject.toLowerCase() === subject.toLowerCase())
+          .map(t => t.topic);
+
+        pool[subject] = subjectTopics.length > 0 ? subjectTopics : [];
+      });
+
+      // Eğer hiç konu bulunamadıysa, fallback konuları kullan
+      const hasAnyTopics = Object.values(pool).some(topics => topics.length > 0);
+      if (!hasAnyTopics) {
+        console.log('[PLANNING] Veritabanından konu bulunamadı, fallback konuları kullanılıyor');
         const fallbackTopics = {
           'Matematik': ['Trigonometri', 'Türev', 'İntegral', 'Limit'],
           'Fizik': ['Vektörler', 'Kuvvet', 'Elektrik', 'Manyetizma'],
@@ -1594,8 +1640,26 @@ BEKLENEN JSON ŞEMASI (örnek):
           'Biyoloji': ['Hücre', 'Kalıtım', 'Solunum', 'Fotosentez'],
           'Türkçe': ['Paragrafta Anlam', 'Cümlede Anlam', 'Yazım Kuralları']
         };
-        pool[subject] = fallbackTopics[normalizedSubject] || ['Temel Konular'];
+        
+        subjects.forEach(subject => {
+          pool[subject] = fallbackTopics[subject] || ['Temel Konular'];
+        });
       }
+
+    } catch (error) {
+      console.error('[PLANNING] Veritabanından müfredat çekme hatası:', error);
+      // Hata durumunda fallback konuları kullan
+      const fallbackTopics = {
+        'Matematik': ['Trigonometri', 'Türev', 'İntegral', 'Limit'],
+        'Fizik': ['Vektörler', 'Kuvvet', 'Elektrik', 'Manyetizma'],
+        'Kimya': ['Atom', 'Kimyasal Bağlar', 'Organik Kimya', 'Asitler'],
+        'Biyoloji': ['Hücre', 'Kalıtım', 'Solunum', 'Fotosentez'],
+        'Türkçe': ['Paragrafta Anlam', 'Cümlede Anlam', 'Yazım Kuralları']
+      };
+      
+      subjects.forEach(subject => {
+        pool[subject] = fallbackTopics[subject] || ['Temel Konular'];
+      });
     }
 
     return pool;

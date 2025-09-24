@@ -4,6 +4,40 @@ import * as path from 'path';
 
 const prisma = new PrismaClient();
 
+// Ders adlarını normalize eden harita
+const SUBJECT_NORMALIZATION_MAP: Record<string, string> = {
+  'İleri Matematik': 'Matematik',
+  'İleri Fizik': 'Fizik',
+  'İleri Kimya': 'Kimya',
+  'İleri Biyoloji': 'Biyoloji',
+  'Türk Dili ve Edebiyatı': 'Türkçe',
+  'T.C. İnkılap Tarihi ve Atatürkçülük': 'Tarih',
+  'Din Kültürü ve Ahlak Bilgisi': 'Din Kültürü',
+};
+
+// Tahmini ay dağılımı (manuel olarak zenginleştirilmeli)
+const MONTH_DISTRIBUTION: Record<string, number> = {
+  'Trigonometri': 9,
+  'Vektörler': 9,
+  'Redoks': 10,
+  'Organik Bileşikler': 11,
+  'Türev': 10,
+  'İntegral': 11,
+  'Limit ve Süreklilik': 9,
+  'Logaritma': 9,
+  'Kuvvet ve Hareket': 9,
+  'İş ve Enerji': 10,
+  'Atom ve Periyodik Sistem': 9,
+  'Kimyasal Bağlar': 10,
+  'Gazlar': 11,
+  'Hücre Bölünmesi': 9,
+  'Kalıtım': 10,
+  'Ekosistem': 11,
+  'Paragrafta Anlam': 9,
+  'Cümlede Anlam': 10,
+  'Ses Bilgisi': 11,
+};
+
 async function main() {
   // MEB konularını seed et (lib/models/curriculum_data.dart kaynağından)
   const mebTopicCount = await prisma.mebTopic.count();
@@ -33,7 +67,18 @@ async function main() {
           const m = (s || '').match(/(\d+)/);
           return m ? parseInt(m[1], 10) : 0;
         };
-        const rows: Array<{ grade: number; subject: string; unit: string; topic: string; month?: number; outcomes: string[]; tytWeight: number; aytWeight: number }> = [];
+        const rows: Array<{ 
+          grade: number; 
+          subject: string; 
+          unit: string; 
+          topic: string; 
+          month?: number; 
+          officialSubjectName?: string;
+          modelYear?: string;
+          outcomes: string[]; 
+          tytWeight: number; 
+          aytWeight: number 
+        }> = [];
         // Akademik ay sırası: Eyl(9)→Eki(10)→Kas(11)→Ara(12)→Oca(1)→...→Haz(6)
         const academicMonthOrder = [9,10,11,12,1,2,3,4,5,6];
         const nextAcademicMonth = (current: number): number => {
@@ -44,8 +89,12 @@ async function main() {
         const subjectToApproxMonth: Record<string, number> = {};
         (curriculum as Level[]).forEach((level) => {
           const grade = toGrade(level.sinif_duzeyi);
+          const modelYear = level.aciklama || '2024-2025';
+          
           (level.dersler || []).forEach((ders: any) => {
-            const subject: string = ders.ders_adi;
+            const officialSubjectName: string = ders.ders_adi;
+            const subject: string = SUBJECT_NORMALIZATION_MAP[officialSubjectName] || officialSubjectName;
+            
             // Temalar
             if (Array.isArray(ders.temalar)) {
               ders.temalar.forEach((tema: any) => {
@@ -59,13 +108,27 @@ async function main() {
                   } else {
                     topicName = String(k);
                   }
-                  // Ay verilmemişse, ders bazlı artan ay dağıtımı uygula
+                  // Ay verilmemişse, önce MONTH_DISTRIBUTION'dan bak, sonra ders bazlı artan ay dağıtımı uygula
                   if (monthVal == null) {
-                    const currentApprox = subjectToApproxMonth[subject] ?? 9;
-                    monthVal = currentApprox;
-                    subjectToApproxMonth[subject] = nextAcademicMonth(currentApprox);
+                    monthVal = MONTH_DISTRIBUTION[topicName];
+                    if (monthVal == null) {
+                      const currentApprox = subjectToApproxMonth[subject] ?? 9;
+                      monthVal = currentApprox;
+                      subjectToApproxMonth[subject] = nextAcademicMonth(currentApprox);
+                    }
                   }
-                  rows.push({ grade, subject, unit, topic: topicName, month: monthVal, outcomes: [], tytWeight: 0, aytWeight: 0 });
+                  rows.push({ 
+                    grade, 
+                    subject, 
+                    unit, 
+                    topic: topicName, 
+                    month: monthVal, 
+                    officialSubjectName,
+                    modelYear,
+                    outcomes: [], 
+                    tytWeight: 0, 
+                    aytWeight: 0 
+                  });
                 });
               });
             }
@@ -83,11 +146,25 @@ async function main() {
                     topicName = String(k);
                   }
                   if (monthVal == null) {
-                    const currentApprox = subjectToApproxMonth[subject] ?? 9;
-                    monthVal = currentApprox;
-                    subjectToApproxMonth[subject] = nextAcademicMonth(currentApprox);
+                    monthVal = MONTH_DISTRIBUTION[topicName];
+                    if (monthVal == null) {
+                      const currentApprox = subjectToApproxMonth[subject] ?? 9;
+                      monthVal = currentApprox;
+                      subjectToApproxMonth[subject] = nextAcademicMonth(currentApprox);
+                    }
                   }
-                  rows.push({ grade, subject, unit, topic: topicName, month: monthVal, outcomes: [], tytWeight: 0, aytWeight: 0 });
+                  rows.push({ 
+                    grade, 
+                    subject, 
+                    unit, 
+                    topic: topicName, 
+                    month: monthVal, 
+                    officialSubjectName,
+                    modelYear,
+                    outcomes: [], 
+                    tytWeight: 0, 
+                    aytWeight: 0 
+                  });
                 });
               });
             }
