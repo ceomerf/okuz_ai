@@ -174,14 +174,11 @@ export class PlanningService {
       const dayStartOffset = (d + weekIndex + shuffledSubjects.length) % Math.max(1, shuffledSubjects.length);
       for (let k = 0; k < minSessionsPerDay; k++) {
         const subject = shuffledSubjects[(dayStartOffset + k) % shuffledSubjects.length];
-        const topic = this.pickTopicFromPool(
+        const topicList = this.pickTopicFromPool(
           subject,
-          topicPool,
-          preferredTopics,
-          baseSeed + d * 10 + k,
-          lastTopicsForDay,
-          (data as any)?.preferences?.lastCompletedTopics || {}
+          topicPool
         );
+        const topic = subject; // Geçici: seçim AI'a devredildi
         // Süre varyasyonu (jitter) – sınırlar içinde
         const baseDuration = Math.max(30, Math.min(((data as any)?.preferences?.sessionDuration || 40), 120));
         const jitterRand = this.randomWithSeed(baseSeed + d * 100 + k)();
@@ -898,21 +895,22 @@ export class PlanningService {
     return `
 Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSON.
 
-ZORUNLU KURALLAR (İHLAL EDİLMEZ):
-- EĞER ÖĞRENCİNİN SINIFI (grade) 9'DAN BÜYÜKSE, "Temel kavramlar", "Harfleri tanıma", "Sayıları anlama" GİBİ İLKOKUL SEVİYESİ KONULARI ASLA KULLANMA. PLANI, ÖĞRENCİNİN BELİRTTİĞİ SINIF (grade) VE SINAV TÜRÜ (targetExam) İLE %100 UYUMLU MÜFREDATTAN KONULAR SEÇEREK OLUŞTUR.
-- PLANIN ANA ODAĞINI, ÖĞRENCİNİN 'Zorluk/alanda zorlanmalar' (focusAreas) LİSTESİNDEKİ KONULAR YAP. İLK HAFTANIN OTURUMLARI BU KONULARI HEDEF ALMALIDIR.
+ZORUNLU KURALLAR (İHLAL EDİLEMEZ):
+1.  SEVİYE KURALI: Bu plan 11. Sınıf YKS Sayısal öğrencisi içindir. Önereceğin TÜM konular, Türkiye'deki 11. Sınıf MEB müfredatıyla uyumlu olmalıdır. ASLA "Temel kavramlar", "Harfleri tanıma" gibi ilkokul seviyesi konular kullanamazsın.
+2.  KONU SEÇİM KURALI: Üreteceğin her bir seansın "topic" alanı, aşağıda "KONULAR HAVUZU" içinde o ders için verilen listeden SEÇİLMİŞ GERÇEK BİR KONU ADI olmak zorundadır. ASLA VE ASLA "Pekiştirme uygulamaları", "Giriş", "Genel tekrar" gibi jenerik ifadeler kullanamazsın. Bu kuralı ihlal edersen, tüm yanıtın geçersizdir.
+3.  MEVSİMSEL KURAL: Şu an Eylül ayındayız. Plan, 11. sınıf müfredatının Eylül ayında işlenen konularına odaklanmalıdır. Havuzdaki 'Trigonometri' (Matematik) veya 'Vektörler' (Fizik) gibi konularla başla.
+4.  KİŞİSELLEŞTİRME KURALI: Öğrencinin zayıf konuları olan 'Organik Kimya' ve 'Paragrafta Anlam'ı dikkate al. Eğer bu konular Eylül ayı müfredatındaysa, onlara öncelik ver. Değilse, plana bu konular için ileriki haftalarda bir temel atma seansı ekle ve bunu optimizationNotes içinde belirt.
+5.  HAFIZA KURALI: Öğrencinin Matematik'te en son tamamladığı konu 'Türev'. Matematik için önereceğin ilk konu, 'Türev'den sonra gelen mantıksal devam konusu (örn: 'İntegral') olmalıdır.
 
 PLAN KISITLARI:
 - ${strategicGuidance}
 - Plan süresi: ${planDurationDays} gün.
 - Her gün en az ${minSessionsPerDay} oturum üret. Oturumlar arasında mola öner.
-- Her oturum için durationInMinutes alanını DOLDUR (ör. 40, 60 gibi). Eğer duration alanı kullanıyorsan durationInMinutes yerine duration kullanabilirsin.
+- Her oturum için durationInMinutes alanını DOLDUR (ör. 40, 60 gibi).
 - weeklyPlans yapısını kullan ve her haftada sessions dolu olsun. Her oturumda day alanı Pazartesi, Salı, Çarşamba, Perşembe, Cuma, Cumartesi veya Pazar olmalı.
-- Oturumlar kişiselleştirilmiş olmalı: güçlü alanlarda pekiştirme, zayıf alanlarda temel kavramlar ve tekrar.
 
 KONULAR HAVUZU (STRICT):
-- Aşağıdaki havuzdan konu seç. topic alanı SADECE bu havuzda listelenen konulardan biri olmalı.
-- Zayıf alanlarda (focusAreas) geçen konulara öncelik ver.
+- AI, konu seçimini SADECE ve SADECE aşağıdaki listeden yapmalıdır.
 ${topicPoolJson}
 
 ÖĞRENCİ BİLGİLERİ:
@@ -1452,88 +1450,13 @@ BEKLENEN JSON ŞEMASI (örnek):
 
   private pickTopicFromPool(
     subject: string,
-    pool: Record<string, string[]>,
-    preferredTopics: string[],
-    seed: number,
-    recentTopicBySubject: Record<string, string>,
-    lastCompletedTopics?: Record<string, string[]>
-  ): string {
+    pool: Record<string, string[]>
+  ): string[] | null {
     const list = pool[subject] || [];
-    if (list.length === 0) return 'Temel kavramlar';
-
-    const normalize = (s: string) => (s || '')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim();
-
-    const normalizedList = list.map(t => ({ raw: t, norm: normalize(t) }));
-    const normalizedPrefs = (preferredTopics || [])
-      .filter(Boolean)
-      .map(p => ({ raw: p, norm: normalize(String(p)) }));
-
-    // 0) Geçmişte tamamlanan konuları ele
-    const completedSet = new Set((lastCompletedTopics?.[subject] || []).map(x => normalize(String(x))));
-    const filteredList = normalizedList.filter(nt => !completedSet.has(nt.norm));
-    const effectiveList = filteredList.length > 0 ? filteredList : normalizedList;
-
-    // 0.5) Basit devam konusu ipuçları (heuristic)
-    const NEXT_TOPIC_HINTS: Record<string, Record<string, string[]>> = {
-      'Matematik': {
-        'türev': ['integral', 'türev uygulamaları'],
-        'limit': ['türev'],
-        'integral': ['integral uygulamaları'],
-      },
-      'Türkçe': {
-        'paragraf': ['paragraf anlam bilgisi', 'paragrafta anlam', 'anlatım teknikleri'],
-      },
-      'Kimya': {
-        'organik kimya': ['organik bileşikler', 'hidrokarbonlar', 'fonksiyonel gruplar'],
-      },
-    };
-    const lc = (s: string) => normalize(s);
-    const lastCompleted = (lastCompletedTopics?.[subject] || []).map(lc);
-    const nextHints = lastCompleted.flatMap(c => NEXT_TOPIC_HINTS[subject]?.[c] || []);
-    if (nextHints.length > 0) {
-      const nextHit = effectiveList.find(nt => nextHints.some(h => nt.norm.includes(lc(h)) || lc(h).includes(nt.norm)));
-      if (nextHit && nextHit.raw !== recentTopicBySubject[subject]) return nextHit.raw;
+    if (list.length === 0) {
+      return null;
     }
-
-    // 1) Odak eşleşmesi (token tabanlı benzerlik + includes)
-    const tokenize = (s: string) => new Set((s || '').split(/\s+/).filter(Boolean));
-    let bestMatch: { raw: string; norm: string } | null = null;
-    let highestScore = 0.5; // minimum benzerlik eşiği
-    for (const pref of normalizedPrefs) {
-      // Önce hızlı includes kontrolü
-      const quick = effectiveList.find(nt => nt.norm.includes(pref.norm) || pref.norm.includes(nt.norm));
-      if (quick && quick.raw !== recentTopicBySubject[subject]) return quick.raw;
-      // Sonra token Jaccard
-      const prefTokens = tokenize(pref.norm);
-      for (const item of effectiveList) {
-        const itemTokens = tokenize(item.norm);
-        const intersection = new Set([...itemTokens].filter(x => prefTokens.has(x)));
-        const union = new Set([...itemTokens, ...prefTokens]);
-        const score = union.size === 0 ? 0 : intersection.size / union.size;
-        if (score > highestScore) {
-          highestScore = score;
-          bestMatch = item;
-        }
-      }
-    }
-    if (bestMatch && bestMatch.raw !== recentTopicBySubject[subject]) {
-      return bestMatch.raw;
-    }
-
-    // 2) Seeded çeşitlilik (başlangıç index) + round-robin, recent tekrarı engelle
-    const rand = this.randomWithSeed(seed);
-    let start = Math.floor(rand() * Math.max(1, effectiveList.length));
-    for (let i = 0; i < effectiveList.length; i++) {
-      const candidate = effectiveList[(start + i) % effectiveList.length].raw;
-      if (candidate !== recentTopicBySubject[subject]) return candidate;
-    }
-
-    // 3) Son çare: ilk öğe
-    return (effectiveList[0]?.raw) || list[0];
+    return list;
   }
 
   private async generateFallbackPlan(planDurationDays: number, data: PlanGenerationData, userContext: any) {
@@ -1560,20 +1483,11 @@ BEKLENEN JSON ŞEMASI (örnek):
       const dayStartOffset = (d + weekIndex + shuffledSubjects.length) % Math.max(1, shuffledSubjects.length);
       for (let k = 0; k < sessionsPerDay; k++) {
         const subject = shuffledSubjects[(dayStartOffset + k) % shuffledSubjects.length];
-        let topic = this.pickTopicFromPool(
+        const topicList = this.pickTopicFromPool(
           subject,
-          topicPool,
-          preferredTopics,
-          baseSeed + d * 10 + k,
-          lastTopicsForDay,
-          (data as any)?.preferences?.lastCompletedTopics || {}
-        ) || (k === 0 ? 'Temel kavramlar' : 'Pekiştirme çalışması');
-        // Aynı gün aynı konuda tekrar olmasın
-        if (lastTopicsForDay[subject] && lastTopicsForDay[subject] === topic) {
-          const list = topicPool[subject] || [];
-          const alt = list.find(t => t !== topic);
-          if (alt) topic = alt;
-        }
+          topicPool
+        );
+        const topic = subject; // Geçici: seçim AI'a devredildi
         lastTopicsForDay[subject] = topic;
         weeklyPlans[weekIndex - 1].sessions.push({
           week: weekIndex,
