@@ -391,7 +391,9 @@ export class PlanningService {
       strongAreas: [],
     };
     try {
+      console.time('analyzeUserContext');
       const dbContext = await this.analyzeUserContext(userId);
+      console.timeEnd('analyzeUserContext');
       // Taze veride olmayan alanları DB bağlamıyla tamamla (override yok)
       userContext = {
         ...dbContext,
@@ -400,6 +402,7 @@ export class PlanningService {
           ? userContext.preferredStudyHours
           : dbContext.preferredStudyHours,
       };
+      console.log('[PLANNING] Kullanıcı geçmişi analiz edildi.');
     } catch (_) {
       // DB bağlamı alınamazsa taze veri ile devam et
     }
@@ -436,7 +439,11 @@ export class PlanningService {
         planSkeleton = skeleton;
       } catch (_) {
         const aiPlanPrompt = await this.createPlanPrompt(normalized, userContext);
+        console.log('[PLANNING] AI prompt hazırlandı, Gemini API çağrılıyor...');
+        console.time('geminiApiCall');
         const aiResponse = await this.geminiService.generateContent(aiPlanPrompt);
+        console.timeEnd('geminiApiCall');
+        console.log('[PLANNING] Gemini API yanıt verdi, plan veritabanına kaydediliyor...');
         if (!aiResponse || aiResponse.includes('AI servisi şu anda kullanılamıyor')) {
           throw new ServiceUnavailableException('AI servisi kullanılamıyor');
         }
