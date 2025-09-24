@@ -158,7 +158,7 @@ export class PlanningService {
     const topicPool = await this.buildCurriculumTopicPool(subjects, gradeNum, (data as any)?.preferences?.curriculumTopicsBySubject);
 
     // Seed ve shuffle: kullanıcıya/haftaya göre tutarlı, kullanıcılar arasında farklı
-    const baseSeed = this.seedFrom((data as any)?.userId || 'anon', new Date());
+    const baseSeed = this.seedFrom((data as any)?.userId || 'anon');
     const shuffledSubjects = this.shuffleWithSeed(subjects, baseSeed);
 
     const weeklyPlans: any[] = [];
@@ -464,7 +464,7 @@ export class PlanningService {
 
     // Plan optimizasyonu
     let optimizedPlan = await this.optimizePlan(planSkeleton as any, normalized, userContext);
-    // Plan süresi (gün) - varsayılan 3
+    // Plan süresi (gün): normalized içinden alınır ve korunur
     const planDurationDays: number = Number((normalized as any)?.planDurationDays) > 0
       ? Number((normalized as any).planDurationDays)
       : 3;
@@ -874,6 +874,10 @@ export class PlanningService {
     const topicPoolJson = JSON.stringify(topicPool);
     return `
 Sadece GEÇERLİ JSON döndür; açıklama veya kod bloğu ekleme. Yalnızca JSON.
+
+ZORUNLU KURALLAR (İHLAL EDİLMEZ):
+- EĞER ÖĞRENCİNİN SINIFI (grade) 9'DAN BÜYÜKSE, "Temel kavramlar", "Harfleri tanıma", "Sayıları anlama" GİBİ İLKOKUL SEVİYESİ KONULARI ASLA KULLANMA. PLANI, ÖĞRENCİNİN BELİRTTİĞİ SINIF (grade) VE SINAV TÜRÜ (targetExam) İLE %100 UYUMLU MÜFREDATTAN KONULAR SEÇEREK OLUŞTUR.
+- PLANIN ANA ODAĞINI, ÖĞRENCİNİN 'Zorluk/alanda zorlanmalar' (focusAreas) LİSTESİNDEKİ KONULAR YAP. İLK HAFTANIN OTURUMLARI BU KONULARI HEDEF ALMALIDIR.
 
 PLAN KISITLARI:
 - Plan süresi: ${planDurationDays} gün.
@@ -1339,8 +1343,8 @@ BEKLENEN JSON ŞEMASI (örnek):
   }
 
   // --- Seeded randomness helpers ---
-  private seedFrom(userId: string, date: Date): number {
-    const base = `${userId}-${date.toISOString().slice(0,10)}`;
+  private seedFrom(userId: string): number {
+    const base = userId;
     let h = 2166136261;
     for (let i = 0; i < base.length; i++) {
       h ^= base.charCodeAt(i);
@@ -1418,7 +1422,7 @@ BEKLENEN JSON ŞEMASI (örnek):
     const preferredTopics: string[] = Array.isArray((data as any)?.preferences?.focusAreas) ? (data as any).preferences.focusAreas : [];
     const weeklyPlans: Array<any> = [];
     // Seed ve shuffle fallback'te de kullanılmalı
-    const baseSeed = this.seedFrom((data as any)?.userId || 'anon', new Date());
+    const baseSeed = this.seedFrom((data as any)?.userId || 'anon');
     const shuffledSubjects = this.shuffleWithSeed(subjects, baseSeed);
     for (let d = 0; d < planDurationDays; d++) {
       const weekIndex = Math.floor(d / 7) + 1;
