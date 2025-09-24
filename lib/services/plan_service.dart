@@ -1,5 +1,7 @@
 import 'api_client.dart';
 import '../models/plan_summary_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class PlanService {
   final ApiClient _apiClient;
@@ -263,6 +265,27 @@ class PlanService {
       return await _apiClient.post('/planning/create-from-onboarding', planData);
     } catch (e) {
       throw Exception('Onboarding verilerinden plan oluşturulamadı: $e');
+    }
+  }
+
+  // JSON string -> Map<String, String> güvenli dönüştürücü
+  Map<String, String> _tryParseJsonMapStringString(String input) {
+    try {
+      final decoded = json.decode(input);
+      if (decoded is Map) {
+        final result = <String, String>{};
+        decoded.forEach((key, value) {
+          final k = key?.toString();
+          final v = value?.toString();
+          if (k != null && v != null) {
+            result[k] = v;
+          }
+        });
+        return result;
+      }
+      return {};
+    } catch (_) {
+      return {};
     }
   }
 

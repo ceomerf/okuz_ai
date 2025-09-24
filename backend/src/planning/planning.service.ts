@@ -1330,7 +1330,7 @@ BEKLENEN JSON ŞEMASI (örnek):
     const topicsFromDb = await this.prisma.mebTopic.findMany({
       where: {
         grade: grade,
-        OR: normalizedSubjects.map(s => ({ subject: { equals: s, mode: 'insensitive' as const } })),
+        OR: normalizedSubjects.map(s => ({ subject: { contains: s, mode: 'insensitive' as const } })),
       },
       orderBy: { topic: 'asc' },
     });
@@ -1338,7 +1338,11 @@ BEKLENEN JSON ŞEMASI (örnek):
     subjects.forEach(subject => {
       const normalizedSubject = (subject || '').trim();
       const subjectTopics = topicsFromDb
-        .filter(t => (t.subject || '').toLowerCase() === normalizedSubject.toLowerCase())
+        .filter(t => {
+          const dbSubject = (t.subject || '').toLowerCase();
+          const requestedSubject = normalizedSubject.toLowerCase();
+          return dbSubject.includes(requestedSubject) || requestedSubject.includes(dbSubject);
+        })
         .map(t => t.topic);
       if (subjectTopics.length > 0) {
         pool[subject] = subjectTopics;
