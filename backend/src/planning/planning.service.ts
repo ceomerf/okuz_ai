@@ -1738,17 +1738,39 @@ BEKLENEN JSON ŞEMASI (örnek):
             : { in: targetMonths }
           );
 
-      const where: any = {
+      // Subject eşleşmesini case-insensitive hale getir (Prisma 'in' ile mode desteklemediği için OR kullan)
+      const subjectInsensitiveOr = Array.isArray(subjects) && subjects.length > 0
+        ? subjects.map(s => ({ subject: { equals: s, mode: 'insensitive' as const } }))
+        : undefined;
+
+      // ModelYear esnekliği: önce sezon yılını dener, boş dönerse modelYear filtresini gevşetiriz
+      let where: any = {
         grade: grade,
-        subject: { in: subjects },
+        ...(subjectInsensitiveOr ? { OR: subjectInsensitiveOr } : {}),
         ...(seasonModelYear ? { modelYear: seasonModelYear } : {}),
         ...(monthFilter ? { month: monthFilter } : {}),
       };
 
-      const topicsFromDb = await this.prisma.mebTopic.findMany({
-        where,
-        orderBy: { topic: 'asc' },
-      });
+      let topicsFromDb = await this.prisma.mebTopic.findMany({ where, orderBy: { topic: 'asc' } });
+
+      // Hiç kayıt yoksa: (1) modelYear filtresini kaldırıp tekrar dene (2) ay filtresine month=null dahil et
+      if (topicsFromDb.length === 0) {
+        const relaxedWhere1: any = {
+          ...where,
+          modelYear: undefined,
+          month: monthFilter ? { OR: [{ month: monthFilter }, { month: null }] } : undefined,
+        };
+        topicsFromDb = await this.prisma.mebTopic.findMany({ where: relaxedWhere1, orderBy: { topic: 'asc' } });
+      }
+
+      // Hâlâ yoksa: (3) ay filtresini tamamen kaldır ve sadece grade + subject ile getir
+      if (topicsFromDb.length === 0) {
+        const relaxedWhere2: any = {
+          grade: grade,
+          ...(subjectInsensitiveOr ? { OR: subjectInsensitiveOr } : {}),
+        };
+        topicsFromDb = await this.prisma.mebTopic.findMany({ where: relaxedWhere2, orderBy: { topic: 'asc' } });
+      }
 
       // Konuları ders bazında grupla ve eksikse sentetik konularla tamamla
       subjects.forEach(subject => {
