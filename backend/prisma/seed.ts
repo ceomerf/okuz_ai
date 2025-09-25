@@ -1,147 +1,9 @@
 import { PrismaClient } from '@prisma/client';
-import * as fs from 'fs';
-import * as path from 'path';
+import { curriculum, CurriculumLevel } from './curriculum-source';
 
 const prisma = new PrismaClient();
 
-// curriculum_data.dart dosyasından konuları yükleme fonksiyonu
-async function loadTopicsFromDartFile() {
-  console.log('[SEED] curriculum_data.dart dosyasından konular yükleniyor...');
-  
-  try {
-    let dartPath = path.resolve(__dirname, '../../lib/models/curriculum_data.dart');
-    if (!fs.existsSync(dartPath)) {
-      // Fallback: çalışılan dizin backend ise buradan hesapla
-      const alt = path.resolve(process.cwd(), '../lib/models/curriculum_data.dart');
-      if (fs.existsSync(alt)) {
-        dartPath = alt;
-      } else {
-        throw new Error('curriculum_data.dart dosyası bulunamadı');
-      }
-    }
-    
-    const dartContent = fs.readFileSync(dartPath, 'utf8');
-    // curriculum = [ ... ]; bloğunu yakala (non-greedy)
-    const match = dartContent.match(/curriculum\s*=\s*\[(.*?)\];/s);
-    if (!match || !match[1]) {
-      throw new Error('curriculum verisi bulunamadı');
-    }
-    
-    let jsonLike = `[${match[1]}]`;
-    // Satır içi yorumları ve gereksiz trailing virgülleri temizle
-    jsonLike = jsonLike.replace(/\n\s*\/\/.*$/gm, '');
-    jsonLike = jsonLike.replace(/,\s*([\]}])/g, '$1');
-    
-    const curriculum = JSON.parse(jsonLike);
-    type Level = { sinif_duzeyi: string; dersler: any[] };
-    
-    const toGrade = (s: string): number => {
-      const match = s.match(/(\d+)/);
-      return match ? parseInt(match[1]) : 9;
-    };
-    
-    const rows: any[] = [];
-    
-    (curriculum as Level[]).forEach((level) => {
-      const grade = toGrade(level.sinif_duzeyi);
-      const modelYear = level.aciklama || '2025-2026';
-      
-      (level.dersler || []).forEach((ders: any) => {
-        const officialSubjectName: string = ders.ders_adi;
-        const subject = SUBJECT_NORMALIZATION_MAP[officialSubjectName] || officialSubjectName;
-        
-        // Temalar
-        if (Array.isArray(ders.temalar)) {
-          ders.temalar.forEach((tema: any) => {
-            const unit = String(tema.tema_adi || 'Genel');
-            (tema.konular || []).forEach((k: any) => {
-              let topicName: string;
-              let monthVal: number | undefined = undefined;
-              if (k && typeof k === 'object') {
-                topicName = String(k.topic || k.name || k.title || 'Konu');
-                if (typeof k.month === 'number') monthVal = k.month;
-              } else {
-                topicName = String(k);
-              }
-              if (monthVal == null) {
-                monthVal = MONTH_DISTRIBUTION[topicName];
-                if (monthVal == null) {
-                  monthVal = 9; // Default ay
-                }
-              }
-              rows.push({ 
-                grade, 
-                subject, 
-                unit, 
-                topic: topicName, 
-                month: monthVal, 
-                officialSubjectName,
-                modelYear,
-                outcomes: [], 
-                tytWeight: 0, 
-                aytWeight: 0 
-              });
-            });
-          });
-        }
-        
-        // Üniteler
-        if (Array.isArray(ders.uniteler)) {
-          ders.uniteler.forEach((unite: any) => {
-            const unit = String(unite.unite_adi || 'Genel');
-            (unite.konular || []).forEach((k: any) => {
-              let topicName: string;
-              let monthVal: number | undefined = undefined;
-              if (k && typeof k === 'object') {
-                topicName = String(k.topic || k.name || k.title || 'Konu');
-                if (typeof k.month === 'number') monthVal = k.month;
-              } else {
-                topicName = String(k);
-              }
-              if (monthVal == null) {
-                monthVal = MONTH_DISTRIBUTION[topicName];
-                if (monthVal == null) {
-                  monthVal = 9; // Default ay
-                }
-              }
-              rows.push({ 
-                grade, 
-                subject, 
-                unit, 
-                topic: topicName, 
-                month: monthVal, 
-                officialSubjectName,
-                modelYear,
-                outcomes: [], 
-                tytWeight: 0, 
-                aytWeight: 0 
-              });
-            });
-          });
-        }
-      });
-    });
-    
-    // Duplicate'leri kaldır (grade, subject, topic bazında)
-    const uniqKey = (r: any) => `${r.grade}|${(r.subject||'').toLowerCase()}|${(r.topic||'').toLowerCase()}`;
-    const uniqMap = new Map<string, typeof rows[number]>();
-    rows.forEach(r => { if (!uniqMap.has(uniqKey(r))) uniqMap.set(uniqKey(r), r); });
-    const uniqueRows = Array.from(uniqMap.values());
-    
-    // batch createMany
-    const batchSize = 1000;
-    for (let i = 0; i < uniqueRows.length; i += batchSize) {
-      const chunk = uniqueRows.slice(i, i + batchSize);
-      await prisma.mebTopic.createMany({ data: chunk });
-    }
-    
-    console.log(`[SEED] ${uniqueRows.length} konu curriculum_data.dart dosyasından yüklendi.`);
-    
-  } catch (error) {
-    console.error('[SEED] curriculum_data.dart yükleme hatası:', error);
-    throw error;
-  }
-}
+// SUBJECT_NORMALIZATION_MAP ve MONTH_DISTRIBUTION aynı kalabilir
 
 // Ders adlarını normalize eden harita
 const SUBJECT_NORMALIZATION_MAP: Record<string, string> = {
@@ -178,14 +40,102 @@ const MONTH_DISTRIBUTION: Record<string, number> = {
 };
 
 async function main() {
-  // MEB konularını seed et (lib/models/curriculum_data.dart kaynağından)
+  // MEB konularını seed et (yerel curriculum kaynağından)
   const mebTopicCount = await prisma.mebTopic.count();
   if (mebTopicCount === 0) {
-    try {
-      await loadTopicsFromDartFile();
-    } catch (error) {
-      console.error('[SEED] MebTopic seeding failed:', error);
+    console.log('[SEED] Seeding curriculum data from local TypeScript source...');
+    const toGrade = (s: string): number => {
+      const match = s.match(/(\d+)/);
+      return match ? parseInt(match[1]) : 9;
+    };
+
+    const rows: any[] = [];
+    (curriculum as CurriculumLevel[]).forEach((level) => {
+      const grade = toGrade(level.sinif_duzeyi);
+      const modelYear = '2025-2026';
+
+      (level.dersler || []).forEach((ders: any) => {
+        const officialSubjectName: string = ders.ders_adi;
+        const subject = SUBJECT_NORMALIZATION_MAP[officialSubjectName] || officialSubjectName;
+
+        if (Array.isArray(ders.temalar)) {
+          ders.temalar.forEach((tema: any) => {
+            const unit = String(tema.tema_adi || 'Genel');
+            (tema.konular || []).forEach((k: any) => {
+              let topicName: string;
+              let monthVal: number | undefined = undefined;
+              if (k && typeof k === 'object') {
+                topicName = String(k.topic || k.name || k.title || 'Konu');
+                if (typeof k.month === 'number') monthVal = k.month;
+              } else {
+                topicName = String(k);
+              }
+              if (monthVal == null) {
+                monthVal = MONTH_DISTRIBUTION[topicName];
+                if (monthVal == null) monthVal = 9;
+              }
+              rows.push({
+                grade,
+                subject,
+                unit,
+                topic: topicName,
+                month: monthVal,
+                officialSubjectName,
+                modelYear,
+                outcomes: [],
+                tytWeight: 0,
+                aytWeight: 0,
+              });
+            });
+          });
+        }
+
+        if (Array.isArray(ders.uniteler)) {
+          ders.uniteler.forEach((unite: any) => {
+            const unit = String(unite.unite_adi || 'Genel');
+            (unite.konular || []).forEach((k: any) => {
+              let topicName: string;
+              let monthVal: number | undefined = undefined;
+              if (k && typeof k === 'object') {
+                topicName = String(k.topic || k.name || k.title || 'Konu');
+                if (typeof k.month === 'number') monthVal = k.month;
+              } else {
+                topicName = String(k);
+              }
+              if (monthVal == null) {
+                monthVal = MONTH_DISTRIBUTION[topicName];
+                if (monthVal == null) monthVal = 9;
+              }
+              rows.push({
+                grade,
+                subject,
+                unit,
+                topic: topicName,
+                month: monthVal,
+                officialSubjectName,
+                modelYear,
+                outcomes: [],
+                tytWeight: 0,
+                aytWeight: 0,
+              });
+            });
+          });
+        }
+      });
+    });
+
+    const uniqKey = (r: any) => `${r.grade}|${(r.subject||'').toLowerCase()}|${(r.topic||'').toLowerCase()}`;
+    const uniqMap = new Map<string, typeof rows[number]>();
+    rows.forEach(r => { if (!uniqMap.has(uniqKey(r))) uniqMap.set(uniqKey(r), r); });
+    const uniqueRows = Array.from(uniqMap.values());
+
+    const batchSize = 1000;
+    for (let i = 0; i < uniqueRows.length; i += batchSize) {
+      const chunk = uniqueRows.slice(i, i + batchSize);
+      await prisma.mebTopic.createMany({ data: chunk });
     }
+
+    console.log(`[SEED] ${uniqueRows.length} konu curriculum-source.ts dosyasından yüklendi.`);
   } else {
     console.log('[SEED] MebTopic zaten mevcut, atlanıyor.');
   }
