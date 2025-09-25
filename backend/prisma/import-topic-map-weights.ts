@@ -1,4 +1,4 @@
-import { PrismaClient, ExamType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -31,11 +31,13 @@ function parseCsv(content: string): string[][] {
   return rows;
 }
 
-function normalizeExamTypes(examTypeCell: string): ExamType[] {
+type ExamTypeLiteral = 'TYT' | 'AYT' | 'LGS' | 'KPSS';
+
+function normalizeExamTypes(examTypeCell: string): ExamTypeLiteral[] {
   const raw = (examTypeCell || '').toUpperCase();
   // Örnek: "TYT & AYT" → ['TYT','AYT']
-  const parts = raw.split(/&|,|\//).map(s => s.trim()).filter(Boolean);
-  const mapped: ExamType[] = [];
+  const parts = raw.split(/&|\//).map(s => s.trim()).filter(Boolean); // ',' ayırıcı KALDIRILDI
+  const mapped: ExamTypeLiteral[] = [];
   for (const p of parts) {
     if (p.includes('TYT')) mapped.push('TYT');
     else if (p.includes('AYT')) mapped.push('AYT');
@@ -43,6 +45,45 @@ function normalizeExamTypes(examTypeCell: string): ExamType[] {
     else if (p.includes('KPSS')) mapped.push('KPSS');
   }
   return mapped.length ? mapped : ['TYT'];
+}
+
+// Alias haritası: CSV konu adı -> MebTopic.topic
+const TOPIC_ALIAS: Record<string, string> = {
+  'Asitler': 'Asitler, Bazlar ve Tuzlar',
+  'Bazlar': 'Asitler, Bazlar ve Tuzlar',
+  'Tuzlar': 'Asitler, Bazlar ve Tuzlar',
+  'Özel Üçgenler': 'Özel Üçgenler (Dik, İkizkenar, Eşkenar)',
+  'Manyetizma': 'Manyetizma (TYT)',
+};
+
+function normalizeTopicName(name: string): string {
+  const lower = (name || '').toLowerCase().trim();
+  // Parantez içini normalize etmeden önce alias kontrolü
+  const alias = TOPIC_ALIAS[name];
+  if (alias) return alias;
+  // Parantez içi açıklamaları ve çoklu boşlukları sadeleştir
+  const noParens = lower.replace(/\(.+?\)/g, '').replace(/\s+/g, ' ').trim();
+  return noParens;
+}
+
+async function findMebTopicLoose(prisma: PrismaClient, subject: string, rawTopic: string) {
+  // 1) Exact match
+  let found = await prisma.mebTopic.findFirst({ where: { subject, topic: rawTopic } });
+  if (found) return found;
+  // 2) Alias exact
+  const alias = TOPIC_ALIAS[rawTopic];
+  if (alias) {
+    found = await prisma.mebTopic.findFirst({ where: { subject, topic: alias } });
+    if (found) return found;
+  }
+  // 3) Normalize-equal match (parantez/boşluk temizliği)
+  const norm = normalizeTopicName(rawTopic);
+  const candidates = await prisma.mebTopic.findMany({ where: { subject } });
+  found = candidates.find(c => normalizeTopicName(c.topic) === norm);
+  if (found) return found;
+  // 4) Contains/startsWith fallback
+  found = candidates.find(c => c.topic.toLowerCase().includes(norm) || normalizeTopicName(c.topic).startsWith(norm));
+  return found || null;
 }
 
 async function main() {
@@ -69,6 +110,7 @@ async function main() {
 
   let weightInserted = 0;
   let prereqInserted = 0;
+  const unmatched: Array<{ subject: string; topic: string; reason: string }> = [];
 
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
@@ -82,9 +124,10 @@ async function main() {
     if (!subject || !topic) continue;
 
     // MebTopic eşleştirme (modelYear null olabilir)
-    const mebTopic = await prisma.mebTopic.findFirst({ where: { subject, topic } });
+    const mebTopic = await findMebTopicLoose(prisma, subject, topic);
     if (!mebTopic) {
       console.warn(`[IMPORT] MebTopic bulunamadı: ${subject} / ${topic}`);
+      unmatched.push({ subject, topic, reason: 'MebTopic not found' });
       continue;
     }
 
@@ -105,10 +148,10 @@ async function main() {
 
     // TopicPrerequisite oluşturma (birden fazla olabilir: ";" veya "," ile ayrılmış)
     if (prereq && prereq.toLowerCase() !== 'yok') {
-      const prereqTokens = prereq.split(/;|,|\//).map(s => s.trim()).filter(Boolean);
+      const prereqTokens = prereq.split(/;|\//).map(s => s.trim()).filter(Boolean); // ',' ayırıcı KALDIRILDI
       for (const token of prereqTokens) {
-        // Eşleşmeyi subject + topic ile yapıyoruz (aynı ders içinde)
-        const prereqTopic = await prisma.mebTopic.findFirst({ where: { subject, topic: token } });
+        // Eşleşmeyi subject + topic ile yapıyoruz (aynı ders içinde), loose match
+        const prereqTopic = await findMebTopicLoose(prisma, subject, token);
         if (!prereqTopic) { console.warn(`[IMPORT] Prereq bulunamadı: ${subject} / ${token}`); continue; }
         const dupe = await prisma.topicPrerequisite.findFirst({ where: { topicId: mebTopic.id, prerequisiteId: prereqTopic.id } });
         if (dupe) continue;
@@ -117,6 +160,14 @@ async function main() {
       }
     }
   }
+
+  // Eşleşmeyenleri dosyaya yaz
+  try {
+    const outPath = path.resolve(__dirname, './topic_map_unmatched.csv');
+    const lines = ['subject,topic,reason', ...unmatched.map(u => `${u.subject},${u.topic},${u.reason}`)];
+    fs.writeFileSync(outPath, lines.join('\n'), 'utf8');
+    console.log(`[IMPORT] Unmatched exported: ${outPath} (${unmatched.length})`);
+  } catch {}
 
   console.log(`[IMPORT] TopicWeight eklenen: ${weightInserted}, TopicPrerequisite eklenen: ${prereqInserted}`);
 }
