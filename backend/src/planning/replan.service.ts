@@ -86,7 +86,7 @@ export class ReplanService {
           }
         }
 
-        if (adjustments.length === 0) continue;
+        if (adjustments.length === 0) return;
 
         // Gelecek hafta aralığını belirle
         const now = new Date();
