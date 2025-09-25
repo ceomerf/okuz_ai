@@ -4,45 +4,42 @@ import { z } from 'zod';
 // Validasyon mesajları Türkçe ve alanlar açıkça tiplenmiştir.
 
 export const aiPlanSessionSchema = z.object({
-  day: z.string({ required_error: 'Gün zorunludur' }).min(1, 'Gün boş olamaz'),
+  day: z.string().min(1, 'Gün boş olamaz'),
   startTime: z
-    .string({ required_error: 'Başlangıç saati zorunludur' })
+    .string()
     .regex(/^\d{2}:\d{2}$/g, 'startTime HH:mm formatında olmalıdır'),
-  subject: z.string({ required_error: 'Ders adı zorunludur' }).min(1, 'Ders adı boş olamaz'),
-  topic: z.string({ required_error: 'Konu adı zorunludur' }).min(1, 'Konu adı boş olamaz'),
-  type: z.enum(['Konu Anlatımı', 'Soru Çözümü', 'Pekiştirme', 'Review'], {
-    required_error: 'Seans türü zorunludur',
-    invalid_type_error: 'Seans türü geçerli olmalıdır'
-  }),
+  subject: z.string().min(1, 'Ders adı boş olamaz'),
+  topic: z.string().min(1, 'Konu adı boş olamaz'),
+  type: z.enum(['Konu Anlatımı', 'Soru Çözümü', 'Pekiştirme', 'Review']),
   durationMinutes: z
-    .number({ required_error: 'Süre zorunludur' })
+    .number()
     .int('Süre tam sayı olmalıdır')
     .positive('Süre pozitif olmalıdır'),
-  objective: z.string({ required_error: 'Hedef zorunludur' }).min(3, 'Hedef çok kısa'),
+  objective: z.string().min(3, 'Hedef çok kısa'),
   recommendedTechnique: z
-    .string({ required_error: 'Önerilen teknik zorunludur' })
+    .string()
     .min(3, 'Önerilen teknik çok kısa'),
   resources: z.array(z.string()).default([]),
 });
 
 export const aiPlanWeeklySchema = z.object({
-  week: z.number({ required_error: 'Hafta numarası zorunludur' }).int().positive(),
-  focus: z.string({ required_error: 'Haftanın odağı zorunludur' }).min(3, 'Odak çok kısa'),
+  week: z.number().int().positive(),
+  focus: z.string().min(3, 'Odak çok kısa'),
   sessions: z
-    .array(aiPlanSessionSchema, { required_error: 'Seans listesi zorunludur' })
+    .array(aiPlanSessionSchema)
     .min(1, 'En az bir seans olmalıdır'),
 });
 
 export const aiPlanSchema = z.object({
-  planId: z.string({ required_error: 'planId zorunludur' }).min(1, 'planId boş olamaz'),
+  planId: z.string().min(1, 'planId boş olamaz'),
   studentId: z
-    .string({ required_error: 'studentId zorunludur' })
+    .string()
     .min(1, 'studentId boş olamaz'),
   summary: z
-    .string({ required_error: 'Özet zorunludur' })
+    .string()
     .min(10, 'Özet daha açıklayıcı olmalıdır'),
   weeklyPlans: z
-    .array(aiPlanWeeklySchema, { required_error: 'Haftalık planlar zorunludur' })
+    .array(aiPlanWeeklySchema)
     .min(1, 'En az bir haftalık plan olmalıdır'),
   milestones: z
     .array(

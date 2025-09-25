@@ -77,14 +77,14 @@ export class ReplanService {
         const adjustments: Array<{ subject: string; durationFactor: number; difficultyDelta: number; addReview: boolean }>
           = [];
 
-        Object.keys(subjectPerf).forEach((key) => {
+        for (const key of Object.keys(subjectPerf)) {
           const perf = subjectPerf[key] || 0;
           if (perf >= 85) {
             adjustments.push({ subject: key, durationFactor: 0.9, difficultyDelta: +1, addReview: false });
           } else if (perf < 60) {
             adjustments.push({ subject: key, durationFactor: 1.2, difficultyDelta: -1, addReview: true });
           }
-        });
+        }
 
         if (adjustments.length === 0) continue;
 
