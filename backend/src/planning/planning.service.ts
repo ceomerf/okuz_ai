@@ -1725,18 +1725,22 @@ BEKLENEN JSON ŞEMASI (örnek):
       ? '2025-2026'
       : '2025-2026';
     
-    // Mevcut ay ve geçen ay konularını al (daha geniş seçenek için)
-    const targetMonths = [currentMonth, currentMonth - 1, currentMonth + 1].filter(m => m >= 1 && m <= 12);
+    // Mevcut ay ±1 ay konularını al (daha geniş seçenek için)
+    const targetMonths = [currentMonth - 1, currentMonth, currentMonth + 1].filter(m => m >= 1 && m <= 12);
 
     try {
       // Veritabanından konuları çek
+      // Varsayılan: tarih penceresi verilmediyse mevcut ay ±1 aralığını kullan
       const monthFilter: any = (startMonth && endMonth)
         ? { gte: Math.min(startMonth, endMonth), lte: Math.max(startMonth, endMonth) }
-        : (startMonth ? { gte: startMonth - 1, lte: startMonth + 1 } : undefined);
+        : (startMonth
+            ? { in: [startMonth - 1, startMonth, startMonth + 1].filter(m => m >= 1 && m <= 12) }
+            : { in: targetMonths }
+          );
 
       const where: any = {
         grade: grade,
-        subject: { in: subjects, mode: 'insensitive' },
+        subject: { in: subjects },
         ...(seasonModelYear ? { modelYear: seasonModelYear } : {}),
         ...(monthFilter ? { month: monthFilter } : {}),
       };
@@ -1746,27 +1750,73 @@ BEKLENEN JSON ŞEMASI (örnek):
         orderBy: { topic: 'asc' },
       });
 
-      // Konuları ders bazında grupla
+      // Konuları ders bazında grupla ve eksikse sentetik konularla tamamla
       subjects.forEach(subject => {
         const subjectTopics = topicsFromDb
           .filter(t => t.subject.toLowerCase() === subject.toLowerCase())
           .map(t => t.topic);
 
-        pool[subject] = subjectTopics.length > 0 ? subjectTopics : [];
+        if (subjectTopics.length > 0) {
+          pool[subject] = subjectTopics;
+        } else {
+          // Konu bulunamadı: sentetik ders-özel konu isimleri üret
+          pool[subject] = this.generateSyntheticTopics(subject, grade, { startDate: dateWindow?.startDate, endDate: dateWindow?.endDate });
+        }
       });
 
-      // Eğer hiç konu bulunamadıysa, hata ver
+      // Eğer genel havuz tamamen boşsa, tüm dersler için sentetik havuz oluştur
       const hasAnyTopics = Object.values(pool).some(topics => topics.length > 0);
       if (!hasAnyTopics) {
-        throw new Error(`[PLANNING] ${grade}. sınıf için ${subjects.join(', ')} derslerinde hiç konu bulunamadı. Müfredat veritabanı boş olabilir.`);
+        console.warn(`[PLANNING] Veritabanında konu bulunamadı. Sentetik havuz kullanılacak. Grade=${grade}, Subjects=${subjects.join(', ')}`);
+        subjects.forEach(subject => {
+          pool[subject] = this.generateSyntheticTopics(subject, grade, { startDate: dateWindow?.startDate, endDate: dateWindow?.endDate });
+        });
       }
 
     } catch (error) {
       console.error('[PLANNING] Veritabanından müfredat çekme hatası:', error);
-      throw new Error(`[PLANNING] Müfredat verilerine erişilemiyor: ${error.message}`);
+      // Son çare: hata durumunda da sentetik havuz ile devam et
+      subjects.forEach(subject => {
+        pool[subject] = this.generateSyntheticTopics(subject, grade, { startDate: dateWindow?.startDate, endDate: dateWindow?.endDate });
+      });
     }
 
     return pool;
+  }
+
+  // Ders ve sınıfa göre, tarih aralığına duyarlı sentetik konu üretimi
+  private generateSyntheticTopics(
+    subject: string,
+    grade: number,
+    dateWindow?: { startDate?: Date; endDate?: Date }
+  ): string[] {
+    const monthNames = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    const start = dateWindow?.startDate;
+    const months: number[] = (() => {
+      if (!start) return [];
+      const end = dateWindow?.endDate || new Date(start.getTime() + 2 * 24 * 60 * 60 * 1000);
+      const arr: number[] = [];
+      const s = start.getMonth();
+      const e = end.getMonth();
+      for (let m = s; m <= e; m++) arr.push(((m % 12) + 12) % 12);
+      return arr;
+    })();
+
+    // Basit şablonlar: ders-özel genel çalışmaları kapsar
+    const baseTemplates = [
+      `${subject} - Temel Kavramlar (${grade}. Sınıf)`,
+      `${subject} - Güncel Konu Tekrarı`,
+      `${subject} - Çıkmış Sorulara Giriş`,
+      `${subject} - Hata Analizi ve Pekiştirme`,
+      `${subject} - Genel Tekrar ve Mini Quiz`,
+    ];
+
+    // Tarih aralığı varsa, aylara göre etiketli çalışma başlıkları ekle
+    const monthTagged = months.map(m => `${subject} - ${monthNames[m]} Çalışma Planı`);
+
+    // En az birkaç madde döndür
+    const synthetic = [...baseTemplates, ...monthTagged];
+    return synthetic.slice(0, 10);
   }
 
   // --- Seeded randomness helpers ---
