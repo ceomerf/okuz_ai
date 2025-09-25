@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PlanningService } from './planning.service';
+import { QueueService } from '../services/queue.service';
+import { MetricsService } from '../monitoring/metrics.service';
 
 @Injectable()
 export class ReplanService {
@@ -10,35 +12,65 @@ export class ReplanService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly planningService: PlanningService,
+    private readonly queue: QueueService,
+    private readonly metrics: MetricsService,
   ) {}
 
   // Her gece 02:00'de günlük kapanış analizi
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async dailyReevaluationJob() {
-    this.logger.log('🕑 Daily re-evaluation job started');
-    await this.reEvaluateAndAdjustPlans('daily');
+    const logCtx = { job: 'dailyReevaluation', startedAt: new Date().toISOString() };
+    const startTime = Date.now();
+    this.logger.log(JSON.stringify({ level: 'info', msg: 'job_started', ...logCtx }));
+    
+    try {
+      await this.enqueueReevaluationJobs('daily');
+      const duration = Date.now() - startTime;
+      this.metrics.recordCronJobDuration('dailyReevaluation', duration, true);
+      this.logger.log(JSON.stringify({ level: 'info', msg: 'job_completed', ...logCtx, completedAt: new Date().toISOString() }));
+    } catch (e) {
+      const duration = Date.now() - startTime;
+      this.metrics.recordCronJobDuration('dailyReevaluation', duration, false);
+      this.logger.error(JSON.stringify({ level: 'error', msg: 'job_failed', ...logCtx, error: (e as any)?.message || String(e) }));
+    }
   }
 
   // Her pazartesi 03:00'te haftalık ayarlamalar
   @Cron(CronExpression.EVERY_WEEK)
   async weeklyReevaluationJob() {
-    this.logger.log('📅 Weekly re-evaluation job started');
-    await this.reEvaluateAndAdjustPlans('weekly');
+    const logCtx = { job: 'weeklyReevaluation', startedAt: new Date().toISOString() };
+    const startTime = Date.now();
+    this.logger.log(JSON.stringify({ level: 'info', msg: 'job_started', ...logCtx }));
+    
+    try {
+      await this.enqueueReevaluationJobs('weekly');
+      const duration = Date.now() - startTime;
+      this.metrics.recordCronJobDuration('weeklyReevaluation', duration, true);
+      this.logger.log(JSON.stringify({ level: 'info', msg: 'job_completed', ...logCtx, completedAt: new Date().toISOString() }));
+    } catch (e) {
+      const duration = Date.now() - startTime;
+      this.metrics.recordCronJobDuration('weeklyReevaluation', duration, false);
+      this.logger.error(JSON.stringify({ level: 'error', msg: 'job_failed', ...logCtx, error: (e as any)?.message || String(e) }));
+    }
   }
 
-  // Çekirdek metot: son dönemi analiz et ve gelecek haftayı ayarla
-  async reEvaluateAndAdjustPlans(scope: 'daily' | 'weekly' = 'weekly') {
-    // Aktif planı olan kullanıcıları bul
+  // Kuyruğa ekleme: kullanıcı başına job oluştur
+  async enqueueReevaluationJobs(scope: 'daily' | 'weekly' = 'weekly') {
     const activePlans = await this.prisma.plan.findMany({
       where: { isActive: true },
-      include: { user: true },
+      select: { id: true, userId: true },
     });
-
     for (const plan of activePlans) {
-      const userId = plan.userId;
-      try {
-        // Bağlamı analiz et (son hafta/son gün metrikleri için mevcut metod kullanılır)
-        const context = await (this.planningService as any).analyzeUserContext(userId);
+      await this.queue.addJob('replan', { scope, userId: plan.userId, planId: plan.id }, { removeOnComplete: 1000, removeOnFail: 1000 });
+    }
+  }
+
+  // Worker tarafında kullanılacak işleyici (ayrı süreçte de kullanılabilir)
+  async processReevaluationJob(payload: { scope: 'daily' | 'weekly'; userId: string; planId: string }) {
+    const { scope, userId, planId } = payload;
+    try {
+      // Bağlamı analiz et (son hafta/son gün metrikleri için mevcut metod kullanılır)
+      const context = await (this.planningService as any).analyzeUserContext(userId);
 
         // Basit kurallar: başarı yüksek → süre azalt, zorluk artır; başarı düşük → süre artır, tekrar ekle
         const subjectPerf = context.subjectPerformance || {};
@@ -70,7 +102,7 @@ export class ReplanService {
         const sessions = await this.prisma.studySession.findMany({
           where: {
             userId,
-            planId: plan.id,
+            planId,
             startTime: { gte: startOfNextWeek, lt: endOfNextWeek },
           },
         });
@@ -105,7 +137,7 @@ export class ReplanService {
             extraStart.setDate(extraStart.getDate() + 1);
             await this.prisma.studySession.create({
               data: {
-                planId: plan.id,
+                planId,
                 userId,
                 subject: sess.subject,
                 topic: sess.topic,
@@ -116,11 +148,24 @@ export class ReplanService {
             });
           }
         }
-
-        this.logger.log(`✅ Adjusted plan for user ${userId} with ${adjustments.length} subject adjustments`);
+      this.logger.log(JSON.stringify({ level: 'info', msg: 'plan_adjusted', userId, planId, adjustmentCount: adjustments.length }));
+      
+      // Proaktif bildirim: program değişikliği
+      try {
+        const realtime = (this as any).realtimeGateway;
+        if (realtime?.publishUserNotification) {
+          realtime.publishUserNotification(userId, {
+            type: 'schedule_updated',
+            title: 'Program Güncellendi',
+            message: 'Yarının programı performansınıza göre güncellendi.',
+            priority: 'low',
+          });
+        }
       } catch (e) {
-        this.logger.error(`❌ Replan failed for user ${userId}: ${e}`);
+        this.logger.warn(JSON.stringify({ level: 'warn', msg: 'realtime_notification_failed', userId, planId, error: (e as any)?.message || String(e) }));
       }
+    } catch (e) {
+      this.logger.error(JSON.stringify({ level: 'error', msg: 'plan_adjust_failed', userId, planId, error: (e as any)?.message || String(e) }));
     }
   }
 }

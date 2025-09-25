@@ -5,6 +5,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { GeminiModule } from './services/gemini.module';
+import { QueueModule } from './services/queue.module';
+import { CacheModule } from './services/cache.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { StudentsModule } from './students/students.module';
@@ -19,6 +21,8 @@ import { InteractionModule } from './interaction/interaction.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { SolverModule } from './services/solver.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -29,6 +33,8 @@ import { RealtimeModule } from './realtime/realtime.module';
     PrismaModule,
     ScheduleModule.forRoot(),
     GeminiModule,
+    QueueModule,
+    CacheModule,
     AuthModule,
     UsersModule,
     StudentsModule,
@@ -43,6 +49,8 @@ import { RealtimeModule } from './realtime/realtime.module';
     NotificationsModule,
     SubscriptionModule,
     RealtimeModule,
+    SolverModule,
+    MonitoringModule,
   ],
   controllers: [AppController],
   providers: [AppService],

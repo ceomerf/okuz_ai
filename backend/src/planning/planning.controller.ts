@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Put, Delete, Body, UseGuards, Request, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PlanningService } from './planning.service';
+import { QueueService } from '../services/queue.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GeneratePlanDto } from './dto/generate-plan.dto';
 import { CreateFromOnboardingDto } from './dto/create-from-onboarding.dto';
@@ -41,24 +42,26 @@ class SkipSessionDto {
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class PlanningController {
-  constructor(private readonly planningService: PlanningService) {}
+  constructor(
+    private readonly planningService: PlanningService,
+    private readonly queue: QueueService,
+  ) {}
 
   @Post('generate-plan')
-  @ApiOperation({ summary: 'Generate personalized study plan (basic or AI)' })
+  @ApiOperation({ summary: 'Generate personalized study plan (basic or AI) [async]' })
   async generatePlan(@Request() req, @Body() planData: GeneratePlanDto & { mode?: 'basic' | 'ai'; planDurationWeeks?: number; planFocus?: string; dailyMaxMinutes?: number; preferredTimes?: string[] }) {
-    const mode = (planData as any)?.mode || 'basic';
-    if (mode === 'ai') {
-      // AI modunda yeni akış
-      const result = await this.planningService.generatePlanWithAI(req.user.id, {
-        planDurationWeeks: (planData as any)?.planDurationWeeks ?? 2,
-        planFocus: (planData as any)?.planFocus,
-        dailyMaxMinutes: (planData as any)?.dailyMaxMinutes,
-        preferredTimes: (planData as any)?.preferredTimes,
-      });
-      return result;
-    }
-    // Varsayılan: mevcut deterministik akış
-    return this.planningService.generatePlan({ ...planData, userId: req.user.id } as any);
+    const job = await this.queue.addJob('generate-plan', {
+      userId: req.user.id,
+      payload: planData,
+    }, { removeOnComplete: 1000, removeOnFail: 1000 });
+    return { accepted: true, jobId: job.id };
+  }
+
+  @Get('generate-plan/status/:jobId')
+  @ApiOperation({ summary: 'Get status of async generate-plan job' })
+  async getGeneratePlanStatus(@Param('jobId') jobId: string) {
+    // Basit ilk sürüm: Worker tamamlandığında plan DB'de olacak; burada sadece job bilgisinin frontendçe kullanılacağını varsayıyoruz
+    return { jobId, status: 'queued' };
   }
 
   @Get('user-plans')
