@@ -394,8 +394,8 @@ export class PlanningService {
     }
     const userId = normalized.userId;
 
-    // Kullanıcı bağlamını hazırla
-    let userContext: any = {
+    // Sade kullanıcı bağlamı (opsiyonel; öneriler için minimal)
+    const userContext: any = {
       subjectPerformance: {},
       timePatterns: {},
       learningVelocity: 0.5,
@@ -410,43 +410,31 @@ export class PlanningService {
       weakAreas: Array.isArray(normalized.preferences?.focusAreas) ? normalized.preferences!.focusAreas : [],
       strongAreas: [],
     };
-    
-    try {
-      console.time('analyzeUserContext');
-      const dbContext = await this.analyzeUserContext(userId);
-      console.timeEnd('analyzeUserContext');
-      userContext = {
-        ...dbContext,
-        weakAreas: userContext.weakAreas?.length ? userContext.weakAreas : dbContext.weakAreas,
-        preferredStudyHours: (userContext.preferredStudyHours && userContext.preferredStudyHours.length > 0)
-          ? userContext.preferredStudyHours
-          : dbContext.preferredStudyHours,
-      };
-      console.log('[PLANNING] Kullanıcı geçmişi analiz edildi.');
-    } catch (_) {
-      // DB bağlamı alınamazsa taze veri ile devam et
-    }
 
-    // YENİ MANTIK: Deterministik montaj hattı
     console.log('[PLANNING] Deterministik plan oluşturma başlatılıyor...');
-    
-    // ADIM A: Öğrencinin durumuna göre çalışılacak SPESİFİK konuların listesini çıkar
-    console.time('determineTopics');
-    const topicList = await this.determineTopicsToStudy(normalized, userContext);
-    console.timeEnd('determineTopics');
-    console.log('[PLANNING] Çalışılacak konular belirlendi:', topicList);
 
-    // ADIM B: Bu konu listesine göre haftalık seans iskeletini, AI OLMADAN, tamamen kod ile oluştur
-    console.time('buildSkeleton');
-    const planSkeleton = this.buildDeterministicSkeleton(topicList, normalized);
-    console.timeEnd('buildSkeleton');
-    console.log('[PLANNING] Deterministik iskelet oluşturuldu');
+    // 1) Hammadde Departmanı: öğrenci profiline göre spesifik konu listesi
+    const studentProfile = {
+      grade: (data as any)?.planContext?.grade ?? (data as any)?.studentProfile?.grade,
+      academicTrack: (data as any)?.planContext?.academicTrack ?? (data as any)?.studentProfile?.field,
+      weaknesses: (data as any)?.planContext?.weaknesses ?? (normalized.preferences?.focusAreas || []),
+      lastCompletedTopics: (data as any)?.planContext?.lastCompletedTopics ?? {},
+      selectedSubjects: (data as any)?.planContext?.selectedSubjects ?? normalized.subjects,
+    } as any;
 
-    // ADIM C: Oluşturulan bu iskeletin her bir seansını, AI'a tek tek sorarak zenginleştir
+    console.time('getRelevantTopicsForStudent');
+    const relevantTopics = await this.getRelevantTopicsForStudent(studentProfile, new Date());
+    console.timeEnd('getRelevantTopicsForStudent');
+
+    // 2) Montaj Hattı: konulardan deterministik iskelet oluştur
+    console.time('buildScheduleFromTopics');
+    const planSkeleton = this.buildScheduleFromTopics(relevantTopics, normalized);
+    console.timeEnd('buildScheduleFromTopics');
+
+    // 3) Kalite Kontrol: AI ile seans detaylarını zenginleştir
     console.time('enrichWithAI');
     const finalPlanStructure = await this.enrichSkeletonWithAI(planSkeleton, normalized.learningStyle);
     console.timeEnd('enrichWithAI');
-    console.log('[PLANNING] AI ile detaylar zenginleştirildi');
 
     // ADIM D: Nihai planı veritabanına kaydet ve döndür
     const planDurationDays: number = Number((normalized as any)?.planDurationDays) > 0
@@ -881,6 +869,41 @@ export class PlanningService {
     return uniqueTopics;
   }
 
+  // ADIM 1: Hammadde Departmanı
+  // Öğrenci profiline ve tarihe göre ilgili spesifik konuları döndürür
+  private async getRelevantTopicsForStudent(studentProfile: any, currentDate: Date): Promise<string[]> {
+    const gradeStr = (studentProfile?.grade ?? '').toString();
+    const gradeNum = parseInt(gradeStr) || 11;
+    const subjects: string[] = Array.isArray(studentProfile?.selectedSubjects) && studentProfile.selectedSubjects.length > 0
+      ? studentProfile.selectedSubjects
+      : ['Matematik', 'Türkçe'];
+
+    // 1) Müfredat havuzunu oluştur
+    const topicPool = await this.buildCurriculumTopicPool(subjects, gradeNum, undefined);
+
+    // 2a) Zayıflıklar: anlamsal benzerlik yerine basit içerme-eşleşmesi (deterministik)
+    const weaknesses: string[] = Array.isArray(studentProfile?.weaknesses) ? studentProfile.weaknesses : [];
+    const weakTopics = this.findMatchingTopics(weaknesses, topicPool);
+
+    // 2b) Son tamamlananlardan sonraki mantıksal konular
+    const lastCompletedTopics = (studentProfile?.lastCompletedTopics && typeof studentProfile.lastCompletedTopics === 'object')
+      ? studentProfile.lastCompletedTopics
+      : {};
+    const nextTopics = this.findNextTopics(lastCompletedTopics, topicPool);
+
+    // 2c) Hala eksik kalan oturumlar için aynı ayın diğer konuları (basit yaklaşım)
+    const allTopics = Object.values(topicPool).flat();
+    const used = [...weakTopics, ...nextTopics];
+    const remaining = allTopics.filter(t => !used.includes(t));
+
+    // Varsayılan 3 gün x 2 oturum = 6 konu hedefi
+    const totalNeeded = 6;
+    const fillers = remaining.slice(0, Math.max(0, totalNeeded - used.length));
+
+    const finalList = [...weakTopics, ...nextTopics, ...fillers];
+    return [...new Set(finalList)];
+  }
+
   // Zayıf konuları müfredat havuzunda bul
   private findMatchingTopics(weaknesses: string[], topicPool: any): string[] {
     const foundTopics: string[] = [];
@@ -965,6 +988,57 @@ export class PlanningService {
         'Zorlandığında konuyu böl',
         'Başarılı olduğunda zorluk seviyesini artır'
       ]
+    };
+  }
+
+  // ADIM 2: Montaj Hattı
+  // Konu listesine göre haftalık iskelet oluşturur (AI olmadan)
+  private buildScheduleFromTopics(topicList: string[], planData: PlanGenerationData): any {
+    const planDurationDays = Number((planData as any)?.planDurationDays) > 0 ? Number((planData as any).planDurationDays) : 3;
+    const sessionsPerDay = 2;
+    const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+
+    // YENİ: Kullanıcıya özel ancak tutarlı çeşitlilik için seed ve shuffle
+    const seed = this.seedFrom(((planData as any)?.userId || 'default-user').toString());
+    const shuffledTopicList = this.shuffleWithSeed(topicList, seed);
+
+    // Basit çeşitlendirme: index’e göre süre ve gün dağılımı
+    const sessions: any[] = [];
+    for (let day = 0; day < planDurationDays; day++) {
+      const dayName = days[day % 7];
+      for (let s = 0; s < sessionsPerDay; s++) {
+        const idx = day * sessionsPerDay + s;
+        if (idx >= shuffledTopicList.length) break;
+        const topic = shuffledTopicList[idx];
+        const subject = this.determineSubjectFromTopic(topic, planData.subjects);
+        sessions.push({
+          week: 1,
+          day: dayName,
+          subject,
+          topic,
+          durationInMinutes: 45 + (s * 5),
+          type: 'study',
+          difficulty: 'medium',
+          objectives: [],
+          resources: [],
+          techniques: [],
+        });
+      }
+    }
+
+    return {
+      weeklyPlans: [{
+        week: 1,
+        focus: 'Kişiselleştirilmiş odak',
+        sessions,
+      }],
+      milestones: [
+        { week: 1, goal: 'Temel kavramları kavra', assessment: 'Quiz', criteria: '70% başarı' },
+      ],
+      adaptiveStrategies: [
+        'Zorlandığında konuyu böl',
+        'Başarılı olduğunda zorluk seviyesini artır',
+      ],
     };
   }
 
