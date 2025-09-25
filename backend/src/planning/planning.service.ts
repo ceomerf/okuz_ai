@@ -299,6 +299,36 @@ export class PlanningService {
     }
   }
 
+  // 11-12. sınıflar için alan bazlı ders filtresi
+  private filterSubjectsForGradeAndTrack(subjects: string[], grade: number, track: string): string[] {
+    if (!Array.isArray(subjects) || subjects.length === 0) return [];
+    if (grade < 11) return subjects;
+    const norm = (v: string) => String(v || '').toLowerCase();
+    const cleaned = subjects.map(s => String(s).trim()).filter(Boolean);
+    const SAYISAL = ['Matematik', 'Fizik', 'Kimya', 'Biyoloji'];
+    const EA = ['Matematik', 'Türkçe', 'Tarih', 'Coğrafya'];
+    const SOZEL = ['Türkçe', 'Tarih', 'Coğrafya'];
+    let allowed: string[] | null = null;
+    switch (norm(track)) {
+      case 'sayisal':
+        allowed = SAYISAL; break;
+      case 'ea':
+      case 'eşit ağırlık':
+      case 'esit agirlik':
+      case 'eşit_ağırlık':
+        allowed = EA; break;
+      case 'sozel':
+      case 'sözel':
+        allowed = SOZEL; break;
+      default:
+        allowed = null; // bilinmiyorsa geleni bozma
+    }
+    if (!allowed) return subjects;
+    const allowedSet = new Set(allowed.map(norm));
+    const filtered = cleaned.filter(s => allowedSet.has(norm(s)));
+    return filtered.length > 0 ? filtered : subjects;
+  }
+
   // Function Calling için: AI'nın çağıracağı fonksiyonun şema tanımı
   private buildSavePlanFunctionSchema() {
     return {
@@ -422,6 +452,16 @@ export class PlanningService {
       selectedSubjects: (data as any)?.planContext?.selectedSubjects ?? normalized.subjects,
     } as any;
 
+    // 11-12. sınıflar için alan (track) bazlı ders filtrelemesi
+    const gradeForTrack = parseInt(String(studentProfile.grade || '0')) || 0;
+    const trackLower = String(studentProfile.academicTrack || '').toLowerCase();
+    if (gradeForTrack >= 11 && Array.isArray(studentProfile.selectedSubjects)) {
+      const filtered = this.filterSubjectsForGradeAndTrack(studentProfile.selectedSubjects, gradeForTrack, trackLower);
+      if (filtered.length > 0) {
+        studentProfile.selectedSubjects = filtered;
+      }
+    }
+
     console.time('getRelevantTopicsForStudent');
     const relevantTopics = await this.getRelevantTopicsForStudent(studentProfile, new Date());
     console.timeEnd('getRelevantTopicsForStudent');
@@ -460,9 +500,9 @@ export class PlanningService {
       data: {
         userId,
         title: computedTitle,
-        description: `${normalized.subjects.join(', ')} dersleri için kişiselleştirilmiş plan`,
+        description: `${(studentProfile.selectedSubjects || normalized.subjects).join(', ')} dersleri için kişiselleştirilmiş plan`,
         type: inferredPlanType as any,
-        subjects: normalized.subjects,
+        subjects: (studentProfile.selectedSubjects || normalized.subjects),
         goals: normalized.goals,
         startDate: new Date(),
         endDate: new Date(Date.now() + planDurationDays * 24 * 60 * 60 * 1000),
