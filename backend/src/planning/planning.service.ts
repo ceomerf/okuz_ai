@@ -1704,6 +1704,11 @@ BEKLENEN JSON ŞEMASI (örnek):
 
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1; // 1-12
+    const currentYear = currentDate.getFullYear();
+    // Model year seçimi: 2025-2026 sezonu varsayılan (Sep-Jun)
+    const seasonModelYear = (currentMonth >= 9 || currentMonth <= 6)
+      ? '2025-2026'
+      : '2025-2026';
     
     // Mevcut ay ve geçen ay konularını al (daha geniş seçenek için)
     const targetMonths = [currentMonth, currentMonth - 1, currentMonth + 1].filter(m => m >= 1 && m <= 12);
@@ -1714,7 +1719,9 @@ BEKLENEN JSON ŞEMASI (örnek):
         where: {
           grade: grade,
           subject: { in: subjects, mode: 'insensitive' },
-        },
+          // Tip uyuşmazlığını aşmak için modelYear koşulunu any olarak geçiriyoruz
+          ...(seasonModelYear ? ({ modelYear: seasonModelYear } as any) : {}),
+        } as any,
         orderBy: { topic: 'asc' },
       });
 
