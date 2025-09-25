@@ -836,7 +836,15 @@ export class PlanningService {
 
     // 1. Müfredat kütüphanesinden bu ayın ve öğrencinin seviyesine uygun TÜM konuları çek
     const gradeNum = typeof grade === 'number' ? grade : parseInt(String(grade || '0')) || 11;
-    const topicPool = await this.buildCurriculumTopicPool(subjects, gradeNum, (data as any)?.preferences?.curriculumTopicsBySubject);
+    const startDate: Date | undefined = (data as any)?.planStartDate ? new Date((data as any).planStartDate) : undefined;
+    const days = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
+    const endDate: Date | undefined = startDate ? new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000) : undefined;
+    const topicPool = await this.buildCurriculumTopicPool(
+      subjects,
+      gradeNum,
+      (data as any)?.preferences?.curriculumTopicsBySubject,
+      { startDate, endDate }
+    );
     console.log('[PLANNING] Müfredat havuzu oluşturuldu:', Object.keys(topicPool));
 
     // 2. Önce, zayıf olarak belirtilen konuları bu havuzdan bul ve listeye ekle
@@ -853,7 +861,12 @@ export class PlanningService {
     const remainingTopics = allAvailableTopics.filter(topic => !usedTopics.includes(topic));
     
     // Plan süresine göre ek konular seç
-    const planDurationDays = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
+    // Varsayılan: deneme sürümünde 3 gün, sonrasında 7 gün
+    let planDurationDays = Number((data as any)?.planDurationDays);
+    if (!planDurationDays || planDurationDays <= 0) {
+      const isTrial = true; // ileride kullanıcı abonelik durumuna göre belirlenebilir
+      planDurationDays = isTrial ? 3 : 7;
+    }
     const sessionsPerDay = 2;
     const totalSessions = planDurationDays * sessionsPerDay;
     const neededTopics = Math.max(0, totalSessions - usedTopics.length);
@@ -1688,7 +1701,8 @@ BEKLENEN JSON ŞEMASI (örnek):
   private async buildCurriculumTopicPool(
     subjects: string[],
     grade: number,
-    overrideTopics?: Record<string, string[]>
+    overrideTopics?: Record<string, string[]>,
+    dateWindow?: { startDate?: Date; endDate?: Date }
   ): Promise<Record<string, string[]>> {
     const pool: Record<string, string[]> = {};
     
@@ -1702,9 +1716,10 @@ BEKLENEN JSON ŞEMASI (örnek):
       return pool;
     }
 
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1; // 1-12
-    const currentYear = currentDate.getFullYear();
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const startMonth = dateWindow?.startDate ? (dateWindow.startDate.getMonth() + 1) : undefined;
+    const endMonth = dateWindow?.endDate ? (dateWindow.endDate.getMonth() + 1) : undefined;
     // Model year seçimi: 2025-2026 sezonu varsayılan (Sep-Jun)
     const seasonModelYear = (currentMonth >= 9 || currentMonth <= 6)
       ? '2025-2026'
@@ -1715,13 +1730,19 @@ BEKLENEN JSON ŞEMASI (örnek):
 
     try {
       // Veritabanından konuları çek
+      const monthFilter: any = (startMonth && endMonth)
+        ? { gte: Math.min(startMonth, endMonth), lte: Math.max(startMonth, endMonth) }
+        : (startMonth ? { gte: startMonth - 1, lte: startMonth + 1 } : undefined);
+
+      const where: any = {
+        grade: grade,
+        subject: { in: subjects, mode: 'insensitive' },
+        ...(seasonModelYear ? { modelYear: seasonModelYear } : {}),
+        ...(monthFilter ? { month: monthFilter } : {}),
+      };
+
       const topicsFromDb = await this.prisma.mebTopic.findMany({
-        where: {
-          grade: grade,
-          subject: { in: subjects, mode: 'insensitive' },
-          // Tip uyuşmazlığını aşmak için modelYear koşulunu any olarak geçiriyoruz
-          ...(seasonModelYear ? ({ modelYear: seasonModelYear } as any) : {}),
-        } as any,
+        where,
         orderBy: { topic: 'asc' },
       });
 
