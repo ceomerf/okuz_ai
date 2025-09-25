@@ -134,6 +134,9 @@ model User {
   studyHabits   StudyHabit[]
   subscriptions Subscription[]
   payments      Payment[]
+
+  // Back-relation: Weekly metrics
+  weeklyMetrics StudentWeeklyMetrics[]
 }
 
 model StudentProfile {
@@ -490,9 +493,14 @@ model MebTopic {
   aytWeight Int      @default(0) // Konunun AYT'deki ortalama soru sayısı
 
   // İLİŞKİLER (Hafıza için)
-  prerequisiteTopicId String?    // Bu konudan önce bilinmesi gereken konunun ID'si
-  prerequisiteTopic   MebTopic?  @relation("TopicPrerequisites", fields: [prerequisiteTopicId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  leadsToTopics       MebTopic[] @relation("TopicPrerequisites")
+  // Eski tekil örnek ilişki alanları korunabilir; çoklu önşartlar için aşağıdaki relation'lar kullanılır
+
+  // TopicPrerequisite back-relations
+  asTopicPrerequisites     TopicPrerequisite[] @relation("TP_Topic")
+  asPrerequisiteOf         TopicPrerequisite[] @relation("TP_Prerequisite")
+
+  // TopicWeight back-relation
+  weights                  TopicWeight[]
 
   @@unique([grade, subject, topic, modelYear])
 }
