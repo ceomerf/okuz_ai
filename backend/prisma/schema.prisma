@@ -72,6 +72,14 @@ enum PaymentStatus {
   CANCELLED
 }
 
+// Ek sınav türleri için enum (YKS odaklı ancak genişletilebilir)
+enum ExamType {
+  TYT
+  AYT
+  LGS
+  KPSS
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -487,4 +495,64 @@ model MebTopic {
   leadsToTopics       MebTopic[] @relation("TopicPrerequisites")
 
   @@unique([grade, subject, topic, modelYear])
+}
+
+/// Konu ön-şart ilişkilerini çoklu (N-N) biçimde tutar
+model TopicPrerequisite {
+  id              String   @id @default(cuid())
+
+  // İlişkiler: topic ve prerequisiteTopic doğrudan MebTopic ile ilişkilidir
+  topicId         String
+  prerequisiteId  String
+
+  topic           MebTopic @relation("TP_Topic", fields: [topicId], references: [id], onDelete: Cascade)
+  prerequisite    MebTopic @relation("TP_Prerequisite", fields: [prerequisiteId], references: [id], onDelete: Restrict)
+
+  createdAt       DateTime @default(now())
+
+  @@unique([topicId, prerequisiteId])
+  @@index([topicId])
+  @@index([prerequisiteId])
+}
+
+/// Sınav türüne göre konu ağırlıkları ve zorluk dağılımını tutar
+model TopicWeight {
+  id             String    @id @default(cuid())
+  mebTopicId     String
+  examType       ExamType
+  weight         Float     // Ortalama soru sayısı veya ağırlık skoru
+  difficultyDist Json      // Zorluk dağılımı (örn: {"easy":0.2,"medium":0.6,"hard":0.2})
+
+  mebTopic       MebTopic  @relation(fields: [mebTopicId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime  @default(now())
+
+  @@unique([mebTopicId, examType])
+  @@index([examType])
+}
+
+/// Öğrencinin haftalık metriklerini (tamamlama, öz-bildirim, mini test) takip eder
+model StudentWeeklyMetrics {
+  id               String   @id @default(cuid())
+  userId           String
+  weekStart        DateTime // ISO8601; haftanın ilk günü (örn: Pazartesi 00:00)
+
+  // İsteğe bağlı ders kırılımı; toplam metrikler için null bırakılabilir
+  subject          String?
+
+  tasksCompleted   Int      @default(0)
+  tasksSkipped     Int      @default(0)
+  avgSelfReport    Int      @default(0) // 1-5 ölçeğinde
+  avgQuizScore     Int      @default(0) // 0-100 arası
+
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([weekStart])
+  @@index([userId, weekStart])
+  @@index([userId, weekStart, subject])
 }

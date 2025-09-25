@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ServiceUnavailableE
 import { z } from 'zod';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { GeminiService } from '../services/gemini.service';
+import { aiPlanSchema, AiPlan } from './schemas/ai-plan.schema';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { GeneratePlanDto } from './dto/generate-plan.dto';
 
@@ -44,6 +45,14 @@ interface WeeklyPlan {
   sessions: StudySession[];
   milestones: string[];
   assessments: any[];
+}
+
+// Plan üretimi için parametreler
+export interface PlanParameters {
+  planDurationWeeks: number; // Kaç hafta
+  planFocus?: string; // Örn: "Konu Eksiği Kapatma"
+  dailyMaxMinutes?: number; // Günlük maksimum süre (dk)
+  preferredTimes?: string[]; // ["Akşam", "Hafta Sonu Öğlen"] gibi
 }
 
 @Injectable()
@@ -134,7 +143,8 @@ export class PlanningService {
     "strongSubjectsTop2": ["<subject>", "<subject>"],
     "weeklyStrategy": "<one-week high-level strategy in Turkish>"
   }
-}`;
+}
+`;
     const resp = await this.geminiService.generateContent(prompt);
     const cleaned = this.cleanAiJsonResponse(resp);
     try {
@@ -144,6 +154,271 @@ export class PlanningService {
       if (!block) return { weakTopicsTop3: [], strongSubjectsTop2: [], weeklyStrategy: '' };
       try { return JSON.parse(block); } catch { return { weakTopicsTop3: [], strongSubjectsTop2: [], weeklyStrategy: '' }; }
     }
+  }
+
+  /**
+   * Usta Koç Prompt üretimi: Öğrenci profili, son haftanın metrikleri, tamamlanan konular ve deneme netlerini
+   * tek bir kapsamlı metinde birleştirir. Bu metin Gemini function-calling ile şemalı plan üretimi için kullanılır.
+   */
+  async generateUstaKocPrompt(studentId: string, planParams: PlanParameters): Promise<string> {
+    // 1) Öğrenci profili ve kullanıcı bilgisi
+    const [user, profile] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: studentId }, select: { id: true, name: true } }),
+      this.prisma.studentProfile.findUnique({ where: { userId: studentId } }),
+    ]);
+
+    // Emniyetli varsayılanlar
+    const grade = profile?.grade ?? 12;
+    const field = profile?.field ?? 'Sayısal';
+    const learningStyle = profile?.learningStyle ?? 'Karma';
+    const goals = Array.isArray(profile?.goals) ? profile!.goals : [];
+    const strengths = Array.isArray(profile?.strengths) ? profile!.strengths : [];
+    const weaknesses = Array.isArray(profile?.weaknesses) ? profile!.weaknesses : [];
+
+    // 2) Son haftanın metrikleri (özet)
+    const startOfWeek = (() => { const d = new Date(); const day = d.getDay() || 7; d.setHours(0,0,0,0); d.setDate(d.getDate() - (day - 1)); return d; })();
+    const weeklyMetrics = await (this.prisma as any).studentWeeklyMetrics.findMany({
+      where: { userId: studentId, weekStart: { lte: new Date(), gte: new Date(startOfWeek) } },
+      orderBy: { weekStart: 'desc' },
+      take: 5,
+    });
+    const latest = weeklyMetrics[0];
+    const tasksCompleted = latest?.tasksCompleted ?? 0;
+    const tasksSkipped = latest?.tasksSkipped ?? 0;
+    const avgSelfReport = latest?.avgSelfReport ?? 0;
+    const avgQuizScore = latest?.avgQuizScore ?? 0;
+
+    // 3) Tamamlanan konular (geçen hafta)
+    const oneWeekAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const completedSessions = await this.prisma.studySession.findMany({
+      where: { userId: studentId, isCompleted: true, startTime: { gte: oneWeekAgo } },
+      select: { subject: true, topic: true },
+      orderBy: { startTime: 'desc' },
+      take: 100,
+    });
+    const completedTopics = completedSessions.map(s => `${s.subject} - ${s.topic}`);
+
+    // 4) Son deneme netleri (özet)
+    const lastExams = await this.prisma.examResult.findMany({
+      where: { userId: studentId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: { subject: true, score: true, totalScore: true, examType: true },
+    });
+    const examNets = lastExams.map(e => ({
+      examType: e.examType,
+      subject: e.subject,
+      net: e.totalScore && e.totalScore > 0 ? Math.round((e.score / e.totalScore) * 100) : 0,
+    }));
+
+    // 5) Plan parametreleri
+    const durationWeeks = planParams.planDurationWeeks ?? 2;
+    const dailyMax = planParams.dailyMaxMinutes ?? 120;
+    const preferredTimes = planParams.preferredTimes ?? [];
+    const planFocus = planParams.planFocus ?? 'Konu Eksiği Kapatma';
+
+    // 6) Prompt metni (kapsamlı talimatlar)
+    const prompt = `Sadece geçerli JSON döndür. Açıklama yazma.
+{
+  "task": "usta_koc_plan",
+  "planDurationWeeks": ${durationWeeks},
+  "planFocus": ${JSON.stringify(planFocus)},
+  "constraints": {
+    "spacedRepetition": [1, 3, 7],
+    "dailyMaxMinutes": ${dailyMax},
+    "maxSubjectsPerDay": 2,
+    "techniqueByLearningStyle": true
+  },
+  "student": {
+    "id": ${JSON.stringify(user?.id || studentId)},
+    "name": ${JSON.stringify(user?.name || 'Öğrenci')},
+    "grade": ${grade},
+    "field": ${JSON.stringify(field)},
+    "learningStyle": ${JSON.stringify(learningStyle)},
+    "goals": ${JSON.stringify(goals)},
+    "strengths": ${JSON.stringify(strengths)},
+    "weaknesses": ${JSON.stringify(weaknesses)},
+    "preferredTimes": ${JSON.stringify(preferredTimes)}
+  },
+  "weeklyPerformance": {
+    "tasksCompleted": ${tasksCompleted},
+    "tasksSkipped": ${tasksSkipped},
+    "avgSelfReport": ${avgSelfReport},
+    "avgQuizScore": ${avgQuizScore}
+  },
+  "recentExams": ${JSON.stringify(examNets)},
+  "completedTopicsLastWeek": ${JSON.stringify(completedTopics)},
+  "rules": [
+    "Aralıklı tekrar 1-3-7 gün kuralına uy.",
+    "Günlük toplam süre ${dailyMax} dakikayı aşmasın.",
+    "Aynı gün en fazla 2 farklı ders.",
+    "Öğrenme stiline uygun teknik öner.",
+    "Riskli konulara pekiştirme ve kolay soru; güçlü konulara zorlayıcı testler ekle."
+  ],
+  "outputSchema": "aiPlanSchema"
+}`;
+
+    return prompt;
+  }
+
+  /**
+   * AI ile plan üret: prompt → function-calling → zod doğrulama → Plan/StudySession kayıtları.
+   */
+  async generatePlanWithAI(studentId: string, planParams: PlanParameters): Promise<{ plan: any; sessions: any[] }> {
+    // 1) Prompt oluştur
+    const prompt = await this.generateUstaKocPrompt(studentId, planParams);
+
+    // 2) Function-calling için kaba JSON schema (Gemini argümanları)
+    const functionParamsSchema: any = {
+      type: 'object',
+      properties: {
+        planId: { type: 'string' },
+        studentId: { type: 'string' },
+        summary: { type: 'string' },
+        weeklyPlans: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              week: { type: 'number' },
+              focus: { type: 'string' },
+              sessions: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    day: { type: 'string' },
+                    startTime: { type: 'string' },
+                    subject: { type: 'string' },
+                    topic: { type: 'string' },
+                    type: { type: 'string' },
+                    durationMinutes: { type: 'number' },
+                    objective: { type: 'string' },
+                    recommendedTechnique: { type: 'string' },
+                    resources: { type: 'array', items: { type: 'string' } }
+                  },
+                  required: ['day', 'startTime', 'subject', 'topic', 'type', 'durationMinutes', 'objective', 'recommendedTechnique']
+                }
+              }
+            },
+            required: ['week', 'focus', 'sessions']
+          }
+        },
+        milestones: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string' } } } },
+        adaptiveStrategies: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string' } } } }
+      },
+      required: ['planId', 'studentId', 'summary', 'weeklyPlans']
+    };
+
+    // 3) Gemini function-calling ile planı al
+    const aiArgs = await this.geminiService.generateFunctionCall('save_study_plan', functionParamsSchema, prompt);
+
+    // 4) Zod doğrulama
+    const parsed = aiPlanSchema.safeParse(aiArgs);
+    if (!parsed.success) {
+      // hata logla ve fallback üret
+      console.warn('[AI PLAN] Zod doğrulama hatası:', parsed.error.flatten());
+      const fallback = await this.basicSkeletonPlan(studentId, planParams);
+      return fallback;
+    }
+
+    const aiPlan: AiPlan = parsed.data;
+
+    // 5) Veritabanına yaz: Plan + StudySession (batch)
+    const now = new Date();
+    const startDate = now;
+    const endDate = new Date(now); endDate.setDate(endDate.getDate() + (planParams.planDurationWeeks * 7));
+
+    const createdPlan = await this.prisma.plan.create({
+      data: {
+        userId: studentId,
+        title: `AI Planı - ${planParams.planFocus || 'Kişisel'}`,
+        description: aiPlan.summary,
+        type: 'WEEKLY',
+        subjects: [],
+        goals: [],
+        startDate,
+        endDate,
+        metadata: { aiPlan },
+      },
+    });
+
+    const sessionsData: any[] = [];
+    for (const w of aiPlan.weeklyPlans) {
+      for (const s of w.sessions) {
+        const sessionStart = this.resolveNextWeekdayTime(s.day, s.startTime);
+        sessionsData.push({
+          planId: createdPlan.id,
+          userId: studentId,
+          subject: s.subject,
+          topic: s.topic,
+          duration: s.durationMinutes,
+          startTime: sessionStart,
+          isCompleted: false,
+          metadata: { type: s.type, objective: s.objective, recommendedTechnique: s.recommendedTechnique, resources: s.resources || [] },
+        });
+      }
+    }
+
+    if (sessionsData.length > 0) {
+      // Prisma batch insert
+      await this.prisma.studySession.createMany({ data: sessionsData, skipDuplicates: true });
+    }
+
+    return { plan: createdPlan, sessions: sessionsData };
+  }
+
+  // Yardımcı: Haftanın ilgili gününe en yakın HH:mm Date üret
+  private resolveNextWeekdayTime(dayNameTr: string, hhmm: string): Date {
+    const mapping: Record<string, number> = { 'Pazartesi': 1, 'Salı': 2, 'Çarşamba': 3, 'Perşembe': 4, 'Cuma': 5, 'Cumartesi': 6, 'Pazar': 0 };
+    const targetDow = mapping[dayNameTr] ?? 1;
+    const now = new Date();
+    const curDow = now.getDay();
+    const [hh, mm] = hhmm.split(':').map((x) => parseInt(x, 10));
+    const diff = (targetDow - curDow + 7) % 7;
+    const d = new Date(now);
+    d.setDate(now.getDate() + diff);
+    d.setHours(hh, mm, 0, 0);
+    return d;
+  }
+
+  // Basit geri dönüş planı
+  private async basicSkeletonPlan(studentId: string, planParams: PlanParameters): Promise<{ plan: any; sessions: any[] }> {
+    const now = new Date();
+    const endDate = new Date(now); endDate.setDate(endDate.getDate() + (planParams.planDurationWeeks * 7));
+    const plan = await this.prisma.plan.create({
+      data: {
+        userId: studentId,
+        title: `Temel Plan - ${planParams.planFocus || 'Kişisel'}`,
+        description: 'AI planı üretilemedi, temel iskelet planı uygulandı.',
+        type: 'WEEKLY',
+        subjects: [],
+        goals: [],
+        startDate: now,
+        endDate,
+        metadata: { fallback: true },
+      }
+    });
+
+    const sessions = [] as any[];
+    // her hafta 3 seans varsayalım
+    for (let w = 0; w < planParams.planDurationWeeks; w++) {
+      for (const [dayName, time] of [['Pazartesi', '19:00'], ['Çarşamba', '19:00'], ['Cuma', '19:00']] as const) {
+        sessions.push({
+          planId: plan.id,
+          userId: studentId,
+          subject: 'Genel',
+          topic: 'Konu Tekrarı',
+          duration: 40,
+          startTime: this.resolveNextWeekdayTime(dayName, time),
+          isCompleted: false,
+          metadata: { type: 'Review', objective: 'Temel pekiştirme', recommendedTechnique: 'Aktif hatırlama', resources: [] },
+        });
+      }
+    }
+
+    if (sessions.length > 0) await this.prisma.studySession.createMany({ data: sessions, skipDuplicates: true });
+    return { plan, sessions };
   }
 
   // B) Stratejiye göre plan iskeleti üret (haftalık plan + oturumlar taslak)
@@ -536,7 +811,7 @@ export class PlanningService {
 
   // isValidPlanStructure kaldırıldı; yerine Zod şeması kullanılıyor
 
-  // Frontend’in beklediği: görev ilerlemesi güncelle
+  // Frontend'in beklediği: görev ilerlemesi güncelle
   async updateTaskProgress(data: { userId: string; taskId: string; minutes: number }) {
     if (!data.taskId || typeof data.minutes !== 'number') {
       throw new BadRequestException('Geçersiz parametreler');
@@ -638,7 +913,7 @@ export class PlanningService {
     const learningStyle = data?.learningStyle || 'visual';
     const currentLevel = data?.currentLevel || 'medium';
     const result = await this.generatePlan({ subjects, goals, availableTime, learningStyle, currentLevel, userId });
-    // Planın endDate’ini premium kuralına göre güncelle
+    // Planın endDate'ini premium kuralına göre güncelle
     if (result?.plan?.id) {
       const updated = await this.prisma.plan.update({
         where: { id: result.plan.id },
@@ -649,7 +924,7 @@ export class PlanningService {
     return result;
   }
 
-  // Tatil planını AI’den oluşturup kalıcılaştır
+  // Tatil planını AI'den oluşturup kalıcılaştır
   async generateAndPersistHolidayPlan(userId: string, data: any) {
     if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
     const holiday = await this.generateHolidayPlan({
@@ -671,7 +946,7 @@ export class PlanningService {
         metadata: { aiGenerated: true, holidayPlan: holiday.plan },
       },
     });
-    // StudySession üretimi: varsa günlük schedule’dan basit seanslar çıkar
+    // StudySession üretimi: varsa günlük schedule'dan basit seanslar çıkar
     const sessions: Array<{ day: number; time?: string; subject?: string; topic?: string; duration?: number }>
       = holiday.plan?.dailySchedule || [];
     const toMinutes = (timeRange?: string) => {
@@ -1055,7 +1330,7 @@ export class PlanningService {
     const seed = this.seedFrom(((planData as any)?.userId || 'default-user').toString());
     const shuffledTopicList = this.shuffleWithSeed(topicList, seed);
 
-    // Basit çeşitlendirme: index’e göre süre ve gün dağılımı
+    // Basit çeşitlendirme: index'e göre süre ve gün dağılımı
     const sessions: any[] = [];
     for (let day = 0; day < planDurationDays; day++) {
       const dayName = days[day % 7];

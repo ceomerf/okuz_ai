@@ -44,8 +44,20 @@ export class PlanningController {
   constructor(private readonly planningService: PlanningService) {}
 
   @Post('generate-plan')
-  @ApiOperation({ summary: 'Generate personalized study plan' })
-  async generatePlan(@Request() req, @Body() planData: GeneratePlanDto) {
+  @ApiOperation({ summary: 'Generate personalized study plan (basic or AI)' })
+  async generatePlan(@Request() req, @Body() planData: GeneratePlanDto & { mode?: 'basic' | 'ai'; planDurationWeeks?: number; planFocus?: string; dailyMaxMinutes?: number; preferredTimes?: string[] }) {
+    const mode = (planData as any)?.mode || 'basic';
+    if (mode === 'ai') {
+      // AI modunda yeni akış
+      const result = await this.planningService.generatePlanWithAI(req.user.id, {
+        planDurationWeeks: (planData as any)?.planDurationWeeks ?? 2,
+        planFocus: (planData as any)?.planFocus,
+        dailyMaxMinutes: (planData as any)?.dailyMaxMinutes,
+        preferredTimes: (planData as any)?.preferredTimes,
+      });
+      return result;
+    }
+    // Varsayılan: mevcut deterministik akış
     return this.planningService.generatePlan({ ...planData, userId: req.user.id } as any);
   }
 
