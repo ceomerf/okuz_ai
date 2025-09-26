@@ -568,7 +568,9 @@ export class PlanningService {
 
   // B) Stratejiye göre plan iskeleti üret (haftalık plan + oturumlar taslak)
   private async buildPlanSkeletonFromStrategy(aiAnalysis: any, data: PlanGenerationData, userContext: any): Promise<any> {
-    const planDurationDays: number = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
+    // En fazla 7 gün olacak şekilde sınırla
+    const rawDuration: number = Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : 3;
+    const planDurationDays: number = Math.max(1, Math.min(7, rawDuration));
     const minSessionsPerDay = 2;
     const subjects = Array.isArray(data.subjects) && data.subjects.length > 0 ? data.subjects : ['Genel'];
     const preferredTopics: string[] = Array.isArray((data as any)?.preferences?.focusAreas) ? (data as any).preferences.focusAreas : (aiAnalysis?.weakTopicsTop3 || []);
@@ -586,7 +588,11 @@ export class PlanningService {
     for (let d = 0; d < planDurationDays; d++) {
       const weekIndex = Math.floor(d / 7) + 1;
       while (weeklyPlans.length < weekIndex) {
-        weeklyPlans.push({ week: weeklyPlans.length + 1, focus: undefined, sessions: [] });
+        const weekNumber = weeklyPlans.length + 1;
+        const focusFromOnboarding = Array.isArray(userContext?.weakAreas) && userContext.weakAreas.length > 0
+          ? `Odak: ${userContext.weakAreas.slice(0, 3).join(', ')}`
+          : aiAnalysis?.weeklyStrategy || undefined;
+        weeklyPlans.push({ week: weekNumber, focus: focusFromOnboarding, sessions: [] });
       }
       const dayName = dayNames[d % 7];
       let lastTopicsForDay: Record<string, string> = {};
@@ -620,7 +626,113 @@ export class PlanningService {
         lastTopicsForDay[subject] = topic;
       }
     }
+    // Günlük hedef süreyi garanti altına al
+    try {
+      const targetPerDayMinutes = Number((data as any)?.availableTime) || 0;
+      if (targetPerDayMinutes > 0) {
+        this.adjustDailyWorkload(weeklyPlans, targetPerDayMinutes, subjects);
+      }
+    } catch (e) {
+      console.warn('[PLANNING] adjustDailyWorkload sırasında uyarı:', e);
+    }
+    // Günlük seans tiplerini çeşitlendir (study/practice/review)
+    try {
+      this.diversifyDailySessionTypes(weeklyPlans);
+    } catch (e) {
+      console.warn('[PLANNING] diversifyDailySessionTypes sırasında uyarı:', e);
+    }
     return { weeklyPlans, planDurationDays, strategy: aiAnalysis?.weeklyStrategy || '' };
+  }
+
+  /**
+   * Günlük toplam süre hedefinin (targetPerDayMinutes) altına düşen günler için
+   * seans sürelerini orantılı büyütür; yetmezse ek seans ekleyerek hedefi tutturur.
+   */
+  private adjustDailyWorkload(weeklyPlans: any[], targetPerDayMinutes: number, subjects: string[]): void {
+    if (!Array.isArray(weeklyPlans) || weeklyPlans.length === 0) return;
+    const dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+
+    for (const week of weeklyPlans) {
+      for (const dayName of dayNames) {
+        // Bu haftanın bu gününe ait seansları topla
+        const sessionsForDay = (week.sessions as any[]).filter((s) => s.day === dayName);
+        if (!sessionsForDay || sessionsForDay.length === 0) continue;
+
+        // Toplam süreyi hesapla
+        let total = sessionsForDay.reduce((acc, s) => acc + (Number(s.durationInMinutes) || 0), 0);
+
+        // Hedef altındaysa önce oransal ölçekleme yap
+        if (total > 0 && total < targetPerDayMinutes) {
+          const scale = targetPerDayMinutes / total;
+          let newTotal = 0;
+          for (const s of sessionsForDay) {
+            const scaled = Math.round((Number(s.durationInMinutes) || 0) * scale);
+            // 30-120 dakika sınırlarına uydur
+            s.durationInMinutes = Math.max(30, Math.min(scaled, 120));
+            newTotal += s.durationInMinutes;
+          }
+          total = newTotal;
+        }
+
+        // Hâlâ hedef altında ise ek seans ekle
+        let safety = 0;
+        while (total < targetPerDayMinutes && safety < 10) {
+          const remaining = targetPerDayMinutes - total;
+          const duration = Math.max(30, Math.min(remaining, 45));
+          const subject = subjects && subjects.length > 0 ? subjects[(sessionsForDay.length) % subjects.length] : 'Genel';
+          (week.sessions as any[]).push({
+            week: week.week,
+            day: dayName,
+            subject,
+            topic: subject,
+            durationInMinutes: duration,
+            type: 'study',
+            difficulty: 'medium',
+            objectives: [],
+            resources: [],
+            techniques: [],
+          });
+          sessionsForDay.push(week.sessions[week.sessions.length - 1]);
+          total += duration;
+          safety++;
+        }
+      }
+    }
+  }
+
+  /**
+   * Gün içinde en az bir 'review' ve bir 'practice' seansı olmasını sağlar;
+   * kalan seansları study/practice/review döngüsüyle çeşitlendirir.
+   */
+  private diversifyDailySessionTypes(weeklyPlans: any[]): void {
+    if (!Array.isArray(weeklyPlans) || weeklyPlans.length === 0) return;
+    const dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    const cycleTypes = ['study', 'practice', 'review'];
+
+    for (const week of weeklyPlans) {
+      for (const dayName of dayNames) {
+        const sessionsForDay = (week.sessions as any[]).filter((s) => s.day === dayName);
+        if (!sessionsForDay || sessionsForDay.length === 0) continue;
+
+        const hasReview = sessionsForDay.some((s) => s.type === 'review');
+        const hasPractice = sessionsForDay.some((s) => s.type === 'practice');
+
+        if (!hasReview) {
+          sessionsForDay[0].type = 'review';
+        }
+        if (!hasPractice) {
+          const idx = sessionsForDay.length > 1 ? 1 : 0;
+          sessionsForDay[idx].type = 'practice';
+        }
+
+        let t = 0;
+        for (let i = 0; i < sessionsForDay.length; i++) {
+          if (sessionsForDay[i].type === 'review' || sessionsForDay[i].type === 'practice') continue;
+          sessionsForDay[i].type = cycleTypes[t % cycleTypes.length];
+          t++;
+        }
+      }
+    }
   }
 
   // C) AI ile seçili gün/oturumları detaylandır: hedefler, kaynaklar, teknikler vb.
