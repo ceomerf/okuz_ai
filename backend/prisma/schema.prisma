@@ -205,6 +205,7 @@ model Plan {
   @@index([userId, startDate])
   @@index([userId, createdAt])
   @@index([userId, type, isActive, endDate])
+  @@index([isActive, endDate])
 }
 
 model StudySession {
@@ -231,6 +232,8 @@ model StudySession {
   @@index([startTime])
   @@index([userId, startTime])
   @@index([userId, createdAt])
+  @@index([planId, startTime])
+  @@index([userId, isCompleted, startTime])
 }
 
 model Achievement {
@@ -328,6 +331,7 @@ model ExamResult {
 
   @@index([userId])
   @@index([userId, createdAt])
+  @@index([userId, examType, createdAt])
 }
 
 model LearningPath {

@@ -92,6 +92,17 @@ export class MetricsService {
     }
   }
 
+  // Plan üretim metrikleri
+  recordPlanGenerationDuration(durationMs: number, success: boolean) {
+    const metric: MetricData = {
+      name: 'plan_generation_duration_seconds',
+      value: durationMs / 1000,
+      labels: { success: success.toString() },
+      timestamp: Date.now(),
+    };
+    this.storeMetric(metric);
+  }
+
   // Database metrikleri
   recordDatabaseQuery(table: string, duration: number, success: boolean) {
     const metric: MetricData = {

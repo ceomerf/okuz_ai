@@ -8,6 +8,13 @@ import { MetricsService } from '../monitoring/metrics.service';
 import { aiPlanSchema, AiPlan } from './schemas/ai-plan.schema';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { GeneratePlanDto } from './dto/generate-plan.dto';
+import { PlanGenerationService } from './plan-generation.service';
+import { PlanValidationService } from './plan-validation.service';
+import { PlanPersistenceService } from './plan-persistence.service';
+import { ScheduleAdjustmentService } from './schedule-adjustment.service';
+import { AdaptiveInsightsService } from './adaptive-insights.service';
+import { AdaptiveStrategyService } from './adaptive-strategy.service';
+import { CacheService } from '../services/cache.service';
 
 interface PlanGenerationData {
   subjects: string[];
@@ -67,38 +74,18 @@ export class PlanningService {
     private readonly solver: SolverService,
     private readonly realtime: RealtimeGateway,
     private readonly metrics: MetricsService,
+    private readonly planGeneration: PlanGenerationService,
+    private readonly planValidation: PlanValidationService,
+    private readonly planPersistence: PlanPersistenceService,
+    private readonly scheduleAdjustmentService: ScheduleAdjustmentService,
+    private readonly adaptiveInsights: AdaptiveInsightsService,
+    private readonly adaptiveStrategy: AdaptiveStrategyService,
+    private readonly cache: CacheService,
   ) {}
 
   // --- Gemini dayanıklılığı: Retry helper ---
   private async generateContentWithRetry(prompt: string, maxRetries = 2, initialDelayMs = 1000): Promise<string> {
-    const startTime = Date.now();
-    let attempt = 0;
-    let lastError: any;
-    let success = false;
-    
-    while (attempt <= maxRetries) {
-      try {
-        const result = await this.geminiService.generateContent(prompt);
-        success = true;
-        return result;
-      } catch (err: any) {
-        lastError = err;
-        const status = (err && err.status) || (err && err.response && err.response.status);
-        const isTransient = status ? (status >= 500 || status === 429) : true;
-        if (!isTransient || attempt === maxRetries) {
-          break;
-        }
-        const backoff = initialDelayMs * Math.pow(2, attempt);
-        await new Promise((res) => setTimeout(res, backoff));
-        attempt++;
-      }
-    }
-    
-    // AI API metriklerini kaydet
-    const duration = Date.now() - startTime;
-    this.metrics.recordAiApiCall('gemini', duration, success);
-    
-    throw lastError || new Error('GeminiService request failed');
+    return this.planGeneration.generateContentWithRetry(prompt, maxRetries, initialDelayMs);
   }
 
   // Zod: AI plan yapısı doğrulama şemaları
@@ -993,11 +980,15 @@ export class PlanningService {
     const gradeForTrack = parseInt(String(studentProfile.grade || '0')) || 0;
     const trackLower = String(studentProfile.academicTrack || '').toLowerCase();
     if (gradeForTrack >= 11 && Array.isArray(studentProfile.selectedSubjects)) {
-      const filtered = this.filterSubjectsForGradeAndTrack(studentProfile.selectedSubjects, gradeForTrack, trackLower);
+      const filtered = this.planGeneration.filterSubjectsForGradeAndTrack(studentProfile.selectedSubjects, gradeForTrack, trackLower);
       if (filtered.length > 0) {
         studentProfile.selectedSubjects = filtered;
       }
     }
+
+    console.time('computeUserInsights');
+    const insights = await this.adaptiveInsights.computeUserInsights(userId);
+    console.timeEnd('computeUserInsights');
 
     console.time('getRelevantTopicsForStudent');
     const relevantTopics = await this.getRelevantTopicsForStudent(studentProfile, new Date());
@@ -1005,14 +996,22 @@ export class PlanningService {
 
     // 2) Montaj Hattı: konulardan deterministik iskelet oluştur
     console.time('buildScheduleFromTopics');
-    const planSkeleton = this.buildScheduleFromTopics(relevantTopics, normalized);
+    const planDurationDays: number = Number((normalized as any)?.planDurationDays) > 0
+      ? Number((normalized as any).planDurationDays)
+      : 3;
+    const planSkeleton = this.planGeneration.buildScheduleFromTopics(relevantTopics, {
+      ...normalized,
+      planDurationDays,
+      userId,
+    });
     console.timeEnd('buildScheduleFromTopics');
 
     // 3) Kalite Kontrol: AI ile seans detaylarını zenginleştir
     console.time('enrichWithAI');
     let finalPlanStructure: any = planSkeleton;
     try {
-      finalPlanStructure = await this.enrichSkeletonWithAI(planSkeleton, normalized.learningStyle);
+      const imageUrl = (data as any)?.planContext?.evidenceImageUrl || undefined;
+      finalPlanStructure = await this.planGeneration.enrichSkeletonWithAI(planSkeleton, normalized.learningStyle, { insights, hints: undefined, imageUrl });
     } catch (err) {
       console.warn('[PLANNING] AI zenginleştirme başarısız. Deterministik iskelet ile devam ediliyor.', {
         error: (err as any)?.message || String(err),
@@ -1025,16 +1024,19 @@ export class PlanningService {
       console.timeEnd('enrichWithAI');
     }
 
-    // ADIM D: Nihai planı veritabanına kaydet ve döndür
-    const planDurationDays: number = Number((normalized as any)?.planDurationDays) > 0
-      ? Number((normalized as any).planDurationDays)
-      : 3;
+    // ADIM D: Nihai planı doğrula ve veritabanına kaydet
     
     // Plan yapısına süre bilgisini ekle
     (finalPlanStructure as any).planDurationDays = planDurationDays;
     
+    // Adaptif ipuçları üret ve metaya ekle
+    const hints = this.adaptiveStrategy.deriveHints(insights);
+
+    // Zod ile doğrulama ve iş kuralları
+    const validatedPlan = this.planValidation.assertBusinessRules(finalPlanStructure);
     // Seansları çıkar
-    const sessionsFromStructure = finalPlanStructure.weeklyPlans?.flatMap((w: any) => w?.sessions || []) || [];
+    const sessionsFromStructure = validatedPlan.weeklyPlans?.flatMap((w: any) => w?.sessions || []) || [];
+    this.planValidation.validateSessions(sessionsFromStructure);
     
     // Veritabanına kaydet
     const inferredPlanType = planDurationDays >= 7 ? 'WEEKLY' : 'DAILY';
@@ -1045,70 +1047,64 @@ export class PlanningService {
       ? 'Kişiselleştirilmiş Çalışma Planı'
       : `${learningStyleLabel} Öğrenme Planı`;
 
-    const txResult = await this.prisma.$transaction(async (tx) => {
-      const savedPlan = await tx.plan.create({
-        data: {
+    const safeGetDayOffset = (day: any): number => {
+      if (typeof day !== 'string') return 0;
+      const idx = this.planGeneration.getDayOffset(day);
+      return idx >= 0 ? idx : 0;
+    };
+    const clamped = (value: any): number => {
+      const num = typeof value === 'number' ? value : (typeof value === 'string' ? Number(value) : 0);
+      return Math.max(20, Math.min(num, 180));
+    };
+    const sessionRows = sessionsFromStructure
+      .filter((s: any) => s && typeof s.subject === 'string' && typeof s.topic === 'string')
+      .map((session: any) => {
+        const startDate = new Date();
+        const weekOffset = typeof session.week === 'number' ? session.week : 1;
+        startDate.setDate(startDate.getDate() + ((weekOffset - 1) * 7) + safeGetDayOffset(session.day));
+        const durationMinutes = clamped(session.durationInMinutes ?? session.duration ?? 60);
+        return {
           userId,
-          title: computedTitle,
-          description: `${(studentProfile.selectedSubjects || normalized.subjects).join(', ')} dersleri için kişiselleştirilmiş plan`,
-          type: inferredPlanType as any,
-          subjects: (studentProfile.selectedSubjects || normalized.subjects),
-          goals: normalized.goals,
-          startDate: new Date(),
-          endDate: new Date(Date.now() + planDurationDays * 24 * 60 * 60 * 1000),
+          subject: session.subject,
+          topic: session.topic,
+          duration: durationMinutes,
+          startTime: startDate,
           metadata: {
-            learningStyle: normalized.learningStyle,
-            availableTime: normalized.availableTime,
-            preferences: normalized.preferences,
-            aiGenerated: true,
-            planStructure: finalPlanStructure,
-            planDurationDays,
+            type: typeof session.type === 'string' ? session.type : 'study',
+            difficulty: typeof session.difficulty === 'string' ? session.difficulty : 'medium',
+            objectives: Array.isArray(session.objectives) ? session.objectives : [],
+            resources: Array.isArray(session.resources) ? session.resources : [],
+            techniques: Array.isArray(session.techniques) ? session.techniques : [],
           },
-        },
+        } as any;
       });
 
-      // Çalışma seanslarını oluştur (weeklyPlans içindeki seansları da destekle)
-      if (Array.isArray(sessionsFromStructure) && sessionsFromStructure.length > 0) {
-        const safeGetDayOffset = (day: any): number => {
-          if (typeof day !== 'string') return 0;
-          const idx = this.getDayOffset(day);
-          return idx >= 0 ? idx : 0;
-        };
-        const clamped = (value: any): number => {
-          const num = typeof value === 'number' ? value : (typeof value === 'string' ? Number(value) : 0);
-          return Math.max(20, Math.min(num, 180));
-        };
-        const tasks = sessionsFromStructure
-          .filter((s: any) => s && typeof s.subject === 'string' && typeof s.topic === 'string')
-          .map((session: any) => {
-            const startDate = new Date();
-            const weekOffset = typeof session.week === 'number' ? session.week : 1;
-            startDate.setDate(startDate.getDate() + ((weekOffset - 1) * 7) + safeGetDayOffset(session.day));
-            const durationMinutes = clamped(session.durationInMinutes ?? session.duration ?? 60);
-            return tx.studySession.create({
-              data: {
-                planId: savedPlan.id,
-                userId,
-                subject: session.subject,
-                topic: session.topic,
-                duration: durationMinutes,
-                startTime: startDate,
-                metadata: {
-                  type: typeof session.type === 'string' ? session.type : 'study',
-                  difficulty: typeof session.difficulty === 'string' ? session.difficulty : 'medium',
-                  objectives: Array.isArray(session.objectives) ? session.objectives : [],
-                  resources: Array.isArray(session.resources) ? session.resources : [],
-                  techniques: Array.isArray(session.techniques) ? session.techniques : [],
-                },
-              },
-            });
-          });
-        await Promise.all(tasks);
-      }
-
-      return savedPlan;
+    const startedGen = Date.now();
+    const txResult = await this.planPersistence.savePlanWithSessions({
+      plan: {
+        userId,
+        title: computedTitle,
+        description: `${(studentProfile.selectedSubjects || normalized.subjects).join(', ')} dersleri için kişiselleştirilmiş plan`,
+        type: inferredPlanType as any,
+        subjects: (studentProfile.selectedSubjects || normalized.subjects),
+        goals: normalized.goals,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + planDurationDays * 24 * 60 * 60 * 1000),
+        metadata: {
+          learningStyle: normalized.learningStyle,
+          availableTime: normalized.availableTime,
+          preferences: normalized.preferences,
+          aiGenerated: true,
+        planStructure: validatedPlan,
+        adaptiveHints: hints,
+          planDurationDays,
+        },
+      },
+      sessions: sessionRows,
     });
 
+    const genMs = Date.now() - startedGen;
+    this.metrics.recordPlanGenerationDuration(genMs, true);
     return {
       success: true,
       plan: {
@@ -1127,35 +1123,12 @@ export class PlanningService {
 
   // Frontend'in beklediği: görev ilerlemesi güncelle
   async updateTaskProgress(data: { userId: string; taskId: string; minutes: number }) {
-    if (!data.taskId || typeof data.minutes !== 'number') {
-      throw new BadRequestException('Geçersiz parametreler');
-    }
-    const session = await this.prisma.studySession.findFirst({ where: { id: data.taskId, userId: data.userId } });
-    if (!session) throw new NotFoundException('Session not found');
-    const updated = await this.prisma.studySession.update({
-      where: { id: data.taskId },
-      data: {
-        duration: Math.max(0, (session.duration || 0) + data.minutes),
-        metadata: {
-          ...(session.metadata as any || {}),
-          progressUpdatedAt: new Date(),
-          lastProgressDeltaMin: data.minutes,
-        },
-      },
-    });
+    const updated = await this.scheduleAdjustmentService.updateTaskProgress(data);
     this.realtime.publishProgressUpdated(updated.userId, {
       sessionId: updated.id,
       minutesDelta: data.minutes,
       duration: updated.duration,
     });
-    // Cache invalidation
-    try {
-      const cache = (this as any).cacheService as any;
-      if (cache?.del) {
-        await cache.del(`weekly:${data.userId}`);
-        await cache.del(`daily:${data.userId}:*`);
-      }
-    } catch {}
     return { success: true, session: updated };
   }
 
@@ -1165,7 +1138,12 @@ export class PlanningService {
     // Kullanıcı profilini al
     const profile = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { studentProfile: true },
+      select: {
+        id: true,
+        studentProfile: {
+          select: { grade: true, field: true, goals: true, learningStyle: true, weaknesses: true },
+        },
+      },
     });
 
     // Onboarding alanlarını derle
@@ -1347,15 +1325,24 @@ export class PlanningService {
   }
 
   async getMebTopics(subject?: string, grade?: string) {
-    // Şimdilik basit statik dönüş; ileride veri kaynağına bağlanabilir
-    return {
-      subject: subject || 'Matematik',
-      grade: grade || '11',
-      topics: [
-        { unit: 'Fonksiyonlar', outcomes: ['Fonksiyon kavramı', 'Grafikler'] },
-        { unit: 'Limit ve Süreklilik', outcomes: ['Limit tanımı', 'Süreklilik'] },
-      ],
-    };
+    const where: any = {};
+    if (subject) where.subject = subject;
+    if (grade) where.grade = Number(grade) || undefined;
+    const cacheKey = `meb:${where.grade || 'all'}:${where.subject || 'all'}`;
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      this.metrics.recordCacheHit(cacheKey, true);
+      return cached;
+    }
+    const rows = await this.prisma.mebTopic.findMany({
+      where,
+      select: { grade: true, subject: true, unit: true, topic: true },
+      orderBy: [{ grade: 'asc' }, { subject: 'asc' }, { unit: 'asc' }, { topic: 'asc' }],
+      take: 5000,
+    });
+    await this.cache.set(cacheKey, rows, 60 * 60 * 6);
+    this.metrics.recordCacheHit(cacheKey, false);
+    return rows;
   }
 
   private async analyzeUserContext(userId: string) {

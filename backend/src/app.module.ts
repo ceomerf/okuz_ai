@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
+import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './common/prisma/prisma.module';
@@ -28,7 +29,20 @@ import { MonitoringModule } from './monitoring/monitoring.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: ['.env', '.env.production', '.env.development'],
+      validationSchema: Joi.object({
+        NODE_ENV: Joi.string().valid('development', 'test', 'production').required(),
+        PORT: Joi.number().port().default(3000),
+        DATABASE_URL: Joi.string().uri().required(),
+        REDIS_URL: Joi.string().uri().required(),
+        JWT_SECRET: Joi.string().min(32).required(),
+        JWT_REFRESH_SECRET: Joi.string().min(32).optional(),
+        GEMINI_API_KEY: Joi.string().required(),
+        GEMINI_MODEL: Joi.string().optional(),
+        CORS_ORIGINS: Joi.string().allow('').optional(),
+        PROMETHEUS_PORT: Joi.number().port().optional(),
+        SWAGGER_ENABLE: Joi.boolean().optional(),
+      }),
     }),
     PrismaModule,
     ScheduleModule.forRoot(),
