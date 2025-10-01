@@ -49,15 +49,23 @@ export class PlanningController {
 
   @Post('generate-plan')
   @ApiOperation({ summary: 'Generate personalized study plan (basic or AI) [async]' })
-  async generatePlan(@Request() req, @Body() planData: GeneratePlanDto & { mode?: 'basic' | 'ai'; planDurationWeeks?: number; planFocus?: string; dailyMaxMinutes?: number; preferredTimes?: string[] }) {
-    // Idempotency: aynı kullanıcı ve aynı normalized payload için tek job
+  async generatePlan(@Request() req, @Body() planData: GeneratePlanDto & { mode?: 'basic' | 'ai'; planDurationWeeks?: number; planFocus?: string; dailyMaxMinutes?: number; preferredTimes?: string[]; force?: boolean }) {
+    // Idempotency: aynı kullanıcı ve aynı normalized payload için tek job (yalnızca AI modda uygula)
     const payload = { userId: req.user.id, payload: planData } as any;
     const normalized = JSON.stringify(payload);
-    // Basit stabil jobId: kısa bir hash gibi davranan base64 slice
     const base64 = Buffer.from(normalized).toString('base64');
-    const jobId = `generate-plan:${req.user.id}:${base64.slice(0, 16)}`;
+    const computedJobId = `generate-plan:${req.user.id}:${base64.slice(0, 16)}`;
 
-    const job = await this.queue.addJob('generate-plan', payload, { removeOnComplete: 1000, removeOnFail: 1000, jobId });
+    const isAi = planData?.mode === 'ai';
+    const force = Boolean((planData as any)?.force);
+
+    const opts: any = { removeOnComplete: 1000, removeOnFail: 1000 };
+    // Basic modda veya force=true ise idempotent jobId kullanma; AI modda idempotentlik koru
+    if (isAi && !force) {
+      opts.jobId = computedJobId;
+    }
+
+    const job = await this.queue.addJob('generate-plan', payload, opts);
     return { accepted: true, jobId: job.id };
   }
 
