@@ -1660,9 +1660,16 @@ export class PlanningService {
     const sessionsPerDay = 2;
     const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
+    // Konu listesi boş geldiğinde koruma: derslerden genel tekrar başlıkları üret
+    const hasTopics = Array.isArray(topicList) && topicList.length > 0;
+    const fallbackTopics = Array.isArray((planData as any)?.subjects) && (planData as any).subjects.length > 0
+      ? (planData as any).subjects.map((s: string) => `${s}::Genel tekrar`)
+      : ['Genel::Çalışma'];
+    const effectiveTopicList = hasTopics ? topicList : fallbackTopics;
+
     // YENİ: Kullanıcıya özel ancak tutarlı çeşitlilik için seed ve shuffle
     const seed = this.seedFrom(((planData as any)?.userId || 'default-user').toString());
-    const shuffledTopicList = this.shuffleWithSeed(topicList, seed);
+    const shuffledTopicList = this.shuffleWithSeed(effectiveTopicList, seed);
 
     // Basit çeşitlendirme: index'e göre süre ve gün dağılımı
     const sessions: any[] = [];
@@ -1671,8 +1678,8 @@ export class PlanningService {
       for (let s = 0; s < sessionsPerDay; s++) {
         const idx = day * sessionsPerDay + s;
         if (idx >= shuffledTopicList.length) break;
-        const topic = shuffledTopicList[idx];
-        const subject = this.determineSubjectFromTopic(topic, planData.subjects);
+        const topic = String(shuffledTopicList[idx] ?? 'Genel tekrar');
+        const subject = this.determineSubjectFromTopic(topic, (planData as any).subjects || []);
         sessions.push({
           week: 1,
           day: dayName,

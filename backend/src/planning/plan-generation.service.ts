@@ -79,8 +79,15 @@ export class PlanGenerationService {
 		const sessionsPerDay = 2;
 		const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
+		// Konu listesi boş geldiğinde koruma: derslerden genel tekrar başlıkları üret
+		const hasTopics = Array.isArray(topicList) && topicList.length > 0;
+		const fallbackTopics = Array.isArray(planData.subjects) && planData.subjects.length > 0
+			? planData.subjects.map((s) => `${s}::Genel tekrar`)
+			: ['Genel::Çalışma'];
+		const effectiveTopicList = hasTopics ? topicList : fallbackTopics;
+
 		const seed = this.seedFrom(((planData as any)?.userId || 'default-user').toString());
-		const shuffledTopicList = this.shuffleWithSeed(topicList, seed);
+		const shuffledTopicList = this.shuffleWithSeed(effectiveTopicList, seed);
 
 		const sessions: any[] = [];
 		for (let day = 0; day < planDurationDays; day++) {
