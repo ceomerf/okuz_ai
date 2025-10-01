@@ -2678,11 +2678,15 @@ GEÇMİŞ PERFORMANS:
 - Zayıf alanlar: ${userContext.weakAreas.join(', ')}
 - Tercih edilen çalışma saatleri: ${userContext.preferredStudyHours.join(', ')}
 
-BEKLENEN JSON ŞEMASI (örnek):
+BEKLENEN JSON ŞEMASI (ZORUNLU ALANLAR):
 {
+  "planTitle": "Plan başlığı (string)",
   "weeklyPlans": [
     {
-      "week": 1,
+      "weekNumber": 1,
+      "startDate": "2025-01-10T00:00:00.000Z",
+      "endDate": "2025-01-17T00:00:00.000Z", 
+      "totalStudyTime": 420,
       "focus": "Kişiselleştirilmiş odak",
       "sessions": [
         {
