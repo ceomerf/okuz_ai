@@ -36,7 +36,9 @@ async function bootstrap() {
       try {
         const started = Date.now();
         const data = job.data as { userId: string; payload: any };
+        logger.log(`[generate-plan] handling jobId=${job.id} mode=${data?.payload?.mode || 'unknown'} userId=${data?.userId}`);
         await planningService.generatePlan({ ...data.payload, userId: data.userId });
+        logger.log(`[generate-plan] persisted plan for jobId=${job.id} in ${Date.now() - started}ms`);
         metrics.recordQueueProcessingTime('generate-plan', Date.now() - started, true);
       } catch (err: any) {
         logger.error(`[generate-plan] handler error jobId=${job.id} message=${err?.message || err}`);
