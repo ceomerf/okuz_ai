@@ -971,9 +971,36 @@ export class PlanningService {
         planDurationDays,
       } as any);
 
-      const sessions = Array.isArray(basicStructure?.weeklyPlans?.[0]?.sessions)
+      const rawSessions = Array.isArray(basicStructure?.weeklyPlans?.[0]?.sessions)
         ? basicStructure.weeklyPlans[0].sessions
         : [];
+
+      // Prisma StudySession şemasına dönüştür (userId, duration, startTime zorunlu)
+      const baseStart = new Date();
+      baseStart.setHours(9, 0, 0, 0);
+      const sessionRows = (rawSessions.length ? rawSessions : [
+        { subject: selectedSubjects[0] || 'Genel', topic: 'Genel tekrar', durationInMinutes: 45 },
+        { subject: selectedSubjects[1] || selectedSubjects[0] || 'Genel', topic: 'Genel tekrar', durationInMinutes: 45 },
+      ]).map((s: any, i: number) => {
+        const startTime = new Date(baseStart.getTime());
+        // Günde 2 seans varsayımıyla slot dağıtımı (09:00, 11:00, ertesi güne 09:00 ...)
+        const dayOffset = Math.floor(i / 2);
+        const hourOffset = (i % 2) === 0 ? 0 : 2;
+        startTime.setDate(baseStart.getDate() + dayOffset);
+        startTime.setHours(baseStart.getHours() + hourOffset);
+        const duration = Number(s?.durationInMinutes) > 0 ? Number(s.durationInMinutes) : 45;
+        return {
+          userId,
+          subject: String(s?.subject || 'Genel'),
+          topic: String(s?.topic || 'Genel tekrar'),
+          duration,
+          startTime,
+          isCompleted: false,
+          metadata: {
+            source: 'basic',
+          },
+        } as any;
+      });
 
       const computedTitle = `Temel Plan - ${((data as any)?.planFocus || 'Kişisel')}`;
       const inferredPlanType = 'WEEKLY';
@@ -995,7 +1022,7 @@ export class PlanningService {
             preferredTimes: (data as any)?.preferredTimes,
           },
         },
-        sessions,
+        sessions: sessionRows,
       });
 
       return {
