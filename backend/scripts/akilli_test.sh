@@ -184,25 +184,28 @@ submit_job() {
   echo -e "\n${YELLOW}⏳ Plan oluşturma işi kuyruğa alınıyor...${NC}"
   
   local PAYLOAD
+  local AVAILABLE_TIME_MIN
+  AVAILABLE_TIME_MIN=$(( DAILY_HOURS * 60 ))
+
   PAYLOAD=$(jq -n \
     --argjson subjects "$(printf '%s\n' "${SUBJECTS[@]}" | jq -R . | jq -s .)" \
-    --argjson weaknesses "$(printf '%s\n' "${WEAKNESSES[@]}" | jq -R . | jq -s .)" \
-    --arg academicTrack "$ACADEMIC_TRACK" \
-    --arg grade "$GRADE" \
-    --argjson dailyHours "$DAILY_HOURS" \
+    --argjson focusAreas "$(printf '%s\n' "${WEAKNESSES[@]}" | jq -R . | jq -s .)" \
     --arg learningStyle "$LEARNING_STYLE_DEFAULT" \
-    --arg imageUrl "$IMAGE_URL_DEFAULT" \
+    --arg currentLevel "medium" \
+    --arg grade "$GRADE" \
+    --arg field "$ACADEMIC_TRACK" \
+    --argjson availableTime "$AVAILABLE_TIME_MIN" \
     '{
-      planContext: {
-        grade: $grade,
-        academicTrack: $academicTrack,
-        selectedSubjects: $subjects,
-        weaknesses: $weaknesses,
-        dailyHours: $dailyHours,
-        learningStyle: $learningStyle,
-        evidenceImageUrl: ($imageUrl | select(length > 0))
-      },
-      planDurationDays: '${PLAN_DURATION_DAYS}'
+      subjects: $subjects,
+      goals: ["Konu eksiği kapatma"],
+      availableTime: $availableTime,
+      learningStyle: $learningStyle,
+      currentLevel: $currentLevel,
+      preferences: { focusAreas: $focusAreas },
+      studentProfile: {
+        grade: ( ($grade|tonumber?) // null ),
+        field: $field
+      }
     }')
 
   local GEN_RES
@@ -231,7 +234,7 @@ poll_status() {
   while [[ $attempt -lt $MAX_POLL_ATTEMPTS ]]; do
     printf "."
     local STATUS_RESP
-    STATUS_RESP=$(curl -sf -H "Authorization: Bearer $token" "${BACKEND_URL}/planning/jobs/${job_id}") || true
+    STATUS_RESP=$(curl -sf -H "Authorization: Bearer $token" "${BACKEND_URL}/planning/generate-plan/status/${job_id}") || true
     
     if [[ -n "$STATUS_RESP" ]] && jq -e . >/dev/null 2>&1 <<<"$STATUS_RESP"; then
       local status
