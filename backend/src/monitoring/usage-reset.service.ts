@@ -9,7 +9,7 @@ export class UsageResetService {
   constructor(private readonly prisma: PrismaService) {}
 
   // Her ayın 1'i saat 00:10'da kota sıfırlama
-  @Cron(CronExpression.EVERY_MONTH)
+  @Cron('0 10 0 1 * *')
   async resetMonthlyTokenUsage() {
     try {
       await (this.prisma as any).userUsageControl.updateMany({

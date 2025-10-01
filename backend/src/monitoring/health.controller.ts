@@ -43,8 +43,8 @@ export class HealthController {
 
   @Get('metrics')
   @ApiOperation({ summary: 'Prometheus metrics endpoint' })
-  getMetrics() {
-    return this.metrics.getPrometheusMetrics();
+  async getMetrics() {
+    return await this.metrics.getPrometheusMetrics();
   }
 
   private async checkDatabase() {
@@ -85,8 +85,8 @@ export class HealthController {
     };
   }
 
-  private checkMetrics() {
-    const prometheusData = this.metrics.getPrometheusMetrics();
+  private async checkMetrics() {
+    const prometheusData = await this.metrics.getPrometheusMetrics();
     return {
       status: prometheusData.length > 0 ? 'healthy' : 'warning',
       metricsCount: prometheusData.split('\n').filter(line => !line.startsWith('#')).length,
