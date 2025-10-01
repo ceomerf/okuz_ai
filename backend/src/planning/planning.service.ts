@@ -1168,7 +1168,9 @@ export class PlanningService {
       });
 
     const startedGen = Date.now();
-    const txResult = await this.planPersistence.savePlanWithSessions({
+    let txResult;
+    try {
+      txResult = await this.planPersistence.savePlanWithSessions({
       plan: {
         userId,
         title: computedTitle,
@@ -1189,7 +1191,57 @@ export class PlanningService {
         },
       },
       sessions: sessionRows,
-    });
+      });
+    } catch (e) {
+      // AI hatası durumunda basic fallback
+      const basicStructure = this.buildScheduleFromTopics([], {
+        ...(normalized as any),
+        subjects: studentProfile.selectedSubjects || normalized.subjects || [],
+        userId,
+        planDurationDays,
+      } as any);
+
+      const baseStart = new Date();
+      baseStart.setHours(9, 0, 0, 0);
+      const rawSessions = Array.isArray(basicStructure?.weeklyPlans?.[0]?.sessions) ? basicStructure.weeklyPlans[0].sessions : [];
+      const fallbackSessions = (rawSessions.length ? rawSessions : [{ subject: (studentProfile.selectedSubjects || normalized.subjects || ['Genel'])[0], topic: 'Genel tekrar', durationInMinutes: 45 }]).map((s: any, i: number) => {
+        const startTime = new Date(baseStart.getTime());
+        const dayOffset = Math.floor(i / 2);
+        const hourOffset = (i % 2) === 0 ? 0 : 2;
+        startTime.setDate(baseStart.getDate() + dayOffset);
+        startTime.setHours(baseStart.getHours() + hourOffset);
+        const duration = Number(s?.durationInMinutes) > 0 ? Number(s.durationInMinutes) : 45;
+        return {
+          userId,
+          subject: String(s?.subject || 'Genel'),
+          topic: String(s?.topic || 'Genel tekrar'),
+          duration,
+          startTime,
+          isCompleted: false,
+          metadata: { source: 'ai-fallback' },
+        } as any;
+      });
+
+      const fallbackTitle = computedTitle || `Temel Plan - ${(data as any)?.planFocus || 'Kişisel'}`;
+      txResult = await this.planPersistence.savePlanWithSessions({
+        plan: {
+          userId,
+          title: fallbackTitle,
+          description: `${(studentProfile.selectedSubjects || normalized.subjects || []).join(', ')} dersleri için temel plan (AI fallback)`,
+          type: inferredPlanType as any,
+          subjects: (studentProfile.selectedSubjects || normalized.subjects || []),
+          goals: normalized.goals || [],
+          startDate: new Date(),
+          endDate: new Date(Date.now() + planDurationDays * 24 * 60 * 60 * 1000),
+          metadata: {
+            aiGenerated: false,
+            planDurationDays,
+            reason: 'ai_validation_failed',
+          },
+        },
+        sessions: fallbackSessions,
+      });
+    }
 
     const genMs = Date.now() - startedGen;
     this.metrics.recordPlanGenerationDuration(genMs, true);
