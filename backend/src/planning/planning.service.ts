@@ -1304,11 +1304,27 @@ export class PlanningService {
   // YKS özel uçlar (basit ilk sürüm)
   async assignYksSubjects(userId: string, data: { subjects: string[] }) {
     if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { metadata: { assignedYksSubjects: data.subjects } } as any,
+    
+    // StudentProfile'ı güncelle veya oluştur
+    await this.prisma.studentProfile.upsert({
+      where: { userId },
+      update: { 
+        interests: data.subjects,
+        updatedAt: new Date()
+      },
+      create: {
+        userId,
+        grade: 11, // Default grade
+        field: 'MF',
+        interests: data.subjects,
+        learningStyle: 'visual',
+        strengths: [],
+        weaknesses: [],
+        goals: []
+      }
     });
-    return { success: true };
+    
+    return { success: true, message: 'YKS dersleri başarıyla atandı' };
   }
 
   async generateYksPlan(userId: string, data: any) {
