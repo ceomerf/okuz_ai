@@ -1309,8 +1309,7 @@ export class PlanningService {
     await this.prisma.studentProfile.upsert({
       where: { userId },
       update: { 
-        interests: data.subjects,
-        updatedAt: new Date()
+        interests: data.subjects
       },
       create: {
         userId,
