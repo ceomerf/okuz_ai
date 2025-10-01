@@ -954,6 +954,61 @@ export class PlanningService {
     }
     const userId = normalized.userId;
 
+    // BASIC MODE: Zod/AI şemasına girmeden deterministik plan üret ve kaydet
+    const requestedMode = (data as any)?.mode || 'ai';
+    if (requestedMode === 'basic') {
+      const planDurationWeeks = Number((data as any)?.planDurationWeeks) > 0 ? Number((data as any).planDurationWeeks) : 1;
+      const planDurationDays = planDurationWeeks * 7;
+      const selectedSubjects = Array.isArray((data as any)?.subjects) && (data as any).subjects.length > 0
+        ? (data as any).subjects
+        : (normalized.subjects || []);
+
+      // Konular yoksa fallback çalışsın diye boş liste veriyoruz; buildScheduleFromTopics fallback üretecek
+      const basicStructure = this.buildScheduleFromTopics([], {
+        ...(normalized as any),
+        subjects: selectedSubjects,
+        userId,
+        planDurationDays,
+      } as any);
+
+      const sessions = Array.isArray(basicStructure?.weeklyPlans?.[0]?.sessions)
+        ? basicStructure.weeklyPlans[0].sessions
+        : [];
+
+      const computedTitle = `Temel Plan - ${((data as any)?.planFocus || 'Kişisel')}`;
+      const inferredPlanType = 'WEEKLY';
+
+      const txResult = await this.planPersistence.savePlanWithSessions({
+        plan: {
+          userId,
+          title: computedTitle,
+          description: `${(selectedSubjects || []).join(', ')} dersleri için temel plan`,
+          type: inferredPlanType as any,
+          subjects: selectedSubjects,
+          goals: normalized.goals || [],
+          startDate: new Date(),
+          endDate: new Date(Date.now() + planDurationDays * 24 * 60 * 60 * 1000),
+          metadata: {
+            aiGenerated: false,
+            planDurationDays,
+            dailyMaxMinutes: (data as any)?.dailyMaxMinutes,
+            preferredTimes: (data as any)?.preferredTimes,
+          },
+        },
+        sessions,
+      });
+
+      return {
+        success: true,
+        plan: {
+          id: txResult.id,
+          title: txResult.title,
+          description: txResult.description,
+        },
+        message: 'Temel plan başarıyla oluşturuldu',
+      };
+    }
+
     // Sade kullanıcı bağlamı (opsiyonel; öneriler için minimal)
     const userContext: any = {
       subjectPerformance: {},
