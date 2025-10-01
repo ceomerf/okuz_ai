@@ -61,7 +61,14 @@ export class ReplanService {
       select: { id: true, userId: true },
     });
     for (const plan of activePlans) {
-      await this.queue.addJob('replan', { scope, userId: plan.userId, planId: plan.id }, { removeOnComplete: 1000, removeOnFail: 1000 });
+      // Idempotency: aynı kullanıcı/plan/scope için aynı zaman penceresinde tek iş
+      const bucket = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const jobId = `${scope}:${plan.userId}:${plan.id}:${bucket}`;
+      await this.queue.addJob(
+        'replan',
+        { scope, userId: plan.userId, planId: plan.id },
+        { removeOnComplete: 1000, removeOnFail: 1000, jobId }
+      );
     }
   }
 

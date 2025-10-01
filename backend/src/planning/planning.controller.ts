@@ -50,10 +50,14 @@ export class PlanningController {
   @Post('generate-plan')
   @ApiOperation({ summary: 'Generate personalized study plan (basic or AI) [async]' })
   async generatePlan(@Request() req, @Body() planData: GeneratePlanDto & { mode?: 'basic' | 'ai'; planDurationWeeks?: number; planFocus?: string; dailyMaxMinutes?: number; preferredTimes?: string[] }) {
-    const job = await this.queue.addJob('generate-plan', {
-      userId: req.user.id,
-      payload: planData,
-    }, { removeOnComplete: 1000, removeOnFail: 1000 });
+    // Idempotency: aynı kullanıcı ve aynı normalized payload için tek job
+    const payload = { userId: req.user.id, payload: planData } as any;
+    const normalized = JSON.stringify(payload);
+    // Basit stabil jobId: kısa bir hash gibi davranan base64 slice
+    const base64 = Buffer.from(normalized).toString('base64');
+    const jobId = `generate-plan:${req.user.id}:${base64.slice(0, 16)}`;
+
+    const job = await this.queue.addJob('generate-plan', payload, { removeOnComplete: 1000, removeOnFail: 1000, jobId });
     return { accepted: true, jobId: job.id };
   }
 

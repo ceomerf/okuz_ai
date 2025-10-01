@@ -40,8 +40,8 @@ export class QueueService {
   async addJob<T = any>(name: QueueName, payload: T, opts?: JobsOptions) {
     const queue = this.queues[name];
     const defaulted: JobsOptions = {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
+      attempts: 2,
+      backoff: { type: 'exponential', delay: 15000 },
       removeOnComplete: 1000,
       removeOnFail: false,
       ...opts,
