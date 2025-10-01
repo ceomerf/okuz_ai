@@ -242,4 +242,34 @@ export class PlanningController {
   async getAssessmentStatus(@Request() req) {
     return this.planningService.getAssessmentStatus(req.user.id);
   }
+
+  @Get('adaptive-sequence')
+  @ApiOperation({ summary: 'Get adaptive topic sequence based on user level' })
+  async getAdaptiveSequence(@Request() req, @Query('subjects') subjects: string, @Query('weeks') weeks: string) {
+    const subjectsArray = subjects ? subjects.split(',') : ['Matematik', 'Fizik', 'Kimya'];
+    const weeksNumber = weeks ? parseInt(weeks) : 1;
+    return this.planningService.getAdaptiveTopicSequence(req.user.id, subjectsArray, weeksNumber);
+  }
+
+  @Post('progress/track')
+  @ApiOperation({ summary: 'Track study session progress' })
+  async trackProgress(@Request() req, @Body() progressData: { sessionId: string; score: number; timeSpent: number; notes?: string }) {
+    return this.planningService.trackProgress(req.user.id, progressData.sessionId, {
+      score: progressData.score,
+      timeSpent: progressData.timeSpent,
+      notes: progressData.notes
+    });
+  }
+
+  @Get('progress/overview')
+  @ApiOperation({ summary: 'Get user progress overview' })
+  async getProgressOverview(@Request() req) {
+    return this.planningService.getProgressOverview(req.user.id);
+  }
+
+  @Get('coaching')
+  @ApiOperation({ summary: 'Get smart coaching recommendations' })
+  async getSmartCoaching(@Request() req) {
+    return this.planningService.getSmartCoaching(req.user.id);
+  }
 }

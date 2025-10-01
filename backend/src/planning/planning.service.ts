@@ -1632,6 +1632,476 @@ export class PlanningService {
     };
   }
 
+  // Adaptif planlama: Kullanıcı seviyesine göre konu sıralaması
+  async getAdaptiveTopicSequence(userId: string, subjects: string[], planDurationWeeks: number = 1) {
+    if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
+
+    // Kullanıcı profilini al
+    const profile = await this.prisma.studentProfile.findUnique({
+      where: { userId },
+      select: { grade: true, strengths: true, weaknesses: true, learningStyle: true }
+    });
+
+    if (!profile) {
+      throw new BadRequestException('Kullanıcı profili bulunamadı. Önce değerlendirme yapın.');
+    }
+
+    // Müfredat konularını çek
+    const curriculumTopics = await this.buildCurriculumTopicPool(
+      subjects,
+      profile.grade || 11,
+      undefined,
+      undefined
+    );
+
+    // Konuları düzleştir ve seviye analizi yap
+    const allTopics: Array<{subject: string, topic: string, difficulty: number, priority: number}> = [];
+    
+    Object.entries(curriculumTopics).forEach(([subject, topics]) => {
+      topics.forEach(topic => {
+        // Zayıf yönlerdeki konulara yüksek öncelik ver
+        const isWeakness = profile.weaknesses?.some(w => 
+          w.toLowerCase().includes(subject.toLowerCase()) || 
+          w.toLowerCase().includes(topic.toLowerCase())
+        );
+        
+        // Güçlü yönlerdeki konulara düşük öncelik ver
+        const isStrength = profile.strengths?.some(s => 
+          s.toLowerCase().includes(subject.toLowerCase()) || 
+          s.toLowerCase().includes(topic.toLowerCase())
+        );
+
+        // Zorluk seviyesi: temel konular 1, ileri konular 3
+        const difficulty = this.calculateTopicDifficulty(topic, subject);
+        
+        // Öncelik: zayıf yönler > normal > güçlü yönler
+        const priority = isWeakness ? 3 : (isStrength ? 1 : 2);
+
+        allTopics.push({
+          subject,
+          topic,
+          difficulty,
+          priority
+        });
+      });
+    });
+
+    // Öncelik ve zorluk seviyesine göre sırala
+    allTopics.sort((a, b) => {
+      if (a.priority !== b.priority) return b.priority - a.priority; // Yüksek öncelik önce
+      return a.difficulty - b.difficulty; // Düşük zorluk önce
+    });
+
+    // Plan süresine göre konuları seç
+    const totalSessions = planDurationWeeks * 7 * 2; // Haftalık 7 gün, günde 2 oturum
+    const selectedTopics = allTopics.slice(0, Math.min(totalSessions, allTopics.length));
+
+    return {
+      adaptiveSequence: selectedTopics,
+      analysis: {
+        totalTopics: allTopics.length,
+        selectedTopics: selectedTopics.length,
+        weaknessFocus: selectedTopics.filter(t => t.priority === 3).length,
+        strengthReinforcement: selectedTopics.filter(t => t.priority === 1).length,
+        difficultyDistribution: {
+          easy: selectedTopics.filter(t => t.difficulty === 1).length,
+          medium: selectedTopics.filter(t => t.difficulty === 2).length,
+          hard: selectedTopics.filter(t => t.difficulty === 3).length
+        }
+      }
+    };
+  }
+
+  private calculateTopicDifficulty(topic: string, subject: string): number {
+    // Temel konular 1, ileri konular 3
+    const basicKeywords = ['temel', 'giriş', 'basit', 'ilk', 'genel'];
+    const advancedKeywords = ['ileri', 'karmaşık', 'analiz', 'sentez', 'değerlendirme'];
+    
+    const topicLower = topic.toLowerCase();
+    
+    if (basicKeywords.some(k => topicLower.includes(k))) return 1;
+    if (advancedKeywords.some(k => topicLower.includes(k))) return 3;
+    
+    // Matematik ve Fizik genelde daha zor
+    if (['Matematik', 'Fizik'].includes(subject)) return 2;
+    
+    return 2; // Default medium
+  }
+
+  // İlerleme takibi sistemi
+  async trackProgress(userId: string, sessionId: string, performance: { score: number; timeSpent: number; notes?: string }) {
+    if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
+
+    // StudySession'ı güncelle
+    const updatedSession = await this.prisma.studySession.update({
+      where: { id: sessionId },
+      data: {
+        isCompleted: true,
+        performance: performance.score,
+        notes: performance.notes,
+        endTime: new Date()
+      },
+      include: { plan: true }
+    });
+
+    // Kullanıcının genel performansını güncelle
+    await this.updateUserPerformanceMetrics(userId, performance.score, performance.timeSpent);
+
+    // Zorluk seviyesi önerisi
+    const difficultyRecommendation = this.calculateDifficultyAdjustment(performance.score);
+
+    return {
+      success: true,
+      session: updatedSession,
+      recommendation: difficultyRecommendation,
+      nextSteps: this.generateNextSteps(performance.score, updatedSession.subject)
+    };
+  }
+
+  private async updateUserPerformanceMetrics(userId: string, score: number, timeSpent: number) {
+    // Kullanıcının ortalama performansını güncelle
+    const profile = await this.prisma.studentProfile.findUnique({
+      where: { userId },
+      select: { strengths: true, weaknesses: true }
+    });
+
+    if (!profile) return;
+
+    // Performansa göre güçlü/zayıf yönleri güncelle
+    const isGoodPerformance = score >= 70;
+    const isPoorPerformance = score < 50;
+
+    // Bu basit bir örnek - gerçek sistemde daha karmaşık analiz yapılabilir
+    if (isGoodPerformance) {
+      // Güçlü yön olarak ekle
+      console.log(`[PROGRESS] Kullanıcı ${userId} iyi performans gösterdi: ${score}%`);
+    } else if (isPoorPerformance) {
+      // Zayıf yön olarak ekle
+      console.log(`[PROGRESS] Kullanıcı ${userId} düşük performans: ${score}%`);
+    }
+  }
+
+  private calculateDifficultyAdjustment(score: number): { action: string; reason: string; newDifficulty?: string } {
+    if (score >= 90) {
+      return {
+        action: 'increase_difficulty',
+        reason: 'Mükemmel performans! Zorluk seviyesini artırabilirsiniz.',
+        newDifficulty: 'hard'
+      };
+    } else if (score >= 70) {
+      return {
+        action: 'maintain_difficulty',
+        reason: 'İyi performans. Mevcut zorluk seviyesini koruyun.'
+      };
+    } else if (score >= 50) {
+      return {
+        action: 'maintain_difficulty',
+        reason: 'Orta performans. Biraz daha pratik yapın.'
+      };
+    } else {
+      return {
+        action: 'decrease_difficulty',
+        reason: 'Zorluk seviyesini düşürün ve temel konulara odaklanın.',
+        newDifficulty: 'easy'
+      };
+    }
+  }
+
+  private generateNextSteps(score: number, subject: string): string[] {
+    if (score >= 80) {
+      return [
+        'Bu konuyu başarıyla tamamladınız!',
+        'Bir sonraki konuya geçebilirsiniz.',
+        'İleri seviye sorular deneyin.'
+      ];
+    } else if (score >= 60) {
+      return [
+        'İyi gidiyorsunuz!',
+        'Eksik kalan noktaları tekrar edin.',
+        'Pratik sorular çözün.'
+      ];
+    } else {
+      return [
+        'Bu konuya daha fazla zaman ayırın.',
+        'Temel kavramları tekrar edin.',
+        'Öğretmeninizden yardım alın.'
+      ];
+    }
+  }
+
+  // Kullanıcının genel ilerleme durumu
+  async getProgressOverview(userId: string) {
+    if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
+
+    const [completedSessions, totalSessions, recentPerformance] = await Promise.all([
+      this.prisma.studySession.count({
+        where: { userId, isCompleted: true }
+      }),
+      this.prisma.studySession.count({
+        where: { userId }
+      }),
+      this.prisma.studySession.findMany({
+        where: { userId, isCompleted: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 10,
+        select: { performance: true, subject: true, topic: true, updatedAt: true }
+      })
+    ]);
+
+    const completionRate = totalSessions > 0 ? (completedSessions / totalSessions) * 100 : 0;
+    const averageScore = recentPerformance.length > 0 
+      ? recentPerformance.reduce((sum, s) => sum + (s.performance || 0), 0) / recentPerformance.length 
+      : 0;
+
+    // Konu bazında performans analizi
+    const subjectPerformance = recentPerformance.reduce((acc, session) => {
+      const subject = session.subject;
+      if (!acc[subject]) {
+        acc[subject] = { total: 0, count: 0, scores: [] };
+      }
+      acc[subject].total += session.performance || 0;
+      acc[subject].count += 1;
+      acc[subject].scores.push(session.performance || 0);
+      return acc;
+    }, {} as Record<string, { total: number; count: number; scores: number[] }>);
+
+    // Her ders için ortalama hesapla
+    const subjectAverages = Object.entries(subjectPerformance).map(([subject, data]) => ({
+      subject,
+      averageScore: data.total / data.count,
+      trend: this.calculateTrend(data.scores),
+      recommendation: this.getSubjectRecommendation(data.total / data.count)
+    }));
+
+    return {
+      overview: {
+        completionRate: Math.round(completionRate),
+        averageScore: Math.round(averageScore),
+        totalSessions,
+        completedSessions
+      },
+      subjectPerformance: subjectAverages,
+      recommendations: this.generateOverallRecommendations(completionRate, averageScore, subjectAverages)
+    };
+  }
+
+  private calculateTrend(scores: number[]): 'improving' | 'declining' | 'stable' {
+    if (scores.length < 2) return 'stable';
+    
+    const firstHalf = scores.slice(0, Math.floor(scores.length / 2));
+    const secondHalf = scores.slice(Math.floor(scores.length / 2));
+    
+    const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+    const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+    
+    const diff = secondAvg - firstAvg;
+    if (diff > 5) return 'improving';
+    if (diff < -5) return 'declining';
+    return 'stable';
+  }
+
+  private getSubjectRecommendation(averageScore: number): string {
+    if (averageScore >= 80) return 'Mükemmel! Bu dersde çok başarılısınız.';
+    if (averageScore >= 60) return 'İyi gidiyorsunuz. Biraz daha pratik yapın.';
+    if (averageScore >= 40) return 'Bu derse daha fazla zaman ayırın.';
+    return 'Bu dersde ciddi sorunlar var. Öğretmen desteği alın.';
+  }
+
+  private generateOverallRecommendations(completionRate: number, averageScore: number, subjectPerformance: any[]): string[] {
+    const recommendations: string[] = [];
+    
+    if (completionRate < 50) {
+      recommendations.push('Çalışma sürenizi artırın. Daha düzenli çalışın.');
+    }
+    
+    if (averageScore < 60) {
+      recommendations.push('Genel performansınızı artırmak için temel konulara odaklanın.');
+    }
+    
+    const weakSubjects = subjectPerformance.filter(s => s.averageScore < 60);
+    if (weakSubjects.length > 0) {
+      recommendations.push(`Bu derslere özel dikkat edin: ${weakSubjects.map(s => s.subject).join(', ')}`);
+    }
+    
+    const strongSubjects = subjectPerformance.filter(s => s.averageScore >= 80);
+    if (strongSubjects.length > 0) {
+      recommendations.push(`Bu derslerde çok başarılısınız: ${strongSubjects.map(s => s.subject).join(', ')}`);
+    }
+    
+    return recommendations.length > 0 ? recommendations : ['Genel olarak iyi gidiyorsunuz!'];
+  }
+
+  // Akıllı koçluk sistemi
+  async getSmartCoaching(userId: string) {
+    if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
+
+    const [profile, progressOverview, recentSessions] = await Promise.all([
+      this.prisma.studentProfile.findUnique({
+        where: { userId },
+        select: { grade: true, interests: true, goals: true, learningStyle: true, strengths: true, weaknesses: true }
+      }),
+      this.getProgressOverview(userId),
+      this.prisma.studySession.findMany({
+        where: { userId, isCompleted: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+        select: { subject: true, topic: true, performance: true, updatedAt: true }
+      })
+    ]);
+
+    if (!profile) {
+      throw new BadRequestException('Kullanıcı profili bulunamadı. Önce değerlendirme yapın.');
+    }
+
+    // Motivasyon mesajları
+    const motivationMessages = this.generateMotivationMessages(progressOverview.overview.averageScore, progressOverview.overview.completionRate);
+    
+    // Kişiselleştirilmiş öneriler
+    const personalizedAdvice = this.generatePersonalizedAdvice(profile, progressOverview, recentSessions);
+    
+    // Hedef ayarlama önerileri
+    const goalRecommendations = this.generateGoalRecommendations(profile, progressOverview);
+    
+    // Çalışma stratejileri
+    const studyStrategies = this.generateStudyStrategies(profile.learningStyle, progressOverview);
+
+    return {
+      motivation: motivationMessages,
+      personalizedAdvice,
+      goalRecommendations,
+      studyStrategies,
+      currentStatus: {
+        profile: {
+          grade: profile.grade,
+          subjects: profile.interests,
+          learningStyle: profile.learningStyle,
+          strengths: profile.strengths,
+          weaknesses: profile.weaknesses
+        },
+        performance: progressOverview.overview,
+        recentActivity: recentSessions
+      }
+    };
+  }
+
+  private generateMotivationMessages(averageScore: number, completionRate: number): string[] {
+    const messages: string[] = [];
+    
+    if (averageScore >= 80 && completionRate >= 70) {
+      messages.push('🎉 Harika! Çok başarılı bir performans gösteriyorsunuz!');
+      messages.push('💪 Bu tempoyu koruyun, hedeflerinize çok yakınsınız!');
+    } else if (averageScore >= 60 && completionRate >= 50) {
+      messages.push('👍 İyi gidiyorsunuz! Biraz daha çaba ile mükemmel olacaksınız.');
+      messages.push('📈 Her gün küçük adımlar atarak büyük hedeflere ulaşabilirsiniz.');
+    } else if (averageScore >= 40) {
+      messages.push('💪 Zorluklar geçicidir, başarı kalıcıdır!');
+      messages.push('🌟 Her başarısızlık, başarıya giden yolda bir adımdır.');
+    } else {
+      messages.push('🌱 Her uzman bir zamanlar acemiydi. Sabırla devam edin!');
+      messages.push('🎯 Küçük hedefler koyun ve her gün ilerleme kaydedin.');
+    }
+    
+    return messages;
+  }
+
+  private generatePersonalizedAdvice(profile: any, progressOverview: any, recentSessions: any[]): string[] {
+    const advice: string[] = [];
+    
+    // Güçlü yönlere odaklanma
+    if (profile.strengths && profile.strengths.length > 0) {
+      advice.push(`💪 Güçlü yönlerinizi pekiştirin: ${profile.strengths.join(', ')}`);
+    }
+    
+    // Zayıf yönleri geliştirme
+    if (profile.weaknesses && profile.weaknesses.length > 0) {
+      advice.push(`🎯 Zayıf yönlerinizi geliştirin: ${profile.weaknesses.join(', ')}`);
+    }
+    
+    // Performans bazlı öneriler
+    const weakSubjects = progressOverview.subjectPerformance.filter((s: any) => s.averageScore < 60);
+    if (weakSubjects.length > 0) {
+      advice.push(`📚 Bu derslere özel dikkat edin: ${weakSubjects.map((s: any) => s.subject).join(', ')}`);
+    }
+    
+    // Öğrenme stili bazlı öneriler
+    if (profile.learningStyle === 'visual') {
+      advice.push('🎨 Görsel öğrenme stiliniz için diyagramlar ve grafikler kullanın.');
+    } else if (profile.learningStyle === 'auditory') {
+      advice.push('🎵 İşitsel öğrenme stiliniz için sesli kayıtlar ve tartışmalar yapın.');
+    } else if (profile.learningStyle === 'kinesthetic') {
+      advice.push('🏃 Kinestetik öğrenme stiliniz için pratik uygulamalar yapın.');
+    }
+    
+    return advice;
+  }
+
+  private generateGoalRecommendations(profile: any, progressOverview: any): string[] {
+    const recommendations: string[] = [];
+    
+    // Mevcut hedefleri analiz et
+    if (profile.goals && profile.goals.length > 0) {
+      recommendations.push(`🎯 Mevcut hedefleriniz: ${profile.goals.join(', ')}`);
+    }
+    
+    // Performansa göre hedef ayarlama
+    if (progressOverview.overview.averageScore >= 80) {
+      recommendations.push('🚀 Performansınız mükemmel! Daha zorlu hedefler koyabilirsiniz.');
+      recommendations.push('⭐ İleri seviye konulara odaklanmayı düşünün.');
+    } else if (progressOverview.overview.averageScore >= 60) {
+      recommendations.push('📈 Hedeflerinizi gerçekçi tutun ve adım adım ilerleyin.');
+      recommendations.push('🎯 Kısa vadeli hedefler koyarak motivasyonunuzu koruyun.');
+    } else {
+      recommendations.push('🌱 Temel konulara odaklanarak güçlü bir temel oluşturun.');
+      recommendations.push('📚 Küçük, ulaşılabilir hedefler koyun.');
+    }
+    
+    // Sınıf bazlı öneriler
+    if (profile.grade === 12) {
+      recommendations.push('🎓 YKS hazırlığı için stratejik planlama yapın.');
+    } else if (profile.grade === 11) {
+      recommendations.push('📖 11. sınıf konularını sağlam öğrenin, 12. sınıfa hazırlanın.');
+    }
+    
+    return recommendations;
+  }
+
+  private generateStudyStrategies(learningStyle: string, progressOverview: any): string[] {
+    const strategies: string[] = [];
+    
+    // Genel stratejiler
+    strategies.push('⏰ Düzenli çalışma saatleri belirleyin.');
+    strategies.push('📝 Not tutma alışkanlığı edinin.');
+    strategies.push('🔄 Tekrar yapmayı unutmayın.');
+    
+    // Öğrenme stili bazlı stratejiler
+    if (learningStyle === 'visual') {
+      strategies.push('🎨 Renkli kalemler ve diyagramlar kullanın.');
+      strategies.push('📊 Grafikler ve tablolar oluşturun.');
+      strategies.push('🖼️ Görsel hafıza teknikleri uygulayın.');
+    } else if (learningStyle === 'auditory') {
+      strategies.push('🎵 Konuları sesli okuyun.');
+      strategies.push('💬 Arkadaşlarınızla tartışın.');
+      strategies.push('🎤 Sesli kayıtlar yapın.');
+    } else if (learningStyle === 'kinesthetic') {
+      strategies.push('✋ Pratik uygulamalar yapın.');
+      strategies.push('🏃 Hareket ederek çalışın.');
+      strategies.push('🔬 Deneyler ve projeler yapın.');
+    }
+    
+    // Performans bazlı stratejiler
+    if (progressOverview.overview.completionRate < 50) {
+      strategies.push('⏱️ Çalışma sürenizi artırın.');
+      strategies.push('📅 Günlük çalışma planı yapın.');
+    }
+    
+    if (progressOverview.overview.averageScore < 60) {
+      strategies.push('📚 Temel konulara odaklanın.');
+      strategies.push('🔄 Eksik konuları tekrar edin.');
+    }
+    
+    return strategies;
+  }
+
   private async analyzeUserContext(userId: string) {
     // Daha zengin kullanıcı bağlamı: performans geçmişi, çalışma alışkanlıkları ve önceki plan verileri
     const [studySessions, quizResults, examResults, plans] = await Promise.all([
