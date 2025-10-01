@@ -88,6 +88,42 @@ export class PlanningService {
     return this.planGeneration.generateContentWithRetry(prompt, maxRetries, initialDelayMs);
   }
 
+  // AI modelinin esnek/eksik alanlarını şemaya uyumlu hale getirir
+  private normalizeAiPlanStructure(struct: any, planDurationDays: number): any {
+    const now = new Date();
+    const start = new Date(now.getTime());
+    const end = new Date(now.getTime() + planDurationDays * 24 * 60 * 60 * 1000);
+
+    const safeTitle = typeof struct?.planTitle === 'string' && struct.planTitle.trim().length > 0
+      ? struct.planTitle
+      : 'Kişiselleştirilmiş Çalışma Planı';
+
+    const weeks = Array.isArray(struct?.weeklyPlans) ? struct.weeklyPlans : (Array.isArray(struct?.weeks) ? struct.weeks : []);
+    const normalizedWeeks = weeks.map((w: any, idx: number) => {
+      const weekNumber = typeof w?.weekNumber === 'number' ? w.weekNumber
+        : (typeof w?.week === 'number' ? w.week : (idx + 1));
+      const wStart = (w?.startDate ? new Date(w.startDate) : new Date(start.getTime() + (weekNumber - 1) * 7 * 24 * 60 * 60 * 1000));
+      const wEnd = (w?.endDate ? new Date(w.endDate) : new Date(wStart.getTime() + 7 * 24 * 60 * 60 * 1000));
+      const totalStudyTime = typeof w?.totalStudyTime === 'number' ? w.totalStudyTime
+        : (Array.isArray(w?.sessions) ? (w.sessions.reduce((sum: number, s: any) => sum + (Number(s?.durationInMinutes || s?.duration || 0) || 0), 0)) : 0);
+      const sessions = Array.isArray(w?.sessions) ? w.sessions : [];
+      return {
+        ...w,
+        weekNumber,
+        startDate: isNaN(wStart.getTime()) ? start : wStart,
+        endDate: isNaN(wEnd.getTime()) ? end : wEnd,
+        totalStudyTime,
+        sessions,
+      };
+    });
+
+    return {
+      ...struct,
+      planTitle: safeTitle,
+      weeklyPlans: normalizedWeeks,
+    };
+  }
+
   // Zod: AI plan yapısı doğrulama şemaları
   private readonly aiSessionSchema = z.object({
     subject: z.string().min(1),
@@ -1139,9 +1175,10 @@ export class PlanningService {
     }
 
     // ADIM D: Nihai planı doğrula ve veritabanına kaydet
-    
-    // Plan yapısına süre bilgisini ekle
+
+    // Plan yapısına süre bilgisini ekle ve AI çıktısını normalize et
     (finalPlanStructure as any).planDurationDays = planDurationDays;
+    finalPlanStructure = this.normalizeAiPlanStructure(finalPlanStructure, planDurationDays);
     
     // Adaptif ipuçları üret ve metaya ekle
     const hints = this.adaptiveStrategy.deriveHints(insights);
