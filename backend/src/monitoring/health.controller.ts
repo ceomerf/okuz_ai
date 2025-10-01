@@ -24,14 +24,15 @@ export class HealthController {
   @Get('detailed')
   @ApiOperation({ summary: 'Detailed health check with dependencies' })
   async getDetailedHealth() {
-    const checks = {
-      database: await this.checkDatabase(),
-      redis: await this.checkRedis(),
-      memory: this.checkMemory(),
-      metrics: this.checkMetrics(),
-    };
+    const [database, redis] = await Promise.all([
+      this.checkDatabase(),
+      this.checkRedis(),
+    ]);
+    const memory = this.checkMemory();
+    const metrics = await this.checkMetrics();
 
-    const allHealthy = Object.values(checks).every(check => check.status === 'healthy');
+    const checks = { database, redis, memory, metrics } as const;
+    const allHealthy = Object.values(checks).every((check: any) => check.status === 'healthy');
     
     return {
       status: allHealthy ? 'healthy' : 'degraded',
