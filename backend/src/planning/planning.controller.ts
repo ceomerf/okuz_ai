@@ -230,4 +230,16 @@ export class PlanningController {
   async getMebTopics(@Query('subject') subject?: string, @Query('grade') grade?: string) {
     return this.planningService.getMebTopics(subject, grade);
   }
+
+  @Post('assessment/start')
+  @ApiOperation({ summary: 'Start user assessment for personalized planning' })
+  async startAssessment(@Request() req, @Body() assessmentData: { subjects: string[]; grade: number; learningGoals: string[] }) {
+    return this.planningService.startAssessment(req.user.id, assessmentData);
+  }
+
+  @Get('assessment/status')
+  @ApiOperation({ summary: 'Get assessment status and recommendations' })
+  async getAssessmentStatus(@Request() req) {
+    return this.planningService.getAssessmentStatus(req.user.id);
+  }
 }

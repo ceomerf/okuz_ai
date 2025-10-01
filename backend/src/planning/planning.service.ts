@@ -963,13 +963,39 @@ export class PlanningService {
         ? (data as any).subjects
         : (normalized.subjects || []);
 
-      // Konular yoksa fallback çalışsın diye boş liste veriyoruz; buildScheduleFromTopics fallback üretecek
-      const basicStructure = this.buildScheduleFromTopics([], {
-        ...(normalized as any),
-        subjects: selectedSubjects,
-        userId,
-        planDurationDays,
-      } as any);
+      // Kullanıcının sınıfını al
+      const studentProfile = await this.prisma.studentProfile.findUnique({ 
+        where: { userId }, 
+        select: { grade: true, interests: true } 
+      });
+      const userGrade = studentProfile?.grade || 11; // Default 11. sınıf
+
+      // Gerçek müfredat konularını çek
+      const curriculumTopics = await this.buildCurriculumTopicPool(
+        selectedSubjects,
+        userGrade,
+        undefined,
+        undefined
+      );
+
+      // Konuları düzleştir
+      const topicList: string[] = [];
+      Object.entries(curriculumTopics).forEach(([subject, topics]) => {
+        topics.forEach(topic => {
+          topicList.push(`${subject}::${topic}`);
+        });
+      });
+
+      // Gerçek konular varsa kullan, yoksa fallback
+      const basicStructure = this.buildScheduleFromTopics(
+        topicList.length > 0 ? topicList : [], // Gerçek konular varsa kullan
+        {
+          ...(normalized as any),
+          subjects: selectedSubjects,
+          userId,
+          planDurationDays,
+        } as any
+      );
 
       const rawSessions = Array.isArray(basicStructure?.weeklyPlans?.[0]?.sessions)
         ? basicStructure.weeklyPlans[0].sessions
@@ -1193,13 +1219,31 @@ export class PlanningService {
       sessions: sessionRows,
       });
     } catch (e) {
-      // AI hatası durumunda basic fallback
-      const basicStructure = this.buildScheduleFromTopics([], {
-        ...(normalized as any),
-        subjects: studentProfile.selectedSubjects || normalized.subjects || [],
-        userId,
-        planDurationDays,
-      } as any);
+      // AI hatası durumunda basic fallback - gerçek müfredat konuları ile
+      const curriculumTopics = await this.buildCurriculumTopicPool(
+        studentProfile.selectedSubjects || normalized.subjects || [],
+        studentProfile.grade || 11,
+        undefined,
+        undefined
+      );
+
+      // Konuları düzleştir
+      const topicList: string[] = [];
+      Object.entries(curriculumTopics).forEach(([subject, topics]) => {
+        topics.forEach(topic => {
+          topicList.push(`${subject}::${topic}`);
+        });
+      });
+
+      const basicStructure = this.buildScheduleFromTopics(
+        topicList.length > 0 ? topicList : [], // Gerçek konular varsa kullan
+        {
+          ...(normalized as any),
+          subjects: studentProfile.selectedSubjects || normalized.subjects || [],
+          userId,
+          planDurationDays,
+        } as any
+      );
 
       const baseStart = new Date();
       baseStart.setHours(9, 0, 0, 0);
@@ -1498,6 +1542,94 @@ export class PlanningService {
     await this.cache.set(cacheKey, rows, 60 * 60 * 6);
     this.metrics.recordCacheHit(cacheKey, false);
     return rows;
+  }
+
+  async startAssessment(userId: string, assessmentData: { subjects: string[]; grade: number; learningGoals: string[] }) {
+    if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
+
+    // StudentProfile'ı güncelle veya oluştur
+    await this.prisma.studentProfile.upsert({
+      where: { userId },
+      update: {
+        grade: assessmentData.grade,
+        interests: assessmentData.subjects,
+        goals: assessmentData.learningGoals,
+        learningStyle: 'visual', // Default, sonra değerlendirme ile güncellenecek
+        strengths: [],
+        weaknesses: []
+      },
+      create: {
+        userId,
+        grade: assessmentData.grade,
+        field: 'MF', // Default
+        interests: assessmentData.subjects,
+        learningStyle: 'visual',
+        strengths: [],
+        weaknesses: [],
+        goals: assessmentData.learningGoals
+      }
+    });
+
+    return { 
+      success: true, 
+      message: 'Değerlendirme başlatıldı',
+      nextSteps: [
+        'Konu bazında seviye testleri yapın',
+        'Öğrenme stilinizi belirleyin',
+        'Güçlü ve zayıf yönlerinizi tespit edin'
+      ]
+    };
+  }
+
+  async getAssessmentStatus(userId: string) {
+    if (!userId) throw new BadRequestException('Kullanıcı kimliği gerekli');
+
+    const profile = await this.prisma.studentProfile.findUnique({
+      where: { userId },
+      select: {
+        grade: true,
+        interests: true,
+        goals: true,
+        learningStyle: true,
+        strengths: true,
+        weaknesses: true
+      }
+    });
+
+    if (!profile) {
+      return { 
+        status: 'not_started',
+        message: 'Değerlendirme henüz başlatılmamış',
+        recommendations: ['Önce değerlendirme başlatın']
+      };
+    }
+
+    // Kullanıcının sınıfına göre müfredat konularını getir
+    const curriculumTopics = await this.buildCurriculumTopicPool(
+      profile.interests || [],
+      profile.grade || 11,
+      undefined,
+      undefined
+    );
+
+    return {
+      status: 'in_progress',
+      profile: {
+        grade: profile.grade,
+        subjects: profile.interests,
+        goals: profile.goals,
+        learningStyle: profile.learningStyle,
+        strengths: profile.strengths,
+        weaknesses: profile.weaknesses
+      },
+      availableTopics: curriculumTopics,
+      recommendations: [
+        'Konu bazında mini testler yapın',
+        'Öğrenme stilinizi belirleyin',
+        'Güçlü yönlerinizi pekiştirin',
+        'Zayıf yönlerinizi geliştirin'
+      ]
+    };
   }
 
   private async analyzeUserContext(userId: string) {
