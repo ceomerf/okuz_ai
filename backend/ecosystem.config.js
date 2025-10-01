@@ -1,4 +1,45 @@
 module.exports = {
+  apps: [
+    {
+      name: 'api',
+      script: 'dist/main.js',
+      instances: 1,
+      exec_mode: 'fork',
+      max_memory_restart: '500M',
+      env: { NODE_ENV: 'production' },
+      out_file: './logs/api-out.log',
+      error_file: './logs/api-error.log',
+      merge_logs: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+    {
+      name: 'replan-worker',
+      script: 'node',
+      args: 'dist/src/planning/workers/replan.worker.js',
+      instances: 1,
+      exec_mode: 'fork',
+      max_memory_restart: '500M',
+      out_file: './logs/replan-out.log',
+      error_file: './logs/replan-error.log',
+      merge_logs: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+    {
+      name: 'generate-plan-worker',
+      script: 'node',
+      args: 'dist/src/planning/workers/generate-plan.worker.js',
+      instances: 1,
+      exec_mode: 'fork',
+      max_memory_restart: '500M',
+      out_file: './logs/generate-plan-out.log',
+      error_file: './logs/generate-plan-error.log',
+      merge_logs: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    }
+  ]
+};
+
+module.exports = {
   apps: [{
     name: 'okuz-api',
     script: 'dist/src/main.js',

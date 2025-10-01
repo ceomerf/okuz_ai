@@ -4,10 +4,12 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { PlanningService } from './planning.service';
 import { QueueService } from '../services/queue.service';
 import { MetricsService } from '../monitoring/metrics.service';
+import IORedis from 'ioredis';
 
 @Injectable()
 export class ReplanService {
   private readonly logger = new Logger(ReplanService.name);
+  private readonly redis = new IORedis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 
   constructor(
     private readonly prisma: PrismaService,
@@ -19,6 +21,12 @@ export class ReplanService {
   // Her gece 02:00'de günlük kapanış analizi
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async dailyReevaluationJob() {
+    const lockKey = 'cron:dailyReevaluationJob:lock';
+    const locked = await this.redis.set(lockKey, '1', 'EX', 3600, 'NX');
+    if (locked !== 'OK') {
+      this.logger.warn('Daily re-evaluation job is already running. Skipping.');
+      return;
+    }
     const logCtx = { job: 'dailyReevaluation', startedAt: new Date().toISOString() };
     const startTime = Date.now();
     this.logger.log(JSON.stringify({ level: 'info', msg: 'job_started', ...logCtx }));
@@ -32,12 +40,20 @@ export class ReplanService {
       const duration = Date.now() - startTime;
       this.metrics.recordCronJobDuration('dailyReevaluation', duration, false);
       this.logger.error(JSON.stringify({ level: 'error', msg: 'job_failed', ...logCtx, error: (e as any)?.message || String(e) }));
+    } finally {
+      await this.redis.del(lockKey);
     }
   }
 
   // Her pazartesi 03:00'te haftalık ayarlamalar
   @Cron(CronExpression.EVERY_WEEK)
   async weeklyReevaluationJob() {
+    const lockKey = 'cron:weeklyReevaluationJob:lock';
+    const locked = await this.redis.set(lockKey, '1', 'EX', 7200, 'NX');
+    if (locked !== 'OK') {
+      this.logger.warn('Weekly re-evaluation job is already running. Skipping.');
+      return;
+    }
     const logCtx = { job: 'weeklyReevaluation', startedAt: new Date().toISOString() };
     const startTime = Date.now();
     this.logger.log(JSON.stringify({ level: 'info', msg: 'job_started', ...logCtx }));
@@ -51,6 +67,8 @@ export class ReplanService {
       const duration = Date.now() - startTime;
       this.metrics.recordCronJobDuration('weeklyReevaluation', duration, false);
       this.logger.error(JSON.stringify({ level: 'error', msg: 'job_failed', ...logCtx, error: (e as any)?.message || String(e) }));
+    } finally {
+      await this.redis.del(lockKey);
     }
   }
 

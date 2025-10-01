@@ -1,13 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { MetricsService } from '../monitoring/metrics.service';
+import { PrismaService } from '../common/prisma/prisma.service';
+import { CacheService } from './cache.service';
+import * as crypto from 'crypto';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const CircuitBreaker: any = require('opossum');
 
 @Injectable()
 export class GeminiService {
   private genAI: GoogleGenerativeAI;
   private model: any;
+  private breaker: any;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(private readonly configService: ConfigService, private readonly metrics: MetricsService, private readonly prisma: PrismaService, private readonly cache: CacheService) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY environment variable is required');
@@ -15,20 +22,81 @@ export class GeminiService {
     this.genAI = new GoogleGenerativeAI(apiKey);
     const preferredModel = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
     this.model = this.genAI.getGenerativeModel({ model: preferredModel });
+
+    const breakerOptions = {
+      timeout: 15000,
+      errorThresholdPercentage: 50,
+      resetTimeout: 30000,
+    } as any;
+    this.breaker = new CircuitBreaker(async (args: { prompt: string }) => {
+      const { prompt } = args;
+      return this.model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }]}],
+      });
+    }, breakerOptions);
   }
 
-  async generateContent(prompt: string): Promise<string> {
+  async generateContent(prompt: string, opts?: { userId?: string; endpoint?: string; cacheTtlSeconds?: number; modelOverride?: string }): Promise<string> {
     const MAX_RETRIES = 3;
-    
+    const modelName = opts?.modelOverride || this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
+    const endpoint = opts?.endpoint || 'generateContent';
+    const userId = opts?.userId;
+    const cacheTtlSeconds = typeof opts?.cacheTtlSeconds === 'number' ? opts?.cacheTtlSeconds : 3600;
+
+    // Kota kontrolü (varsa)
+    if (userId) {
+      const usage = await (this.prisma as any).userUsageControl?.findUnique?.({ where: { userId } }).catch(() => null);
+      if (usage && usage.monthlyTokenUsed >= usage.monthlyTokenLimit) {
+        throw new ForbiddenException(`User ${userId} exceeded monthly token limit`);
+      }
+    }
+
+    // Cache kontrolü
+    const promptHash = crypto.createHash('sha256').update(`${modelName}::${endpoint}::${prompt}`).digest('hex');
+    const cacheKey = `gemini:cache:${modelName}:${promptHash}`;
+    const cached = await this.cache.get<string>(cacheKey);
+    if (cached) {
+      this.metrics.recordCacheHit(cacheKey, true);
+      return cached;
+    } else {
+      this.metrics.recordCacheHit(cacheKey, false);
+    }
+    const start = Date.now();
+    // plan_type belirle (abonelik durumuna göre)
+    const planType = userId
+      ? (await (this.prisma as any).user.findUnique?.({ where: { id: userId }, select: { subscriptionStatus: true } }).catch(() => null))?.subscriptionStatus?.toLowerCase?.() || undefined
+      : undefined;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const result = await this.model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }]}],
-        });
+        const result = await this.breaker.fire({ prompt });
         const response = await result.response;
-        return response.text();
+        const text = response.text();
+        const usage = (response as any)?.usageMetadata || {};
+        const totalTokens = Number(usage.totalTokenCount || usage.totalTokens || 0);
+        const duration = Date.now() - start;
+        this.metrics.recordGeminiUsage(userId, planType, modelName, endpoint, totalTokens);
+        this.metrics.recordGeminiCallDuration(userId, planType, modelName, endpoint, duration, true);
+        this.metrics.recordGeminiRequest('success', endpoint, modelName);
+
+        // Kota sayaç artışı
+        if (userId && totalTokens > 0) {
+          await (this.prisma as any).userUsageControl?.upsert?.({
+            where: { userId },
+            create: { userId, monthlyTokenUsed: totalTokens },
+            update: { monthlyTokenUsed: { increment: totalTokens } },
+          }).catch(() => null);
+        }
+
+        // Sonucu cache'e yaz
+        await this.cache.set(cacheKey, text, cacheTtlSeconds);
+        return text;
       } catch (error) {
         console.error(`Gemini API Error (Attempt ${attempt}/${MAX_RETRIES}):`, (error as any)?.message || error);
+        if (attempt === MAX_RETRIES) {
+          const duration = Date.now() - start;
+          this.metrics.recordGeminiCallDuration(userId, planType, modelName, endpoint, duration, false);
+          this.metrics.recordGeminiRequest('error', endpoint, modelName);
+        }
         
         if (attempt === MAX_RETRIES) {
           // Son denemede de başarısız olursa fallback'e geç
@@ -38,7 +106,21 @@ export class GeminiService {
               contents: [{ role: 'user', parts: [{ text: prompt }]}],
             });
             const response = await result.response;
-            return response.text();
+            const text = response.text();
+            const usage = (response as any)?.usageMetadata || {};
+            const totalTokens = Number(usage.totalTokenCount || usage.totalTokens || 0);
+            const duration = Date.now() - start;
+            this.metrics.recordGeminiUsage(userId, planType, 'gemini-1.5-flash', endpoint, totalTokens);
+            this.metrics.recordGeminiCallDuration(userId, planType, 'gemini-1.5-flash', endpoint, duration, true);
+            this.metrics.recordGeminiRequest('success', endpoint, 'gemini-1.5-flash');
+            if (userId && totalTokens > 0) {
+              await (this.prisma as any).userUsageControl?.upsert?.({
+                where: { userId },
+                create: { userId, monthlyTokenUsed: totalTokens },
+                update: { monthlyTokenUsed: { increment: totalTokens } },
+              }).catch(() => null);
+            }
+            return text;
           } catch (err2) {
             console.error('Gemini API Error (fallback model):', (err2 as any)?.message || err2);
             return 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
@@ -55,6 +137,9 @@ export class GeminiService {
 
   async generateContentStream(prompt: string): Promise<AsyncGenerator<string>> {
     try {
+      const modelName = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
+      const endpoint = 'generateContentStream';
+      const start = Date.now();
       const result = await this.model.generateContentStream(prompt);
       
       return (async function* () {

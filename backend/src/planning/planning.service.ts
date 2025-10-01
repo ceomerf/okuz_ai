@@ -518,7 +518,8 @@ export class PlanningService {
   private async basicSkeletonPlan(studentId: string, planParams: PlanParameters): Promise<{ plan: any; sessions: any[] }> {
     const now = new Date();
     const endDate = new Date(now); endDate.setDate(endDate.getDate() + (planParams.planDurationWeeks * 7));
-    const plan = await this.prisma.plan.create({
+    const [plan] = await this.prisma.$transaction([
+      this.prisma.plan.create({
       data: {
         userId: studentId,
         title: `Temel Plan - ${planParams.planFocus || 'Kişisel'}`,
@@ -526,11 +527,12 @@ export class PlanningService {
         type: 'WEEKLY',
         subjects: [],
         goals: [],
-        startDate: now,
-        endDate,
+          startDate: now,
+          endDate,
         metadata: { fallback: true },
-      }
-    });
+        }
+      }),
+    ]);
 
     const sessions = [] as any[];
     // her hafta 3 seans varsayalım
@@ -549,7 +551,11 @@ export class PlanningService {
       }
     }
 
-    if (sessions.length > 0) await this.prisma.studySession.createMany({ data: sessions, skipDuplicates: true });
+    if (sessions.length > 0) {
+      await this.prisma.$transaction([
+        this.prisma.studySession.createMany({ data: sessions, skipDuplicates: true })
+      ]);
+    }
     return { plan, sessions };
   }
 

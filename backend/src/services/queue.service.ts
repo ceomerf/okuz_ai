@@ -14,7 +14,9 @@ export class QueueService {
   private readonly logger = new Logger(QueueService.name);
 
   constructor(private readonly metrics?: MetricsService) {
-    this.connection = new IORedis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
+    this.connection = new IORedis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
+      maxRetriesPerRequest: null,
+    } as any);
     // Ana kuyruklar
     this.queues = {
       replan: new Queue('replan', { connection: this.connection }),

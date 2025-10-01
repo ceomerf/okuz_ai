@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { PlanningController } from './planning.controller';
 import { PlanningService } from './planning.service';
+import { PlanningQueryService } from './planning-query.service';
+import { PlanningPersistenceService } from './planning-persistence.service';
+import { PlanningRuleService } from './planning-rule.service';
 import { ReplanService } from './replan.service';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { GeminiModule } from '../services/gemini.module';
@@ -19,7 +22,7 @@ import { MonitoringModule } from '../monitoring/monitoring.module';
 @Module({
   imports: [PrismaModule, GeminiModule, AuthModule, RealtimeModule, MonitoringModule],
   controllers: [PlanningController],
-  providers: [PlanningService, ReplanService, GeminiFunctionCallingService, PlanGenerationService, PlanValidationService, PlanPersistenceService, ScheduleAdjustmentService, AdaptiveInsightsService, AdaptiveStrategyService, DigitalDossierService],
-  exports: [PlanningService, ReplanService, PlanGenerationService, PlanValidationService, PlanPersistenceService, ScheduleAdjustmentService, AdaptiveInsightsService, AdaptiveStrategyService, DigitalDossierService],
+  providers: [PlanningService, PlanningQueryService, PlanningPersistenceService, PlanningRuleService, ReplanService, GeminiFunctionCallingService, PlanGenerationService, PlanValidationService, PlanPersistenceService, ScheduleAdjustmentService, AdaptiveInsightsService, AdaptiveStrategyService, DigitalDossierService],
+  exports: [PlanningService, PlanningQueryService, PlanningPersistenceService, PlanningRuleService, ReplanService, PlanGenerationService, PlanValidationService, PlanPersistenceService, ScheduleAdjustmentService, AdaptiveInsightsService, AdaptiveStrategyService, DigitalDossierService],
 })
 export class PlanningModule {}

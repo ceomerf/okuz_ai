@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } = require('prom-client');
 
 export interface MetricData {
   name: string;
@@ -10,6 +12,18 @@ export interface MetricData {
 @Injectable()
 export class MetricsService {
   private metrics: Map<string, MetricData[]> = new Map();
+  private registry: any;
+  private geminiRequests: any;
+  private geminiDuration: any;
+  private queueSizeGauge: any;
+
+  constructor() {
+    this.registry = new Registry();
+    collectDefaultMetrics({ register: this.registry });
+    this.geminiRequests = new Counter({ name: 'gemini_requests_total', help: 'Total Gemini API requests', labelNames: ['status', 'endpoint', 'model_name'], registers: [this.registry] });
+    this.geminiDuration = new Histogram({ name: 'gemini_call_duration_seconds', help: 'Gemini API call duration in seconds', labelNames: ['user_id', 'plan_type', 'model_name', 'endpoint', 'success'], buckets: [0.1, 0.5, 1, 2, 5, 10, 30], registers: [this.registry] });
+    this.queueSizeGauge = new Gauge({ name: 'queue_size', help: 'Queue size by name', labelNames: ['queue_name'], registers: [this.registry] });
+  }
 
   // HTTP endpoint metrikleri
   recordEndpointLatency(endpoint: string, method: string, duration: number, statusCode: number) {
@@ -42,15 +56,7 @@ export class MetricsService {
 
   // Queue metrikleri
   recordQueueSize(queueName: string, size: number) {
-    const metric: MetricData = {
-      name: 'queue_size',
-      value: size,
-      labels: {
-        queue_name: queueName,
-      },
-      timestamp: Date.now(),
-    };
-    this.storeMetric(metric);
+    this.queueSizeGauge.labels(queueName).set(size);
   }
 
   recordQueueProcessingTime(queueName: string, duration: number, success: boolean) {
@@ -92,6 +98,31 @@ export class MetricsService {
     }
   }
 
+  // Gemini istek sayacı (success/error)
+  recordGeminiRequest(status: 'success' | 'error', endpoint: string, modelName?: string) {
+    this.geminiRequests.labels(status, endpoint, modelName || 'unknown').inc();
+  }
+
+  // Gemini özel metrikleri (etiketli)
+  recordGeminiUsage(userId: string | undefined, planType: string | undefined, modelName: string | undefined, endpoint: string | undefined, tokensUsed: number) {
+    const metric: MetricData = {
+      name: 'gemini_tokens_used',
+      value: Math.max(0, tokensUsed || 0),
+      labels: {
+        user_id: userId || 'unknown',
+        plan_type: planType || 'unknown',
+        model_name: modelName || 'unknown',
+        endpoint: endpoint || 'unknown',
+      },
+      timestamp: Date.now(),
+    };
+    this.storeMetric(metric);
+  }
+
+  recordGeminiCallDuration(userId: string | undefined, planType: string | undefined, modelName: string | undefined, endpoint: string | undefined, durationMs: number, success: boolean) {
+    this.geminiDuration.labels(userId || 'unknown', planType || 'unknown', modelName || 'unknown', endpoint || 'unknown', success.toString()).observe((durationMs || 0) / 1000);
+  }
+
   // Plan üretim metrikleri
   recordPlanGenerationDuration(durationMs: number, success: boolean) {
     const metric: MetricData = {
@@ -131,50 +162,8 @@ export class MetricsService {
     this.storeMetric(metric);
   }
 
-  // Prometheus formatında metrikleri döndür
-  getPrometheusMetrics(): string {
-    let output = '';
-    
-    for (const [metricName, data] of this.metrics.entries()) {
-      // Son 1 saatteki verileri al (basit filtreleme)
-      const oneHourAgo = Date.now() - 60 * 60 * 1000;
-      const recentData = data.filter(d => d.timestamp && d.timestamp > oneHourAgo);
-      
-      if (recentData.length === 0) continue;
-
-      // Histogram için percentiles hesapla
-      if (metricName.includes('duration') || metricName.includes('latency')) {
-        const values = recentData.map(d => d.value).sort((a, b) => a - b);
-        const p50 = this.calculatePercentile(values, 0.5);
-        const p95 = this.calculatePercentile(values, 0.95);
-        const p99 = this.calculatePercentile(values, 0.99);
-        
-        output += `# HELP ${metricName} ${metricName}\n`;
-        output += `# TYPE ${metricName} histogram\n`;
-        output += `${metricName}_bucket{le="0.1"} ${values.filter(v => v <= 0.1).length}\n`;
-        output += `${metricName}_bucket{le="0.5"} ${values.filter(v => v <= 0.5).length}\n`;
-        output += `${metricName}_bucket{le="1.0"} ${values.filter(v => v <= 1.0).length}\n`;
-        output += `${metricName}_bucket{le="+Inf"} ${values.length}\n`;
-        output += `${metricName}_sum ${values.reduce((sum, v) => sum + v, 0)}\n`;
-        output += `${metricName}_count ${values.length}\n`;
-        output += `${metricName}_p50 ${p50}\n`;
-        output += `${metricName}_p95 ${p95}\n`;
-        output += `${metricName}_p99 ${p99}\n`;
-      } else {
-        // Counter veya Gauge
-        const latestValue = recentData[recentData.length - 1];
-        const labels = latestValue.labels ? 
-          Object.entries(latestValue.labels)
-            .map(([k, v]) => `${k}="${v}"`)
-            .join(',') : '';
-        
-        output += `# HELP ${metricName} ${metricName}\n`;
-        output += `# TYPE ${metricName} gauge\n`;
-        output += `${metricName}{${labels}} ${latestValue.value}\n`;
-      }
-    }
-    
-    return output;
+  async getPrometheusMetrics(): Promise<string> {
+    return await this.registry.metrics();
   }
 
   private storeMetric(metric: MetricData) {
@@ -182,11 +171,8 @@ export class MetricsService {
     if (!this.metrics.has(key)) {
       this.metrics.set(key, []);
     }
-    
     const data = this.metrics.get(key)!;
     data.push(metric);
-    
-    // Son 24 saatteki verileri tut (basit cleanup)
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
     const filtered = data.filter(d => d.timestamp && d.timestamp > oneDayAgo);
     this.metrics.set(key, filtered);
@@ -199,7 +185,6 @@ export class MetricsService {
   }
 
   private extractKeyPattern(key: string): string {
-    // Cache key'lerinden pattern çıkar (örn: weekly:123 -> weekly:*)
     return key.replace(/:\d+$/, ':*').replace(/:\d+:/, ':*:');
   }
 }
