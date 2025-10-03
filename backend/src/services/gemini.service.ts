@@ -20,7 +20,7 @@ export class GeminiService {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    const preferredModel = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
+    const preferredModel = this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash';
     this.model = this.genAI.getGenerativeModel({ model: preferredModel });
 
     const breakerOptions = {
@@ -38,7 +38,7 @@ export class GeminiService {
 
   async generateContent(prompt: string, opts?: { userId?: string; endpoint?: string; cacheTtlSeconds?: number; modelOverride?: string }): Promise<string> {
     const MAX_RETRIES = 3;
-    const modelName = opts?.modelOverride || this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
+    const modelName = opts?.modelOverride || this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash';
     const endpoint = opts?.endpoint || 'generateContent';
     const userId = opts?.userId;
     const cacheTtlSeconds = typeof opts?.cacheTtlSeconds === 'number' ? opts?.cacheTtlSeconds : 3600;
@@ -137,7 +137,7 @@ export class GeminiService {
 
   async generateContentStream(prompt: string): Promise<AsyncGenerator<string>> {
     try {
-      const modelName = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
+      const modelName = this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash';
       const endpoint = 'generateContentStream';
       const start = Date.now();
       const result = await this.model.generateContentStream(prompt);
@@ -196,7 +196,7 @@ export class GeminiService {
         }];
 
         const model = this.genAI.getGenerativeModel({
-          model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash',
+          model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',
         });
         const result = await model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }]}],
