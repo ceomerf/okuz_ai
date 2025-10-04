@@ -1,0 +1,44 @@
+groups:
+- name: GeminiCostAlerts
+  rules:
+  - alert: HighTokenConsumptionRate
+    expr: sum(rate(gemini_tokens_used[5m])) > 10000
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Sistem genelinde yüksek token harcama oranı!"
+      description: "Son 5 dakikadaki token harcama hızı 10,000 token/dk'yı aştı."
+
+- name: QueueHealthAlerts
+  rules:
+  - alert: DLQSizeIncreasing
+    expr: increase(queue_size{queue_name=~".*:dlq"}[10m]) > 5
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Dead-Letter Queue (DLQ) boyutu artıyor!"
+      description: "DLQ'ya son 10 dakikada 5'ten fazla iş düştü. Zehirli iş olabilir."
+
+  - alert: HighErrorRate
+    expr: sum(rate(http_request_duration_seconds{status_code=~"5.."}[5m])) / sum(rate(http_request_duration_seconds[5m])) > 0.01
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "5xx hata oranı yüksek"
+      description: "Son 5 dakikada 5xx oranı %1'i aştı."
+
+- name: GeminiErrorRateAlerts
+  rules:
+  - alert: GeminiHighErrorRate
+    expr: sum(rate(gemini_requests_total{status="error"}[5m])) / sum(rate(gemini_requests_total[5m])) > 0.1
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Gemini API hata oranı yüksek"
+      description: "Son 5 dakikada Gemini hata oranı %10'u aştı."
+
+

@@ -1,0 +1,74 @@
+# Multi-stage build for security and optimization
+FROM node:18-alpine AS base
+
+# Install security updates
+RUN apk update && apk upgrade && apk add --no-cache dumb-init
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# Development stage
+FROM base AS development
+RUN npm ci
+COPY . .
+RUN npx prisma generate
+EXPOSE 3002
+CMD ["dumb-init", "npm", "run", "start:dev"]
+
+# Build stage
+FROM base AS build
+RUN npm ci
+COPY . .
+RUN npx prisma generate
+RUN npm run build
+RUN echo "=== Build completed, checking dist/ contents ==="
+RUN ls -la dist/
+RUN echo "=== Checking if main.js exists ==="
+RUN ls -la dist/main.js || echo "main.js not found!"
+RUN echo "=== Checking if main exists ==="
+RUN ls -la dist/main || echo "main not found!"
+RUN echo "=== All files in dist/ ==="
+RUN find dist/ -type f -name "*.js" | head -10
+RUN echo "=== All files in dist/ (including no extension) ==="
+RUN find dist/ -type f | head -10
+RUN echo "=== Build output directory structure ==="
+RUN tree dist/ || find dist/ -type d
+
+# Production stage
+FROM node:18-alpine AS production
+
+# Install security updates and dumb-init
+RUN apk update && apk upgrade && apk add --no-cache dumb-init
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nestjs -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Copy built application from build stage
+COPY --from=build --chown=nestjs:nodejs /app/dist ./dist
+COPY --from=build --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=build --chown=nestjs:nodejs /app/package*.json ./
+COPY --from=build --chown=nestjs:nodejs /app/prisma ./prisma
+
+# Switch to non-root user
+USER nestjs
+
+# Expose port
+EXPOSE 3002
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3002/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+
+# Start application
+CMD ["dumb-init", "node", "dist/src/main.js"]

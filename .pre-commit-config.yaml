@@ -1,0 +1,88 @@
+repos:
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: check-case-conflict
+      - id: check-json
+      - id: check-toml
+      - id: check-xml
+      - id: mixed-line-ending
+
+  # Security scanning
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package.lock.json
+
+  # Node.js security
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-nodejs
+    rev: v1.1.2
+    hooks:
+      - id: npm-audit
+        args: [--audit-level=high]
+      - id: npm-outdated
+      - id: eslint
+        args: [--fix]
+        files: \.(js|ts)$
+      - id: prettier
+        args: [--write]
+
+  # Docker security
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args: [--ignore, DL3008, --ignore, DL3009]
+
+  # TypeScript
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.0.0
+    hooks:
+      - id: prettier
+        types: [typescript, javascript, json, yaml, markdown]
+
+  # Commit message linting
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.5.3
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  # Flutter/Dart
+  - repo: https://github.com/dart-lang/dart_style
+    rev: 2.3.2
+    hooks:
+      - id: dart-format
+        files: \.dart$
+
+  # Python (if any)
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        language_version: python3
+
+  # Shell scripts
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        args: [-e, SC1091]
+
+  # SQL
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 2.1.2
+    hooks:
+      - id: sqlfluff-lint
+        args: [--dialect, postgres]
+      - id: sqlfluff-fix
+        args: [--dialect, postgres]

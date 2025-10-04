@@ -1,0 +1,116 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Planning System Monitoring",
+    "tags": ["planning", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "HTTP Request Duration",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "http_request_duration_seconds_p95",
+            "legendFormat": "P95 Latency"
+          },
+          {
+            "expr": "http_request_duration_seconds_p99",
+            "legendFormat": "P99 Latency"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Duration (seconds)"
+          }
+        ],
+        "xAxes": [
+          {
+            "label": "Time"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Cron Job Success Rate",
+        "type": "singlestat",
+        "targets": [
+          {
+            "expr": "rate(cron_job_duration_seconds{success=\"true\"}[5m]) / rate(cron_job_duration_seconds[5m]) * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "valueName": "current"
+      },
+      {
+        "id": 3,
+        "title": "Queue Size",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "queue_size",
+            "legendFormat": "{{queue_name}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Jobs in Queue"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "AI API Response Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ai_api_duration_seconds_p95",
+            "legendFormat": "P95 Response Time"
+          },
+          {
+            "expr": "ai_api_duration_seconds_p99",
+            "legendFormat": "P99 Response Time"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Duration (seconds)"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Database Query Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "database_query_duration_seconds_p95",
+            "legendFormat": "P95 Query Time"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Duration (seconds)"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Cache Hit Rate",
+        "type": "singlestat",
+        "targets": [
+          {
+            "expr": "rate(cache_operation{operation=\"hit\"}[5m]) / rate(cache_operation[5m]) * 100",
+            "legendFormat": "Hit Rate %"
+          }
+        ],
+        "valueName": "current"
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

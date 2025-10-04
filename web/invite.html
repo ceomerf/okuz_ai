@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Okuz AI - Davet Kabul</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e9ecef;
+        }
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">O</div>
+        <h1>Okuz AI Daveti</h1>
+        <p>Bu davet linki ile Okuz AI uygulamasına katılabilirsiniz.</p>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Uygulama açılıyor...</p>
+        </div>
+        
+        <div id="buttons">
+            <button class="btn" onclick="openApp()">Uygulamayı Aç</button>
+            <br>
+            <a href="#" class="btn btn-secondary" onclick="downloadApp()">Uygulamayı İndir</a>
+        </div>
+    </div>
+
+    <script>
+        // URL'den token'ı al
+        const urlParams = new URLSearchParams(window.location.search);
+        let token = urlParams.get('token');
+        
+        // Eğer query parameter yoksa path'ten al
+        if (!token) {
+            const pathParts = window.location.pathname.split('/');
+            token = pathParts[pathParts.length - 1];
+        }
+        
+        console.log('Davet token:', token);
+        
+        function openApp() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('buttons').style.display = 'none';
+            
+            // Deep link'i dene
+            const deepLink = `okuzai://invite/${token}`;
+            
+            // Android için intent URL'i
+            const intentUrl = `intent://invite/${token}#Intent;scheme=okuzai;package=com.okuz.ai;end`;
+            
+            // iOS için universal link
+            const universalLink = `https://okuzai.site/invite/${token}`;
+            
+            // Önce deep link'i dene
+            window.location.href = deepLink;
+            
+            // 2 saniye sonra web sayfasına geri dön
+            setTimeout(() => {
+                window.location.href = universalLink;
+            }, 2000);
+        }
+        
+        function downloadApp() {
+            // Play Store linki (gerçek uygulama yayınlandığında güncellenecek)
+            window.open('https://play.google.com/store/apps/details?id=com.okuz.ai', '_blank');
+        }
+        
+        // Sayfa yüklendiğinde otomatik olarak uygulamayı açmayı dene
+        window.onload = function() {
+            if (token && token !== 'invite') {
+                setTimeout(openApp, 1000);
+            }
+        };
+    </script>
+</body>
+</html> 

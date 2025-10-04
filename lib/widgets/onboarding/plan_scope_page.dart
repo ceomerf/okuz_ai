@@ -1,0 +1,210 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:okuz_ai/models/onboarding_data.dart';
+import 'package:okuz_ai/theme/app_theme.dart';
+
+class PlanScopePage extends StatefulWidget {
+  final OnboardingData onboardingData;
+  final ValueChanged<String> onSelectionChanged;
+
+  const PlanScopePage({
+    Key? key,
+    required this.onboardingData,
+    required this.onSelectionChanged,
+  }) : super(key: key);
+
+  @override
+  State<PlanScopePage> createState() => _PlanScopePageState();
+}
+
+class _PlanScopePageState extends State<PlanScopePage> {
+  String? _selectedPlan;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedPlan = widget.onboardingData.planScope;
+  }
+
+  final List<Map<String, dynamic>> _planOptions = [
+    {
+      'id': 'recommended',
+      'title': 'AI\'a Bırak',
+      'subtitle':
+          'Yapay zeka senin için en verimli ders programını oluştursun.',
+      'icon': Icons.auto_awesome_outlined,
+      'isRecommended': true,
+    },
+    {
+      'id': 'custom',
+      'title': 'Dersleri Kendim Seçeceğim',
+      'subtitle':
+          'Çalışmak istediğin dersleri kendin belirle, programını özelleştir.',
+      'icon': Icons.rule_folder_outlined,
+      'isRecommended': false,
+    },
+  ];
+
+  void _selectPlan(String planId) {
+    setState(() {
+      _selectedPlan = planId;
+    });
+    widget.onSelectionChanged(planId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 60),
+          Animate(
+            effects: const [FadeEffect(duration: Duration(milliseconds: 500))],
+            child: Text(
+              'Planını Nasıl Şekillendirelim?',
+              style: GoogleFonts.figtree(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.getPrimaryTextColor(context),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Animate(
+            delay: const Duration(milliseconds: 200),
+            effects: const [FadeEffect(duration: Duration(milliseconds: 500))],
+            child: Text(
+              'Tercihini yap, sana en uygun programı hazırlayalım.',
+              style: GoogleFonts.figtree(
+                fontSize: 16,
+                color: AppTheme.getSecondaryTextColor(context),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 40),
+          Expanded(
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: _planOptions.length,
+              itemBuilder: (context, index) {
+                final option = _planOptions[index];
+                final isSelected = option['id'] == _selectedPlan;
+                return _buildPlanOptionCard(option, isSelected, index);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlanOptionCard(
+      Map<String, dynamic> option, bool isSelected, int index) {
+    final isRecommended = option['isRecommended'] == true;
+    return Animate(
+      delay: Duration(milliseconds: 300 + 100 * index),
+      effects: const [
+        FadeEffect(duration: Duration(milliseconds: 400)),
+        SlideEffect(begin: Offset(0, 0.2), end: Offset.zero)
+      ],
+      child: GestureDetector(
+        onTap: () => _selectPlan(option['id']),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.all(20),
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: isSelected
+                ? AppTheme.primaryColor
+                : Theme.of(context).cardColor,
+            border: Border.all(
+              color: isSelected
+                  ? AppTheme.primaryColor
+                  : Theme.of(context).dividerColor,
+              width: isSelected ? 2 : 1,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withAlpha(77),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color:
+                          Theme.of(context).shadowColor.withValues(alpha: 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+          ),
+          child: Row(
+            children: [
+              Icon(
+                option['icon'],
+                size: 40,
+                color: isSelected ? Colors.white : AppTheme.primaryColor,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isRecommended)
+                      Text(
+                        'Tavsiye Edilen',
+                        style: GoogleFonts.figtree(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected
+                              ? Colors.white.withAlpha(204)
+                              : AppTheme.successColor,
+                        ),
+                      ),
+                    Text(
+                      option['title'],
+                      style: GoogleFonts.figtree(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected
+                            ? Colors.white
+                            : AppTheme.getPrimaryTextColor(context),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      option['subtitle'],
+                      style: GoogleFonts.figtree(
+                        fontSize: 14,
+                        color: isSelected
+                            ? Colors.white.withAlpha(230)
+                            : AppTheme.getSecondaryTextColor(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
