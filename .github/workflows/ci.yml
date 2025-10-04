@@ -85,13 +85,21 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
 
-      - name: Run Unit Tests
+      - name: Run Unit Tests with Coverage
         working-directory: ./backend
-        run: npm run test
+        run: npm run test -- --coverage --coverageReporters=text --coverageReporters=lcov
         env:
           DATABASE_URL: postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
           JWT_SECRET: test-secret-key-for-ci
           JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci
+
+      - name: Upload Backend Coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/coverage/lcov.info
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
 
       - name: Run E2E Tests
         working-directory: ./backend
@@ -135,8 +143,18 @@ jobs:
       - name: Run Flutter Analyze
         run: flutter analyze
 
-      - name: Run Flutter Tests
-        run: flutter test
+      - name: Run Flutter Tests with Coverage
+        run: |
+          flutter test --coverage
+          genhtml coverage/lcov.info -o coverage/html
+
+      - name: Upload Flutter Coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+          fail_ci_if_error: false
 
       - name: Build Flutter Web
         run: flutter build web

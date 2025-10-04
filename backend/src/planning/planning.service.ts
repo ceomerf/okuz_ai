@@ -12,7 +12,9 @@ import { CoachingService } from './coaching.service';
 import { DigitalDossierService } from './digital-dossier.service';
 import { AdaptiveInsightsService } from './adaptive-insights.service';
 import { AdaptiveStrategyService } from './adaptive-strategy.service';
-// import { CacheService } from '../common/cache/cache.service';
+import { CacheService } from '../common/cache/cache.service';
+import { Cacheable, CacheTTL } from '../common/cache/cache.interceptor';
+import { EvictUserCache, EvictPlanCache, EvictProgressCache } from '../common/cache/cache-evict.decorator';
 
 interface PlanGenerationData {
   subjects: string[];
@@ -51,7 +53,7 @@ export class PlanningService {
     private readonly dossier: DigitalDossierService,
     private readonly adaptiveInsights: AdaptiveInsightsService,
     private readonly adaptiveStrategy: AdaptiveStrategyService,
-    // private readonly cache: CacheService,
+    private readonly cache: CacheService,
   ) {}
 
   // Ana plan üretimi - koordinasyon
@@ -289,24 +291,29 @@ export class PlanningService {
   }
 
   // Progress tracking
+  @Cacheable('user:{userId}:progress', 300) // 5 dakika cache
   async trackProgress(userId: string, sessionId: string, performance: { score: number; timeSpent: number; notes?: string }) {
     return this.progressTracking.trackProgress(userId, sessionId, performance);
   }
 
+  @Cacheable('user:{userId}:progress', 600) // 10 dakika cache
   async getProgressOverview(userId: string) {
     return this.progressTracking.getProgressOverview(userId);
   }
 
   // Assessment
+  @EvictUserCache('userId')
   async startAssessment(userId: string, assessmentData: { subjects: string[]; grade: number; learningGoals: string[] }) {
     return this.assessment.startAssessment(userId, assessmentData);
   }
 
+  @Cacheable('user:{userId}:assessment', 1800) // 30 dakika cache
   async getAssessmentStatus(userId: string) {
     return this.assessment.getAssessmentStatus(userId);
   }
 
   // Coaching
+  @Cacheable('user:{userId}:coaching', 900) // 15 dakika cache
   async getSmartCoaching(userId: string) {
     return this.coaching.getSmartCoaching(userId);
   }
@@ -325,18 +332,22 @@ export class PlanningService {
   }
 
   // Plan management
+  @Cacheable('user:{userId}:plans', 1200) // 20 dakika cache
   async getUserPlans(userId: string) {
     return this.planPersistence.getUserPlans(userId);
   }
 
+  @Cacheable('plan:{planId}', 1800) // 30 dakika cache
   async getPlan(userId: string, planId: string) {
     return this.planPersistence.getPlan(userId, planId);
   }
 
+  @EvictPlanCache('planId', 'userId')
   async updatePlan(userId: string, planId: string, data: any) {
     return this.planPersistence.updatePlan(planId, data);
   }
 
+  @EvictPlanCache('planId', 'userId')
   async deletePlan(userId: string, planId: string) {
     return this.planPersistence.deletePlan(planId);
   }

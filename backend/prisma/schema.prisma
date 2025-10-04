@@ -125,6 +125,10 @@ model User {
   @@index([role])
   @@index([subscriptionStatus])
   @@index([createdAt])
+  @@index([role, subscriptionStatus])
+  @@index([subscriptionStatus, trialEndDate])
+  @@index([subscriptionStatus, subscriptionEndDate])
+  @@index([createdAt, role])
 
   // Profile relations
   studentProfile StudentProfile?
@@ -244,6 +248,10 @@ model Plan {
   @@index([userId, createdAt])
   @@index([userId, type, isActive, endDate])
   @@index([isActive, endDate])
+  @@index([type, isActive])
+  @@index([startDate, endDate])
+  @@index([subjects])
+  @@index([goals])
 }
 
 model StudySession {
@@ -272,6 +280,12 @@ model StudySession {
   @@index([userId, createdAt])
   @@index([planId, startTime])
   @@index([userId, isCompleted, startTime])
+  @@index([subject, topic])
+  @@index([userId, subject, startTime])
+  @@index([userId, isCompleted, performance])
+  @@index([startTime, endTime])
+  @@index([performance])
+  @@index([subject, performance])
 }
 
 model Achievement {
