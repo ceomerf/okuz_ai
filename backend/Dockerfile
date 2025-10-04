@@ -28,6 +28,12 @@ RUN npm ci
 COPY . .
 RUN npx prisma generate
 RUN npm run build
+RUN echo "=== Build completed, checking dist/ contents ==="
+RUN ls -la dist/
+RUN echo "=== Checking if main.js exists ==="
+RUN ls -la dist/main.js || echo "main.js not found!"
+RUN echo "=== All files in dist/ ==="
+RUN find dist/ -type f -name "*.js" | head -10
 
 # Production stage
 FROM node:18-alpine AS production
@@ -59,4 +65,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3002/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start application
-CMD ["dumb-init", "node", "dist/main.js"]
+CMD ["dumb-init", "node", "dist/main"]
