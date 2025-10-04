@@ -42,7 +42,7 @@ RUN adduser -S nestjs -u 1001
 # Set working directory
 WORKDIR /app
 
-# Copy built application
+# Copy built application from build stage
 COPY --from=build --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=build --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=build --chown=nestjs:nodejs /app/package*.json ./
