@@ -11,10 +11,10 @@ export class SummaryGeneratorDto {
   @IsString()
   @IsNotEmpty()
   @Length(50, 10000)
-  content: string;
+  content!: string;
 
   @IsEnum(SummaryType)
-  type: SummaryType;
+  type!: SummaryType;
 
   @IsString()
   @IsOptional()

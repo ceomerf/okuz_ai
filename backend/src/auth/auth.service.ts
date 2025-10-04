@@ -95,7 +95,7 @@ export class AuthService {
           role: user.role,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Registration error:', error.message);
       if (error instanceof ConflictException) {
         throw error;

@@ -68,8 +68,8 @@ export class GamificationService {
     const performanceMultiplier = Math.max(0.5, performance / 100);
     const durationBonus = Math.min(20, Math.floor(duration / 30)); // Her 30 dakika için +20 XP
     
-    const base = baseXP[taskType] || 20;
-    const multiplier = difficultyMultiplier[difficulty] || 1.0;
+    const base = baseXP[taskType as keyof typeof baseXP] || 20;
+    const multiplier = difficultyMultiplier[difficulty as keyof typeof difficultyMultiplier] || 1.0;
     
     return Math.floor((base * multiplier * performanceMultiplier) + durationBonus);
   }
@@ -230,7 +230,7 @@ export class GamificationService {
       include: { studentProfile: true },
     });
 
-    let friendsLeaderboard = [];
+    let friendsLeaderboard: any[] = [];
     if (userProfile?.studentProfile) {
       friendsLeaderboard = await this.prisma.gamificationProfile.findMany({
         take: 20,
@@ -715,7 +715,7 @@ export class GamificationService {
   async claimReward(data: { rewardId: string; userId?: string }): Promise<any> {
     const userId = data.userId || 'user-id'; // JWT'den gelecek
     const rewards = await this.getRewards(userId);
-    const reward = rewards.available.find(r => r.id === data.rewardId);
+    const reward = rewards.available.find((r: any) => r.id === data.rewardId);
 
     if (!reward) {
       throw new NotFoundException('Reward not found');

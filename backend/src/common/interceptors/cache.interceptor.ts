@@ -46,14 +46,14 @@ export function Cacheable(key: string, ttl: number = 1800) {
     
     descriptor.value = async function (...args: any[]) {
       const cacheKey = `${key}:${JSON.stringify(args)}`;
-      const cachedData = await this.cacheManager?.get(cacheKey);
+      const cachedData = await (this as any).cacheManager?.get(cacheKey);
       
       if (cachedData) {
         return cachedData;
       }
       
       const result = await method.apply(this, args);
-      await this.cacheManager?.set(cacheKey, result, ttl);
+      await (this as any).cacheManager?.set(cacheKey, result, ttl);
       
       return result;
     };

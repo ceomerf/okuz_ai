@@ -8,7 +8,7 @@ export class SosQuestionDto {
 
   @IsString()
   @IsNotEmpty()
-  subject: string;
+  subject!: string;
 
   @IsNumber()
   @Min(9)

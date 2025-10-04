@@ -49,10 +49,10 @@ class PlanContextDto {
 // Ana DTO, bu PlanContextDto'yu kullanacak
 export class CreateFromOnboardingDto {
   @IsString()
-  planType: string;
+  planType!: string;
 
   @IsBoolean()
-  useOnboardingData: boolean;
+  useOnboardingData!: boolean;
 
   @IsBoolean()
   @IsOptional()

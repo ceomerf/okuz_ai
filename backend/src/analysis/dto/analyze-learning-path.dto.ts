@@ -4,14 +4,14 @@ import { Type } from 'class-transformer';
 export class ProgressStep {
   @IsString()
   @IsNotEmpty()
-  stepId: string;
+  stepId!: string;
 
   @IsString()
   @IsNotEmpty()
-  title: string;
+  title!: string;
 
   @IsNumber()
-  completionPercentage: number;
+  completionPercentage!: number;
 
   @IsString()
   @IsOptional()
@@ -20,24 +20,24 @@ export class ProgressStep {
 
 export class PerformanceMetrics {
   @IsNumber()
-  overallScore: number;
+  overallScore!: number;
 
   @IsNumber()
-  timeSpent: number;
+  timeSpent!: number;
 
   @IsNumber()
-  accuracy: number;
+  accuracy!: number;
 }
 
 export class AnalyzeLearningPathDto {
   @IsString()
   @IsNotEmpty()
-  pathId: string;
+  pathId!: string;
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ProgressStep)
-  progress: ProgressStep[];
+  progress!: ProgressStep[];
 
   @IsObject()
   @IsOptional()

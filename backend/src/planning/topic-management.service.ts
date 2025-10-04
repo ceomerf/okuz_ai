@@ -5,6 +5,26 @@ import { PrismaService } from '../common/prisma/prisma.service';
 export class TopicManagementService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getTopicsBySubjectAndGrade(subject: string, grade: number) {
+    return this.prisma.topic.findMany({
+      where: {
+        subject,
+        grade,
+      },
+      select: {
+        id: true,
+        topic: true,
+        subject: true,
+        grade: true,
+        description: true,
+        month: true,
+        outcomes: true,
+        tytWeight: true,
+        aytWeight: true,
+      },
+    });
+  }
+
   async buildTopicMetadataMap(): Promise<Map<string, { examWeight: number | null; difficultyDist: number[]; prerequisites: string[] }>> {
     const map = new Map();
     
@@ -50,7 +70,7 @@ export class TopicManagementService {
       const monthFilter: Record<string, unknown> = {};
       if (dateWindow?.startDate) {
         const startMonth = dateWindow.startDate.getMonth() + 1;
-        const endMonth = dateWindow.endDate?.getMonth() + 1 || startMonth;
+        const endMonth = (dateWindow.endDate?.getMonth() ?? -1) + 1 || startMonth;
         monthFilter.month = { gte: startMonth, lte: endMonth };
       }
 

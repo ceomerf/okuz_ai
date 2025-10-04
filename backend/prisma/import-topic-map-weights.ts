@@ -68,7 +68,7 @@ function normalizeTopicName(name: string): string {
 
 async function findMebTopicLoose(prisma: PrismaClient, subject: string, rawTopic: string) {
   // 1) Exact match
-  let found = await prisma.mebTopic.findFirst({ where: { subject, topic: rawTopic } });
+  let found: any = await prisma.mebTopic.findFirst({ where: { subject, topic: rawTopic } });
   if (found) return found;
   // 2) Alias exact
   const alias = TOPIC_ALIAS[rawTopic];

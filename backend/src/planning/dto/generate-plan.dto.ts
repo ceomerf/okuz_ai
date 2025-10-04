@@ -8,15 +8,15 @@ export enum PlanMode {
 
 export class GeneratePlanDto {
   @IsEnum(PlanMode)
-  mode: PlanMode;
+  mode!: PlanMode;
 
   @IsNumber()
   @Min(1)
   @Max(52)
-  planDurationWeeks: number;
+  planDurationWeeks!: number;
 
   @IsString()
-  planFocus: string;
+  planFocus!: string;
 
   @IsArray()
   @IsOptional()

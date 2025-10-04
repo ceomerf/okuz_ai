@@ -93,3 +93,5 @@ export class AiAnalysisService {
       const block = this.extractFirstJsonBlock(response);
       return block ? JSON.parse(block) : null;
     }
+  }
+}

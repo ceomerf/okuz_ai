@@ -4,22 +4,22 @@ import { Type } from 'class-transformer';
 export class StudySession {
   @IsString()
   @IsNotEmpty()
-  sessionId: string;
+  sessionId!: string;
 
   @IsString()
   @IsNotEmpty()
-  subject: string;
+  subject!: string;
 
   @IsString()
   @IsNotEmpty()
-  topic: string;
+  topic!: string;
 
   @IsNumber()
-  duration: number; // minutes
+  duration!: number; // minutes
 
   @IsString()
   @IsNotEmpty()
-  startTime: string;
+  startTime!: string;
 
   @IsString()
   @IsOptional()
@@ -34,11 +34,11 @@ export class AnalyzeStudyPatternDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => StudySession)
-  studySessions: StudySession[];
+  studySessions!: StudySession[];
 
   @IsString()
   @IsIn(['week', 'month', 'quarter', 'custom'])
-  timeRange: string;
+  timeRange!: string;
 
   @IsString()
   @IsOptional()

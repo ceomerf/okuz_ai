@@ -17,15 +17,9 @@ export class AssessmentService {
     const assessment = await this.prisma.assessment.create({
       data: {
         userId,
-        type: 'DIAGNOSTIC',
-        title: 'Initial Learning Assessment',
-        description: 'Comprehensive assessment to determine learning needs',
         subjects: assessmentData.subjects,
         grade: assessmentData.grade,
         learningGoals: assessmentData.learningGoals,
-        status: 'IN_PROGRESS',
-        scheduledDate: new Date(),
-        duration: 60, // 60 minutes
       },
     });
 

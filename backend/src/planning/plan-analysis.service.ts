@@ -77,7 +77,7 @@ export class PlanAnalysisService {
    * Ders bazlı analiz yapar
    */
   private getSubjectBreakdown(sessions: any[]) {
-    const breakdown = {};
+    const breakdown: Record<string, any> = {};
     
     sessions.forEach(session => {
       if (!breakdown[session.subject]) {
@@ -149,7 +149,7 @@ export class PlanAnalysisService {
           orderBy: { createdAt: 'desc' },
           take: 200,
         },
-        quizResults: {
+        quizzes: {
           orderBy: { createdAt: 'desc' },
           take: 100,
         },
@@ -171,14 +171,14 @@ export class PlanAnalysisService {
       throw new Error('User not found');
     }
 
-    const { studySessions, quizResults, examResults, plans } = userWithData;
+    const { studySessions, quizzes, examResults, plans } = userWithData;
 
     // 1) Performans geçmişi (deneme netleri ve konu bazlı başarı)
-    const subjectPerformance = this.analyzeSubjectPerformance(studySessions, quizResults, examResults);
+    const subjectPerformance = this.analyzeSubjectPerformance(studySessions, quizzes, examResults);
     const topicSuccessRates: Record<string, number> = {};
     const topicBuckets: Record<string, number[]> = {};
     
-    quizResults.forEach((q: any) => {
+    quizzes.forEach((q: any) => {
       const key = (q.topic || q.subject || 'Genel').toString();
       const scorePct = q.totalScore && q.totalScore > 0 ? (q.score / q.totalScore) * 100 : 0;
       if (!topicBuckets[key]) topicBuckets[key] = [];
@@ -218,8 +218,17 @@ export class PlanAnalysisService {
   /**
    * Ders performansını analiz eder
    */
+  private calculateSubjectAverages(performance: Record<string, number[]>): Record<string, number> {
+    const averages: Record<string, number> = {};
+    Object.keys(performance).forEach(subject => {
+      const scores = performance[subject];
+      averages[subject] = scores.length > 0 ? scores.reduce((sum, score) => sum + score, 0) / scores.length : 0;
+    });
+    return averages;
+  }
+
   private analyzeSubjectPerformance(studySessions: any[], quizResults: any[], examResults: any[]) {
-    const performance: Record<string, number> = {};
+    const performance: Record<string, number[]> = {};
     
     // Study sessions'dan performans çıkar
     studySessions.forEach(session => {
@@ -254,12 +263,13 @@ export class PlanAnalysisService {
     });
 
     // Ortalama performansları hesapla
+    const averages: Record<string, number> = {};
     Object.keys(performance).forEach(subject => {
       const scores = performance[subject];
-      performance[subject] = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+      averages[subject] = scores.reduce((sum, score) => sum + score, 0) / scores.length;
     });
 
-    return performance;
+    return averages;
   }
 
   /**

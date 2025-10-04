@@ -105,7 +105,7 @@ export class SubscriptionService {
         status: currentStatus,
         isTrialActive,
         trialEndDate,
-        subscriptionEndDate: currentSubscription?.endDate,
+        subscriptionEndDate: currentSubscription?.endDate || undefined,
         planType: currentSubscription?.planType,
         features,
       };

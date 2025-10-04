@@ -94,7 +94,7 @@ export class UsersService {
         user: updatedUser,
         studentProfile: studentProfile,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error completing onboarding:', error);
       console.error('❌ Error details:', error.message);
       console.error('❌ Error stack:', error.stack);

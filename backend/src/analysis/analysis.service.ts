@@ -200,19 +200,19 @@ export class AnalysisService {
     
     const analysis = {
       byDifficulty: { easy: 0, medium: 0, hard: 0 },
-      byTopic: {},
-      commonMistakes: [],
+      byTopic: {} as Record<string, { correct: number; total: number }>,
+      commonMistakes: [] as any[],
       timeSpent: {},
     };
 
-    questions.forEach((question, index) => {
+    questions.forEach((question: any, index: number) => {
       const answer = answers[index];
       const difficulty = question.difficulty || 'medium';
       const topic = question.topic || 'general';
 
       // Zorluk seviyesine göre analiz
       if (answer?.correct) {
-        analysis.byDifficulty[difficulty]++;
+        analysis.byDifficulty[difficulty as keyof typeof analysis.byDifficulty]++;
       }
 
       // Konulara göre analiz
@@ -253,11 +253,11 @@ export class AnalysisService {
   }
 
   private categorizeQuestionResults(questions: any[], answers: any) {
-    const strengths = [];
-    const weaknesses = [];
-    const patterns = {};
+    const strengths: any[] = [];
+    const weaknesses: any[] = [];
+    const patterns: any = {};
 
-    const topicPerformance = {};
+    const topicPerformance: Record<string, { correct: number; total: number }> = {};
     
     questions.forEach((question, index) => {
       const topic = question.topic || 'general';
@@ -369,16 +369,16 @@ export class AnalysisService {
   }
 
   private async identifyLearningGaps(data: ExamAnalysisData) {
-    const gaps = [];
+    const gaps: any[] = [];
     
     // Sınav verilerinden eksikleri belirle
     if (data.examData.questions && data.examData.answers) {
-      const wrongAnswers = data.examData.questions.filter((q, index) => 
+      const wrongAnswers = data.examData.questions.filter((q: any, index: number) => 
         !data.examData.answers[index]?.correct
       );
 
-      const topicGaps = {};
-      wrongAnswers.forEach(question => {
+      const topicGaps: Record<string, any[]> = {};
+      wrongAnswers.forEach((question: any) => {
         const topic = question.topic || 'general';
         if (!topicGaps[topic]) {
           topicGaps[topic] = [];
@@ -426,14 +426,14 @@ export class AnalysisService {
       hard: 60,
     };
 
-    return concepts.reduce((total, concept) => {
-      return total + (timePerConcept[concept.difficulty] || 45);
+    return concepts.reduce((total: number, concept: any) => {
+      return total + (timePerConcept[concept.difficulty as keyof typeof timePerConcept] || 45);
     }, 0);
   }
 
   private generateGapStudyPlan(gaps: any[]) {
-    const sortedGaps = gaps.sort((a, b) => {
-      const priorityOrder = { high: 3, medium: 2, low: 1 };
+    const sortedGaps = gaps.sort((a: any, b: any) => {
+      const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
       return priorityOrder[b.priority] - priorityOrder[a.priority];
     });
 
@@ -512,7 +512,7 @@ export class AnalysisService {
       recommendations.push({
         type: 'leverage',
         title: 'Güçlü Alanları Pekiştir',
-        description: `${examAnalysis.strengths.map(s => s.topic).join(', ')} konularında ilerleyin`,
+        description: `${examAnalysis.strengths.map((s: any) => s.topic).join(', ')} konularında ilerleyin`,
         priority: 'medium',
         estimatedTime: '1-2 hafta',
         actions: [
@@ -529,8 +529,8 @@ export class AnalysisService {
     
     Sınav Performansı: ${data.performance}/100
     Ders: ${data.subject}
-    Güçlü Alanlar: ${examAnalysis.strengths.map(s => s.topic).join(', ')}
-    Zayıf Alanlar: ${examAnalysis.weaknesses.map(w => w.topic).join(', ')}
+    Güçlü Alanlar: ${examAnalysis.strengths.map((s: any) => s.topic).join(', ')}
+    Zayıf Alanlar: ${examAnalysis.weaknesses.map((w: any) => w.topic).join(', ')}
     Trend: ${historicalComparison.trend}
     
     Kişiselleştirilmiş çalışma önerileri ver:
@@ -692,7 +692,7 @@ export class AnalysisService {
     await this.prisma.learningPath.update({
       where: { id: data.pathId },
       data: {
-        progress: data.progress,
+        progress: data.progress as any,
         updatedAt: new Date(),
       },
     });
@@ -738,25 +738,25 @@ export class AnalysisService {
   }
 
   private findOptimalDifficulty(curve: any[]): string {
-    const performanceByDifficulty = {
+    const performanceByDifficulty: Record<string, number[]> = {
       easy: [],
       medium: [],
       hard: [],
     };
 
-    curve.forEach(step => {
-      if (performanceByDifficulty[step.difficulty]) {
-        performanceByDifficulty[step.difficulty].push(step.performance);
+    curve.forEach((step: any) => {
+      if (performanceByDifficulty[step.difficulty as keyof typeof performanceByDifficulty]) {
+        performanceByDifficulty[step.difficulty as keyof typeof performanceByDifficulty].push(step.performance);
       }
     });
 
     let bestDifficulty = 'medium';
     let bestPerformance = 0;
 
-    Object.keys(performanceByDifficulty).forEach(difficulty => {
-      const scores = performanceByDifficulty[difficulty];
+    Object.keys(performanceByDifficulty).forEach((difficulty: string) => {
+      const scores = performanceByDifficulty[difficulty as keyof typeof performanceByDifficulty];
       if (scores.length > 0) {
-        const avgPerformance = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+        const avgPerformance = scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length;
         if (avgPerformance > bestPerformance) {
           bestPerformance = avgPerformance;
           bestDifficulty = difficulty;
@@ -1072,10 +1072,10 @@ export class AnalysisService {
 
     const allScores = [
       ...examResults.map(e => (e.score / e.totalScore) * 100),
-      ...quizResults.map(q => (q.score / q.totalScore) * 100),
+      ...quizResults.map(q => ((q.score || 0) / q.totalScore) * 100),
     ];
 
-    const subjectScores = {};
+    const subjectScores: Record<string, number[]> = {};
     examResults.forEach(exam => {
       if (!subjectScores[exam.subject]) subjectScores[exam.subject] = [];
       subjectScores[exam.subject].push((exam.score / exam.totalScore) * 100);
@@ -1087,9 +1087,9 @@ export class AnalysisService {
 
     return {
       overall: allScores.length > 0 ? allScores.reduce((sum, score) => sum + score, 0) / allScores.length : 0,
-      subjects: Object.keys(subjectScores).reduce((acc, subject) => {
+      subjects: Object.keys(subjectScores).reduce((acc: Record<string, number>, subject: string) => {
         const scores = subjectScores[subject];
-        acc[subject] = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+        acc[subject] = scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length;
         return acc;
       }, {}),
       trends,
@@ -1137,7 +1137,7 @@ export class AnalysisService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const subjectData = {};
+    const subjectData: Record<string, { scores: number[]; totalExams: number; lastExamDate: Date | null }> = {};
     
     examResults.forEach(exam => {
       if (!subjectData[exam.subject]) {
@@ -1151,7 +1151,7 @@ export class AnalysisService {
       subjectData[exam.subject].scores.push((exam.score / exam.totalScore) * 100);
       subjectData[exam.subject].totalExams++;
       
-      if (!subjectData[exam.subject].lastExamDate || exam.createdAt > subjectData[exam.subject].lastExamDate) {
+      if (!subjectData[exam.subject].lastExamDate || exam.createdAt > (subjectData[exam.subject].lastExamDate || new Date(0))) {
         subjectData[exam.subject].lastExamDate = exam.createdAt;
       }
     });
@@ -1208,7 +1208,7 @@ export class AnalysisService {
   }
 
   private calculateWeeklyTrend(sessions: any[]) {
-    const weeks = {};
+    const weeks: Record<number, { totalTime: number; sessions: number; avgPerformance: number; performances: number[] }> = {};
     
     sessions.forEach(session => {
       const week = this.getWeekNumber(new Date(session.createdAt));
@@ -1223,10 +1223,10 @@ export class AnalysisService {
       }
     });
 
-    return Object.keys(weeks).map(week => {
-      const data = weeks[week];
+    return Object.keys(weeks).map((week: string) => {
+      const data = weeks[parseInt(week)];
       const avgPerformance = data.performances.length > 0 ? 
-        data.performances.reduce((sum, p) => sum + p, 0) / data.performances.length : 0;
+        data.performances.reduce((sum: number, p: number) => sum + p, 0) / data.performances.length : 0;
       
       return {
         week: parseInt(week),
@@ -1245,7 +1245,7 @@ export class AnalysisService {
   }
 
   private calculateDailyPattern(sessions: any[]) {
-    const pattern = Array(7).fill(null).map(() => ({ totalTime: 0, sessions: 0, performances: [] }));
+    const pattern = Array(7).fill(null).map(() => ({ totalTime: 0, sessions: 0, performances: [] as number[] }));
     
     sessions.forEach(session => {
       const dayOfWeek = new Date(session.createdAt).getDay();
@@ -1268,7 +1268,7 @@ export class AnalysisService {
   }
 
   private calculateMonthlyProgress(sessions: any[]) {
-    const months = {};
+    const months: Record<string, { totalTime: number; sessions: number; performances: number[] }> = {};
     
     sessions.forEach(session => {
       const month = new Date(session.createdAt).toISOString().slice(0, 7); // YYYY-MM
@@ -1283,14 +1283,14 @@ export class AnalysisService {
       }
     });
 
-    return Object.keys(months).sort().map(month => {
+    return Object.keys(months).sort().map((month: string) => {
       const data = months[month];
       return {
         month,
         totalHours: Math.round((data.totalTime / 60) * 10) / 10,
         sessions: data.sessions,
         averagePerformance: data.performances.length > 0 ? 
-          Math.round(data.performances.reduce((sum, p) => sum + p, 0) / data.performances.length) : 0,
+          Math.round(data.performances.reduce((sum: number, p: number) => sum + p, 0) / data.performances.length) : 0,
       };
     });
   }

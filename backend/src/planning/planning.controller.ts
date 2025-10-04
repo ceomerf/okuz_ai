@@ -14,31 +14,31 @@ import { RescheduleSessionDto } from './dto/reschedule-session.dto';
 
 class DailyScheduleDto {
   @IsDateString()
-  date: string;
+  date!: string;
 }
 
 class CompleteSessionDto {
   @IsString()
   @IsNotEmpty()
-  sessionId: string;
+  sessionId!: string;
 
   @IsNumber()
   @Min(0)
-  performance: number;
+  performance!: number;
 
   @IsString()
   @MinLength(0)
-  notes: string;
+  notes!: string;
 }
 
 class SkipSessionDto {
   @IsString()
   @IsNotEmpty()
-  sessionId: string;
+  sessionId!: string;
 
   @IsString()
   @IsNotEmpty()
-  reason: string;
+  reason!: string;
 }
 
 @ApiTags('Planning')
@@ -57,7 +57,7 @@ export class PlanningController {
 
   @Post('generate-plan')
   @ApiOperation({ summary: 'Generate personalized study plan (basic or AI) [async]' })
-  async generatePlan(@Request() req, @Body() planData: GeneratePlanDto) {
+  async generatePlan(@Request() req: any, @Body() planData: GeneratePlanDto) {
     // Idempotency: aynı kullanıcı ve aynı normalized payload için tek job (yalnızca AI modda uygula)
     const payload = { userId: req.user.id, payload: planData } as any;
     const normalized = JSON.stringify(payload);
@@ -86,25 +86,25 @@ export class PlanningController {
 
   @Get('user-plans')
   @ApiOperation({ summary: 'Get user plans' })
-  async getUserPlans(@Request() req) {
+  async getUserPlans(@Request() req: any) {
     const plans = await this.planPersistenceService.getUserPlans(req.user.id);
     
-    return plans.map(plan => ({
+    return plans.map((plan: any) => ({
       ...plan,
       progress: this.planAnalysisService.calculatePlanProgress(plan.sessions),
       nextSession: this.planAnalysisService.getNextSession(plan.sessions),
       stats: {
         totalSessions: plan.sessions.length,
-        completedSessions: plan.sessions.filter(s => s.isCompleted).length,
-        totalStudyTime: plan.sessions.reduce((sum, s) => sum + s.duration, 0),
-        completedStudyTime: plan.sessions.filter(s => s.isCompleted).reduce((sum, s) => sum + s.duration, 0),
+        completedSessions: plan.sessions.filter((s: any) => s.isCompleted).length,
+        totalStudyTime: plan.sessions.reduce((sum: any, s: any) => sum + s.duration, 0),
+        completedStudyTime: plan.sessions.filter((s: any) => s.isCompleted).reduce((sum: any, s: any) => sum + s.duration, 0),
       },
     }));
   }
 
   @Get('plan/:planId')
   @ApiOperation({ summary: 'Get specific plan' })
-  async getPlan(@Request() req, @Param('planId') planId: string) {
+  async getPlan(@Request() req: any, @Param('planId') planId: string) {
     const plan = await this.planPersistenceService.getPlan(req.user.id, planId);
     
     return {
@@ -117,7 +117,7 @@ export class PlanningController {
 
   @Put('plan/:planId')
   @ApiOperation({ summary: 'Update plan' })
-  async updatePlan(@Request() req, @Param('planId') planId: string, @Body() data: any) {
+  async updatePlan(@Request() req: any, @Param('planId') planId: string, @Body() data: any) {
     // Doğrulama
     const validation = this.planValidationService.validatePlanUpdate(data);
     if (!validation.isValid) {
@@ -142,7 +142,7 @@ export class PlanningController {
 
   @Delete('plan/:planId')
   @ApiOperation({ summary: 'Delete plan' })
-  async deletePlan(@Request() req, @Param('planId') planId: string) {
+  async deletePlan(@Request() req: any, @Param('planId') planId: string) {
     // Sahiplik kontrolü
     const isOwner = await this.planPersistenceService.verifyPlanOwnership(req.user.id, planId);
     if (!isOwner) {
@@ -160,13 +160,17 @@ export class PlanningController {
 
   @Post('reschedule')
   @ApiOperation({ summary: 'Reschedule a single study session' })
-  async reschedule(@Request() req, @Body() dto: RescheduleSessionDto) {
-    return this.planningService.rescheduleSingle({ ...dto, userId: req.user.id });
+  async reschedule(@Request() req: any, @Body() dto: RescheduleSessionDto) {
+    return this.planningService.rescheduleSingle({ 
+      ...dto, 
+      userId: req.user.id,
+      newStartTime: new Date(dto.newStartTime)
+    });
   }
 
   @Post('ai-reschedule-suggestions')
   @ApiOperation({ summary: 'Get AI reschedule suggestions' })
-  async getRescheduleSuggestions(@Request() req, @Body() data: { 
+  async getRescheduleSuggestions(@Request() req: any, @Body() data: { 
     planId: string; 
     conflicts: any[]; 
     performance: any;
@@ -176,31 +180,31 @@ export class PlanningController {
 
   @Get('weekly-overview')
   @ApiOperation({ summary: 'Get weekly study overview' })
-  async getWeeklyOverview(@Request() req) {
+  async getWeeklyOverview(@Request() req: any) {
     return this.planningService.getWeeklyOverview(req.user.id);
   }
 
   @Post('daily-schedule')
   @ApiOperation({ summary: 'Get daily schedule' })
-  async getDailySchedule(@Request() req, @Body() data: DailyScheduleDto) {
+  async getDailySchedule(@Request() req: any, @Body() data: DailyScheduleDto) {
     return this.planningService.getDailySchedule(req.user.id, data.date);
   }
 
   @Post('complete-session')
   @ApiOperation({ summary: 'Mark study session as complete' })
-  async completeSession(@Request() req, @Body() data: CompleteSessionDto) {
+  async completeSession(@Request() req: any, @Body() data: CompleteSessionDto) {
     return this.planningService.completeSession({ ...data, userId: req.user.id });
   }
 
   @Post('skip-session')
   @ApiOperation({ summary: 'Skip a study session' })
-  async skipSession(@Request() req, @Body() data: SkipSessionDto) {
+  async skipSession(@Request() req: any, @Body() data: SkipSessionDto) {
     return this.planningService.skipSession({ ...data, userId: req.user.id });
   }
 
   @Get('progress-tracking/:planId')
   @ApiOperation({ summary: 'Get plan progress tracking' })
-  async getProgressTracking(@Request() req, @Param('planId') planId: string) {
+  async getProgressTracking(@Request() req: any, @Param('planId') planId: string) {
     return this.planningService.getProgressTracking(req.user.id, planId);
   }
 
@@ -216,19 +220,19 @@ export class PlanningController {
 
   @Post('create-holiday-plan')
   @ApiOperation({ summary: 'Create holiday study plan' })
-  async createHolidayPlan(@Request() req, @Body() data: any) {
+  async createHolidayPlan(@Request() req: any, @Body() data: any) {
     return this.planningService.generateAndPersistHolidayPlan(req.user.id, data);
   }
 
   @Get('long-term-plan')
   @ApiOperation({ summary: 'Get long term study plan' })
-  async getLongTermPlan(@Request() req) {
+  async getLongTermPlan(@Request() req: any) {
     return this.planningService.getLongTermPlan(req.user.id);
   }
 
   @Post('create-long-term-plan')
   @ApiOperation({ summary: 'Create long term study plan' })
-  async createLongTermPlan(@Request() req, @Body() data: { 
+  async createLongTermPlan(@Request() req: any, @Body() data: { 
     goals: string[]; 
     timeline: number; 
     milestones: any[];
@@ -239,41 +243,41 @@ export class PlanningController {
   // Update task progress (frontend expects this endpoint)
   @Post('update-progress')
   @ApiOperation({ summary: 'Update task progress (minutes)' })
-  async updateProgress(@Request() req, @Body() data: { taskId: string; minutes: number }) {
+  async updateProgress(@Request() req: any, @Body() data: { taskId: string; minutes: number }) {
     return this.planningService.updateTaskProgress({ ...data, userId: req.user.id });
   }
 
   // Create plan from onboarding
   @Post('create-from-onboarding')
   @ApiOperation({ summary: 'Create initial plan using onboarding data' })
-  async createFromOnboarding(@Request() req, @Body() data: CreateFromOnboardingDto) {
+  async createFromOnboarding(@Request() req: any, @Body() data: CreateFromOnboardingDto) {
     return this.planningService.createPlanFromOnboarding(req.user.id, data);
   }
 
   // Create premium plan
   @Post('create-premium-plan')
   @ApiOperation({ summary: 'Create premium plan (7/30 days)' })
-  async createPremiumPlan(@Request() req, @Body() data: any) {
+  async createPremiumPlan(@Request() req: any, @Body() data: any) {
     return this.planningService.createPremiumPlan(req.user.id, data);
   }
 
   // Check holiday plan status
   @Get('check-holiday-status')
   @ApiOperation({ summary: 'Check whether user has an active holiday plan' })
-  async checkHolidayStatus(@Request() req) {
+  async checkHolidayStatus(@Request() req: any) {
     return this.planningService.checkHolidayStatus(req.user.id);
   }
 
   // YKS-specific endpoints expected by frontend
   @Post('yks/assign-subjects')
   @ApiOperation({ summary: 'Assign YKS subjects to user' })
-  async assignYksSubjects(@Request() req, @Body() data: { subjects: string[] }) {
+  async assignYksSubjects(@Request() req: any, @Body() data: { subjects: string[] }) {
     return this.planningService.assignYksSubjects(req.user.id, data);
   }
 
   @Post('yks/generate-plan')
   @ApiOperation({ summary: 'Generate YKS study plan' })
-  async generateYksPlan(@Request() req, @Body() data: any) {
+  async generateYksPlan(@Request() req: any, @Body() data: any) {
     return this.planningService.generateYksPlan(req.user.id, data);
   }
 
@@ -291,19 +295,19 @@ export class PlanningController {
 
   @Post('assessment/start')
   @ApiOperation({ summary: 'Start user assessment for personalized planning' })
-  async startAssessment(@Request() req, @Body() assessmentData: { subjects: string[]; grade: number; learningGoals: string[] }) {
+  async startAssessment(@Request() req: any, @Body() assessmentData: { subjects: string[]; grade: number; learningGoals: string[] }) {
     return this.planningService.startAssessment(req.user.id, assessmentData);
   }
 
   @Get('assessment/status')
   @ApiOperation({ summary: 'Get assessment status and recommendations' })
-  async getAssessmentStatus(@Request() req) {
+  async getAssessmentStatus(@Request() req: any) {
     return this.planningService.getAssessmentStatus(req.user.id);
   }
 
   @Get('adaptive-sequence')
   @ApiOperation({ summary: 'Get adaptive topic sequence based on user level' })
-  async getAdaptiveSequence(@Request() req, @Query('subjects') subjects: string, @Query('weeks') weeks: string) {
+  async getAdaptiveSequence(@Request() req: any, @Query('subjects') subjects: string, @Query('weeks') weeks: string) {
     const subjectsArray = subjects ? subjects.split(',') : ['Matematik', 'Fizik', 'Kimya'];
     const weeksNumber = weeks ? parseInt(weeks) : 1;
     return this.planningService.getAdaptiveTopicSequence(req.user.id, subjectsArray, weeksNumber);
@@ -311,7 +315,7 @@ export class PlanningController {
 
   @Post('progress/track')
   @ApiOperation({ summary: 'Track study session progress' })
-  async trackProgress(@Request() req, @Body() progressData: { sessionId: string; score: number; timeSpent: number; notes?: string }) {
+  async trackProgress(@Request() req: any, @Body() progressData: { sessionId: string; score: number; timeSpent: number; notes?: string }) {
     return this.planningService.trackProgress(req.user.id, progressData.sessionId, {
       score: progressData.score,
       timeSpent: progressData.timeSpent,
@@ -321,13 +325,13 @@ export class PlanningController {
 
   @Get('progress/overview')
   @ApiOperation({ summary: 'Get user progress overview' })
-  async getProgressOverview(@Request() req) {
+  async getProgressOverview(@Request() req: any) {
     return this.planningService.getProgressOverview(req.user.id);
   }
 
   @Get('coaching')
   @ApiOperation({ summary: 'Get smart coaching recommendations' })
-  async getSmartCoaching(@Request() req) {
+  async getSmartCoaching(@Request() req: any) {
     return this.planningService.getSmartCoaching(req.user.id);
   }
 }

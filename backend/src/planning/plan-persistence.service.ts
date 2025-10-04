@@ -81,7 +81,7 @@ export class PlanPersistenceService {
 
       // Session'ları oluştur
       if (planData.sessions && planData.sessions.length > 0) {
-        const sessionData = planData.sessions.map(session => ({
+        const sessionData = planData.sessions.map((session: any) => ({
           ...session,
           planId: plan.id,
         }));
@@ -152,9 +152,10 @@ export class PlanPersistenceService {
       techniques: session.techniques || [],
     }));
 
-    return this.prisma.studySession.createMany({
+    const result = await this.prisma.studySession.createMany({
       data: sessionData,
     });
+    return result as any;
   }
 
   /**

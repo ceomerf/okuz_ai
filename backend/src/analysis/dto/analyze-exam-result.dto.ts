@@ -4,40 +4,40 @@ import { Type } from 'class-transformer';
 export class QuestionResult {
   @IsString()
   @IsNotEmpty()
-  questionId: string;
+  questionId!: string;
 
   @IsString()
   @IsNotEmpty()
-  studentAnswer: string;
+  studentAnswer!: string;
 
   @IsString()
   @IsNotEmpty()
-  correctAnswer: string;
+  correctAnswer!: string;
 
   @IsString()
   @IsNotEmpty()
-  topic: string;
+  topic!: string;
 
   @IsString()
   @IsNotEmpty()
-  difficulty: string;
+  difficulty!: string;
 }
 
 export class AnalyzeExamResultDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => QuestionResult)
-  examData: QuestionResult[];
+  examData!: QuestionResult[];
 
   @IsString()
   @IsNotEmpty()
-  subject: string;
+  subject!: string;
 
   @IsNumber()
-  grade: number;
+  grade!: number;
 
   @IsNumber()
-  performance: number;
+  performance!: number;
 
   @IsString()
   @IsOptional()

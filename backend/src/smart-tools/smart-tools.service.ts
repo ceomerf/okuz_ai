@@ -191,8 +191,8 @@ export class SmartToolsService {
         if (!parsedResponse.steps || !Array.isArray(parsedResponse.steps)) {
           throw new Error('Invalid response format');
         }
-      } catch (e) {
-        this.logger.warn(`JSON parse hatası: ${e.message}`);
+      } catch (e: any) {
+        this.logger.warn(`JSON parse hatası: ${(e as any).message}`);
         // Eğer JSON parse edilemezse, basit format kullan
         parsedResponse = {
           steps: [
@@ -227,7 +227,7 @@ export class SmartToolsService {
         success: true,
         learningPath: parsedResponse
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`SOS Question Solver hatası: ${error.message}`, error.stack);
       
       // Eğer NotFoundException ise, onu tekrar fırlat
@@ -295,7 +295,7 @@ export class SmartToolsService {
         throw new Error('Invalid response format');
       }
     } catch (e) {
-      this.logger.warn(`JSON parse hatası: ${e.message}`);
+      this.logger.warn(`JSON parse hatası: ${(e as any).message}`);
       parsedResponse = {
         steps: [
           {
@@ -355,7 +355,7 @@ export class SmartToolsService {
         originalLength: data.content.length,
         summaryLength: response.length
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Summary generation hatası: ${error.message}`, error.stack);
       throw new Error(`Özet oluşturma işlemi başarısız: ${error.message}`);
     }
@@ -418,7 +418,7 @@ export class SmartToolsService {
         if (!flashcards.flashcards || !Array.isArray(flashcards.flashcards)) {
           throw new Error('Invalid response format');
         }
-      } catch (parseError) {
+      } catch (parseError: any) {
         this.logger.warn(`Flashcards JSON parse hatası: ${parseError.message}`);
         flashcards = {
           flashcards: [
@@ -444,7 +444,7 @@ export class SmartToolsService {
         count: cardCount,
         flashcards: flashcards
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Flashcards generation hatası: ${error.message}`, error.stack);
       throw new Error(`Flashcards oluşturma işlemi başarısız: ${error.message}`);
     }
@@ -537,7 +537,7 @@ Sen, karmaşık konuları görsel ve sezgisel "Bilgi Ağaçları"na dönüştür
         this.logger.debug(`Temizlenmiş response: ${cleanResponse}`);
         
         conceptMap = JSON.parse(cleanResponse);
-      } catch (parseError) {
+      } catch (parseError: any) {
         this.logger.warn(`Concept map JSON parse hatası: ${parseError.message}`);
         this.logger.debug(`Orijinal response: ${response}`);
         // Fallback concept map with more specific content based on subject
@@ -599,7 +599,7 @@ Sen, karmaşık konuları görsel ve sezgisel "Bilgi Ağaçları"na dönüştür
         success: true,
         conceptMap: conceptMap
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Concept map oluşturma hatası: ${error.message}`, error.stack);
       throw new Error('Concept map oluşturulamadı');
     }
@@ -1063,7 +1063,7 @@ SADECE AŞAĞIDAKİ JSON'U DÖN. Açıklama ekleme, markdown veya kod bloğu KUL
         this.logger.debug(`Temizlenmiş response: ${cleanResponse}`);
         
         learningPath = JSON.parse(cleanResponse);
-      } catch (parseError) {
+      } catch (parseError: any) {
         this.logger.warn(`Learning path JSON parse hatası: ${parseError.message}`);
         this.logger.debug(`Orijinal response: ${response}`);
         // Fallback response
@@ -1160,7 +1160,7 @@ SADECE AŞAĞIDAKİ JSON'U DÖN. Açıklama ekleme, markdown veya kod bloğu KUL
         cleanResponse = cleanResponse.replace(/^```/, '').replace(/```$/, '');
         
         connections = JSON.parse(cleanResponse);
-      } catch (parseError) {
+      } catch (parseError: any) {
         this.logger.warn(`Topic connections JSON parse hatası: ${parseError.message}`);
         this.logger.debug(`Orijinal response: ${response}`);
         connections = {

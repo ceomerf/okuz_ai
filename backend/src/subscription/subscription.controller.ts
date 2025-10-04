@@ -24,7 +24,7 @@ export class SubscriptionController {
   // Kullanıcının subscription durumunu getir
   @UseGuards(JwtAuthGuard)
   @Get('status')
-  async getSubscriptionStatus(@Request() req) {
+  async getSubscriptionStatus(@Request() req: any) {
     try {
       const userId = req.user.id;
       const status = await this.subscriptionService.getSubscriptionStatus(userId);
@@ -45,7 +45,7 @@ export class SubscriptionController {
   // Trial başlat (yeni kullanıcılar için)
   @UseGuards(JwtAuthGuard)
   @Post('start-trial')
-  async startTrial(@Request() req) {
+  async startTrial(@Request() req: any) {
     try {
       const userId = req.user.id;
       await this.subscriptionService.startTrial(userId);
@@ -66,7 +66,7 @@ export class SubscriptionController {
   // Premium subscription oluştur
   @UseGuards(JwtAuthGuard)
   @Post('create')
-  async createSubscription(@Request() req, @Body() createSubscriptionDto: CreateSubscriptionDto) {
+  async createSubscription(@Request() req: any, @Body() createSubscriptionDto: CreateSubscriptionDto) {
     try {
       const userId = req.user.id;
       const subscriptionData = {
@@ -160,7 +160,7 @@ export class SubscriptionController {
   // Premium erişim kontrolü
   @UseGuards(JwtAuthGuard)
   @Get('premium-access')
-  async checkPremiumAccess(@Request() req, @Body() body?: { feature?: string }) {
+  async checkPremiumAccess(@Request() req: any, @Body() body?: { feature?: string }) {
     try {
       const userId = req.user.id;
       const feature = body?.feature;
@@ -183,7 +183,7 @@ export class SubscriptionController {
   // Trial süresi kontrolü
   @UseGuards(JwtAuthGuard)
   @Get('trial-expired')
-  async checkTrialExpired(@Request() req) {
+  async checkTrialExpired(@Request() req: any) {
     try {
       const userId = req.user.id;
       const isExpired = await this.subscriptionService.isTrialExpired(userId);
@@ -204,7 +204,7 @@ export class SubscriptionController {
   // Subscription geçmişini getir
   @UseGuards(JwtAuthGuard)
   @Get('history')
-  async getSubscriptionHistory(@Request() req) {
+  async getSubscriptionHistory(@Request() req: any) {
     try {
       const userId = req.user.id;
       const history = await this.subscriptionService.getSubscriptionHistory(userId);
@@ -225,7 +225,7 @@ export class SubscriptionController {
   // Payment geçmişini getir
   @UseGuards(JwtAuthGuard)
   @Get('payment-history')
-  async getPaymentHistory(@Request() req) {
+  async getPaymentHistory(@Request() req: any) {
     try {
       const userId = req.user.id;
       const history = await this.subscriptionService.getPaymentHistory(userId);
@@ -246,7 +246,7 @@ export class SubscriptionController {
   // Günlük kilit kontrolü (eski API uyumluluğu için)
   @UseGuards(JwtAuthGuard)
   @Get('day-locked')
-  async checkDayLocked(@Request() req, @Body() body: { date: string }) {
+  async checkDayLocked(@Request() req: any, @Body() body: { date: string }) {
     try {
       const userId = req.user.id;
       const status = await this.subscriptionService.getSubscriptionStatus(userId);

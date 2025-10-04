@@ -165,7 +165,7 @@ model User {
   learningPaths LearningPath[]
   flashcards    Flashcard[]
   conceptMaps   ConceptMap[]
-  quizzes       Quiz[]
+  quizzes       Quiz[] @relation("UserQuizzes")
   studyGoals    StudyGoal[]
   studyHabits   StudyHabit[]
   subscriptions Subscription[]
@@ -179,20 +179,25 @@ model User {
 
   // Refresh tokens
   refreshTokens RefreshToken[]
+
+  // Additional relations
+  assessments Assessment[]
 }
 
 model StudentProfile {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  grade         Int
-  field         String
-  goals         String[]
-  learningStyle String?
-  strengths     String[]
-  weaknesses    String[]
-  interests     String[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  grade             Int
+  field             String
+  goals             String[]
+  learningStyle     String?
+  strengths         String[]
+  weaknesses        String[]
+  interests         String[]
+  selectedSubjects  String[]
+  performanceMetrics Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -382,6 +387,7 @@ model ExamResult {
   duration   Int // minutes
   answers    Json?
   analysis   Json?
+  topic      String?
   createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -453,7 +459,7 @@ model Quiz {
   createdAt   DateTime  @default(now())
   completedAt DateTime?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation("UserQuizzes", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, createdAt])
@@ -624,4 +630,59 @@ model StudentWeeklyMetrics {
   @@index([weekStart])
   @@index([userId, weekStart])
   @@index([userId, weekStart, subject])
+}
+
+// Assessment model for student assessments
+model Assessment {
+  id            String   @id @default(cuid())
+  userId        String
+  subjects      String[]
+  grade         Int
+  learningGoals String[]
+  results       Json?
+  isCompleted   Boolean  @default(false)
+  type          String   @default("DIAGNOSTIC")
+  status        String   @default("IN_PROGRESS")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isCompleted])
+  @@index([userId, status])
+}
+
+// Topic model for curriculum topics
+model Topic {
+  id          String   @id @default(cuid())
+  subject     String
+  topic       String
+  grade       Int
+  description String?
+  month       Int?
+  outcomes    String[]
+  tytWeight   Float    @default(0)
+  aytWeight   Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([subject])
+  @@index([grade])
+  @@index([subject, grade])
+  @@index([month])
+}
+
+// Curriculum model for MEB curriculum
+model Curriculum {
+  id        String   @id @default(cuid())
+  subject   String
+  topic     String
+  grade     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([subject])
+  @@index([grade])
+  @@index([subject, grade])
 }

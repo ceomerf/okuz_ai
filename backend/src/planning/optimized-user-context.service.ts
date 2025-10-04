@@ -31,12 +31,11 @@ export class OptimizedUserContextService {
           },
         },
         // Quiz results - son 100 kayıt
-        quizResults: {
+        quizzes: {
           orderBy: { createdAt: 'desc' },
           take: 100,
           select: {
             id: true,
-            subject: true,
             topic: true,
             score: true,
             totalScore: true,
@@ -103,13 +102,13 @@ export class OptimizedUserContextService {
       throw new Error('User not found');
     }
 
-    const { studySessions, quizResults, examResults, plans, studentProfile } = userWithData;
+    const { studySessions, quizzes, examResults, plans, studentProfile } = userWithData;
 
     // 1) Performans geçmişi analizi
-    const subjectPerformance = this.analyzeSubjectPerformance(studySessions, quizResults, examResults);
+    const subjectPerformance = this.analyzeSubjectPerformance(studySessions, quizzes, examResults);
     
     // 2) Konu bazlı başarı oranları
-    const topicSuccessRates = this.calculateTopicSuccessRates(quizResults, examResults);
+    const topicSuccessRates = this.calculateTopicSuccessRates(quizzes, examResults);
     
     // 3) Çalışma alışkanlıkları
     const studyHabits = this.analyzeStudyHabits(studySessions);
@@ -143,10 +142,10 @@ export class OptimizedUserContextService {
       // Özet istatistikler
       summary: {
         totalStudySessions: studySessions.length,
-        totalQuizAttempts: quizResults.length,
+        totalQuizAttempts: quizzes.length,
         totalExamAttempts: examResults.length,
         totalPlans: plans.length,
-        activePlans: plans.filter(p => p.isActive).length,
+        activePlans: plans.filter((p: any) => p.isActive).length,
         averageSessionDuration: studyHabits.averageSessionDuration,
         preferredStudyHours: studyHabits.preferredHours,
       },
@@ -337,7 +336,7 @@ export class OptimizedUserContextService {
   private analyzePlanPerformance(plans: any[]) {
     const planStats = plans.map(plan => {
       const sessions = plan.sessions || [];
-      const completedSessions = sessions.filter(s => s.isCompleted);
+      const completedSessions = sessions.filter((s: any) => s.isCompleted);
       
       return {
         planId: plan.id,
@@ -347,8 +346,8 @@ export class OptimizedUserContextService {
         totalSessions: sessions.length,
         completedSessions: completedSessions.length,
         completionRate: sessions.length > 0 ? (completedSessions.length / sessions.length) * 100 : 0,
-        totalStudyTime: sessions.reduce((sum, s) => sum + s.duration, 0),
-        completedStudyTime: completedSessions.reduce((sum, s) => sum + s.duration, 0),
+        totalStudyTime: sessions.reduce((sum: number, s: any) => sum + s.duration, 0),
+        completedStudyTime: completedSessions.reduce((sum: number, s: any) => sum + s.duration, 0),
       };
     });
 

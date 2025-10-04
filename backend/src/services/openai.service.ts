@@ -16,7 +16,7 @@ export class OpenAIService {
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
   ) {
-    this.apiKey = this.configService.get<string>('OPENAI_API_KEY');
+    this.apiKey = this.configService.get<string>('OPENAI_API_KEY')!;
     if (!this.apiKey) {
       throw new Error('OPENAI_API_KEY environment variable is required');
     }
@@ -86,7 +86,7 @@ export class OpenAIService {
 
       return content;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('OpenAI API Error:', error);
       throw new Error(`OpenAI API failed: ${error.message}`);
     }
@@ -121,7 +121,7 @@ export class OpenAIService {
 
       return response.body as ReadableStream;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('OpenAI Stream API Error:', error);
       throw new Error(`OpenAI Stream API failed: ${error.message}`);
     }

@@ -4,7 +4,7 @@ export class QuickChatDto {
   @IsString()
   @IsNotEmpty()
   @Length(1, 1000)
-  message: string;
+  message!: string;
 
   @IsString()
   @IsOptional()
