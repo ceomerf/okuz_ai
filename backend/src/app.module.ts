@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -25,6 +26,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SolverModule } from './services/solver.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { CacheInterceptor } from './common/interceptors/cache.interceptor';
 
 @Module({
   imports: [
@@ -85,6 +87,12 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     MonitoringModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: CacheInterceptor,
+    },
+  ],
 })
 export class AppModule {}

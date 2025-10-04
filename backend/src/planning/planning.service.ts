@@ -222,13 +222,18 @@ export class PlanningService {
    * tek bir kapsamlı metinde birleştirir. Bu metin Gemini function-calling ile şemalı plan üretimi için kullanılır.
    */
   async generateUstaKocPrompt(studentId: string, planParams: PlanParameters): Promise<string> {
-    // 1) Öğrenci profili ve kullanıcı bilgisi
-    const [user, profile] = await Promise.all([
-      this.prisma.user.findUnique({ where: { id: studentId }, select: { id: true, name: true } }),
-      this.prisma.studentProfile.findUnique({ where: { userId: studentId } }),
-    ]);
+    // 1) Öğrenci profili ve kullanıcı bilgisi - Tek sorguda birleştir
+    const userWithProfile = await this.prisma.user.findUnique({ 
+      where: { id: studentId }, 
+      select: { 
+        id: true, 
+        name: true,
+        studentProfile: true
+      } 
+    });
 
     // Emniyetli varsayılanlar
+    const profile = userWithProfile?.studentProfile;
     const grade = profile?.grade ?? 12;
     const field = profile?.field ?? 'Sayısal';
     const learningStyle = profile?.learningStyle ?? 'Karma';
@@ -291,8 +296,8 @@ export class PlanningService {
     "techniqueByLearningStyle": true
   },
   "student": {
-    "id": ${JSON.stringify(user?.id || studentId)},
-    "name": ${JSON.stringify(user?.name || 'Öğrenci')},
+    "id": ${JSON.stringify(userWithProfile?.id || studentId)},
+    "name": ${JSON.stringify(userWithProfile?.name || 'Öğrenci')},
     "grade": ${grade},
     "field": ${JSON.stringify(field)},
     "learningStyle": ${JSON.stringify(learningStyle)},

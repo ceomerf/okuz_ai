@@ -104,6 +104,11 @@ model User {
   trialEndDate        DateTime?
   subscriptionEndDate DateTime?
 
+  @@index([email])
+  @@index([role])
+  @@index([subscriptionStatus])
+  @@index([createdAt])
+
   // Profile relations
   studentProfile StudentProfile?
   parentProfile  ParentProfile?
@@ -297,6 +302,11 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
    @@index([userId])
+   @@index([userId, isRead])
+   @@index([userId, type])
+   @@index([userId, createdAt])
+   @@index([isRead])
+   @@index([type])
    @@index([createdAt])
 }
 
