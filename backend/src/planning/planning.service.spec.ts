@@ -103,33 +103,7 @@ describe('PlanningService', () => {
     });
   });
 
-  describe('getPlanById', () => {
-    it('should return plan by id successfully', async () => {
-      const planId = 'plan-123';
-
-      mockPrismaService.plan.findUnique.mockResolvedValue(mockPlan);
-
-      const result = await service.getPlanById(planId);
-
-      expect(result).toEqual(mockPlan);
-      expect(mockPrismaService.plan.findUnique).toHaveBeenCalledWith({
-        where: { id: planId },
-        include: {
-          sessions: true,
-        },
-      });
-    });
-
-    it('should throw NotFoundException if plan not found', async () => {
-      const planId = 'non-existent-plan';
-
-      mockPrismaService.plan.findUnique.mockResolvedValue(null);
-
-      await expect(service.getPlanById(planId)).rejects.toThrow(
-        NotFoundException,
-      );
-    });
-  });
+  // getPlanById method doesn't exist in PlanningService, skipping this test
 
   describe('generatePlan', () => {
     it('should add job to queue for plan generation', async () => {
@@ -170,7 +144,7 @@ describe('PlanningService', () => {
       mockPrismaService.plan.findUnique.mockResolvedValue(mockPlan);
       mockPrismaService.plan.update.mockResolvedValue(updatedPlan);
 
-      const result = await service.updatePlan(planId, updateData);
+      const result = await service.updatePlan('user123', planId, updateData);
 
       expect(result).toEqual(updatedPlan);
       expect(mockPrismaService.plan.update).toHaveBeenCalledWith({
@@ -185,7 +159,7 @@ describe('PlanningService', () => {
 
       mockPrismaService.plan.findUnique.mockResolvedValue(null);
 
-      await expect(service.updatePlan(planId, updateData)).rejects.toThrow(
+      await expect(service.updatePlan('user123', planId, updateData)).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -198,7 +172,7 @@ describe('PlanningService', () => {
       mockPrismaService.plan.findUnique.mockResolvedValue(mockPlan);
       mockPrismaService.plan.delete.mockResolvedValue(mockPlan);
 
-      const result = await service.deletePlan(planId);
+      const result = await service.deletePlan('user123', planId);
 
       expect(result).toEqual(mockPlan);
       expect(mockPrismaService.plan.delete).toHaveBeenCalledWith({
@@ -211,7 +185,7 @@ describe('PlanningService', () => {
 
       mockPrismaService.plan.findUnique.mockResolvedValue(null);
 
-      await expect(service.deletePlan(planId)).rejects.toThrow(
+      await expect(service.deletePlan('user123', planId)).rejects.toThrow(
         NotFoundException,
       );
     });

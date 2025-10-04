@@ -8,7 +8,13 @@ import { ForbiddenException } from '@nestjs/common';
 
 describe('GeminiService', () => {
   let service: GeminiService;
-  const mockConfig = { get: jest.fn((k: string) => (k === 'GEMINI_API_KEY' ? 'key' : 'gemini-1.5-flash')) } as any as ConfigService;
+  const mockConfig = { 
+    get: jest.fn((k: string) => {
+      if (k === 'GEMINI_API_KEY') return 'test_gemini_key';
+      if (k === 'GEMINI_MODEL') return 'gemini-1.5-flash';
+      return null;
+    })
+  } as any as ConfigService;
   const mockMetrics = {
     recordGeminiUsage: jest.fn(),
     recordGeminiCallDuration: jest.fn(),

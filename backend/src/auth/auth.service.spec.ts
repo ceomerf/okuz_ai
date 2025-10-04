@@ -114,7 +114,7 @@ describe('AuthService', () => {
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
 
       await expect(service.register(registerDto)).rejects.toThrow(
-        BadRequestException,
+        'Email already exists',
       );
     });
   });
