@@ -71,7 +71,8 @@ describe('OpenAIService', () => {
       const prompt = 'Test prompt';
       const cachedResponse = 'Cached content';
 
-      mockCache.get.mockResolvedValue(cachedResponse);
+      // Mock cache to return cached response
+      mockCache.get = jest.fn().mockResolvedValue(cachedResponse);
 
       const result = await service.generateContent(prompt);
 
