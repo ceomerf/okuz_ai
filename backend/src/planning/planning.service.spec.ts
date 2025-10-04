@@ -118,7 +118,7 @@ describe('PlanningService', () => {
 
       mockQueueService.addJob.mockResolvedValue({ id: 'job-123' });
 
-      const result = await service.generatePlan(userId, planData);
+      const result = await service.generatePlan(planData);
 
       expect(result).toHaveProperty('jobId');
       expect(mockQueueService.addJob).toHaveBeenCalledWith(

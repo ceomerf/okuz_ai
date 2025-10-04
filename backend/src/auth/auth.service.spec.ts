@@ -88,7 +88,7 @@ describe('AuthService', () => {
 
       mockPrismaService.user.findUnique.mockResolvedValue(null);
       mockPrismaService.user.create.mockResolvedValue(mockUser);
-      mockSubscriptionService.createTrialSubscription.mockResolvedValue({});
+      mockSubscriptionService.startTrial.mockResolvedValue({});
       mockJwtService.sign.mockReturnValue('access-token');
       mockConfigService.get.mockReturnValue('refresh-secret');
 
