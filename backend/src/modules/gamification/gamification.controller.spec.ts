@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GamificationController } from './gamification.controller';
 import { GamificationService } from './gamification.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { GeminiService } from '../../services/gemini.service';
+// import { GeminiService } from '../../services/gemini.service'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 
 describe('GamificationController', () => {
   let controller: GamificationController;
@@ -31,13 +31,13 @@ describe('GamificationController', () => {
             },
           },
         },
-        {
-          provide: GeminiService,
-          useValue: {
-            generateContent: jest.fn(),
-            generateStructuredContent: jest.fn(),
-          },
-        },
+        // {
+        //   provide: GeminiService, // DEVRE DIŞI - OPENAI KULLANILIYOR
+        //   useValue: {
+        //     generateContent: jest.fn(),
+        //     generateStructuredContent: jest.fn(),
+        //   },
+        // },
       ],
     }).compile();
 

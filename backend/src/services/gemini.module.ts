@@ -1,3 +1,5 @@
+// GEMINI MODÜLÜ DEVRE DIŞI - OPENAI KULLANILIYOR
+/*
 import { Module } from '@nestjs/common';
 import { GeminiService } from './gemini.service';
 
@@ -6,3 +8,4 @@ import { GeminiService } from './gemini.service';
   exports: [GeminiService],
 })
 export class GeminiModule {}
+*/

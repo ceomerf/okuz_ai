@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { GeminiService } from '../services/gemini.service';
-import { GeminiFunctionCallingService } from '../services/gemini-fc.service';
+// import { GeminiService } from '../services/gemini.service'; // DEVRE DIŞI - OPENAI KULLANILIYOR
+// import { GeminiFunctionCallingService } from '../services/gemini-fc.service'; // DEVRE DIŞI - OPENAI KULLANILIYOR
+import { OpenAIService } from '../services/openai.service';
 import { SolverService } from '../services/solver.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { MetricsService } from '../monitoring/metrics.service';
@@ -37,8 +38,9 @@ interface PlanGenerationData {
 export class PlanningService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly geminiService: GeminiService,
-    private readonly geminiFC: GeminiFunctionCallingService,
+    // private readonly geminiService: GeminiService, // DEVRE DIŞI - OPENAI KULLANILIYOR
+    // private readonly geminiFC: GeminiFunctionCallingService, // DEVRE DIŞI - OPENAI KULLANILIYOR
+    private readonly openaiService: OpenAIService,
     private readonly solver: SolverService,
     private readonly realtime: RealtimeGateway,
     private readonly metrics: MetricsService,

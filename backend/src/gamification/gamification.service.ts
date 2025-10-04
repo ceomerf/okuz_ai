@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { GeminiService } from '../services/gemini.service';
+// import { GeminiService } from '../services/gemini.service'; // DEVRE DIŞI - OPENAI KULLANILIYOR
+import { OpenAIService } from '../services/openai.service';
 
 interface TaskCompletionData {
   taskId: string;
@@ -40,7 +41,8 @@ interface Challenge {
 export class GamificationService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly geminiService: GeminiService,
+    // private readonly geminiService: GeminiService, // DEVRE DIŞI - OPENAI KULLANILIYOR
+    private readonly openaiService: OpenAIService,
   ) {}
 
   // XP hesaplama algoritması - performansa ve zorluk seviyesine göre

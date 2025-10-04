@@ -1,3 +1,5 @@
+// GEMINI SERVİSİ DEVRE DIŞI - OPENAI KULLANILIYOR
+/*
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -326,3 +328,4 @@ export class GeminiService {
     return this.generateContent(prompt);
   }
 }
+*/

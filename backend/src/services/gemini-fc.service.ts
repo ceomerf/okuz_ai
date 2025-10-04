@@ -1,3 +1,5 @@
+// GEMINI FUNCTION CALLING SERVİSİ DEVRE DIŞI - OPENAI KULLANILIYOR
+/*
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { GeminiService } from './gemini.service';
@@ -38,5 +40,6 @@ Return ONLY JSON matching TOOL_SCHEMA.`;
     return json as T;
   }
 }
+*/
 
 

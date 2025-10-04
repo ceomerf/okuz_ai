@@ -6,8 +6,6 @@ import { PlanningPersistenceService } from './planning-persistence.service';
 import { PlanningRuleService } from './planning-rule.service';
 import { ReplanService } from './replan.service';
 import { PrismaModule } from '../common/prisma/prisma.module';
-import { GeminiModule } from '../services/gemini.module';
-import { GeminiFunctionCallingService } from '../services/gemini-fc.service';
 import { PlanGenerationService } from './plan-generation.service';
 import { PlanValidationService } from './plan-validation.service';
 import { PlanPersistenceService } from './plan-persistence.service';
@@ -26,13 +24,14 @@ import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { MetricsService } from '../monitoring/metrics.service';
 import { CacheModule } from '../common/cache/cache.module';
 import { CacheService } from '../common/cache/cache.service';
+import { OpenAIService } from '../services/openai.service';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { MonitoringModule } from '../monitoring/monitoring.module';
 
 @Module({
-  imports: [PrismaModule, GeminiModule, CacheModule, ConfigModule, AuthModule, RealtimeModule, MonitoringModule],
+  imports: [PrismaModule, CacheModule, ConfigModule, AuthModule, RealtimeModule, MonitoringModule],
   controllers: [PlanningController],
   providers: [
     PlanningService, 
@@ -40,7 +39,6 @@ import { MonitoringModule } from '../monitoring/monitoring.module';
     PlanningPersistenceService, 
     PlanningRuleService, 
     ReplanService, 
-    GeminiFunctionCallingService, 
     PlanGenerationService, 
     PlanValidationService, 
     PlanPersistenceService, 
@@ -55,6 +53,7 @@ import { MonitoringModule } from '../monitoring/monitoring.module';
     AssessmentService,
     CoachingService,
     CacheService,
+    OpenAIService,
     SolverService,
     RealtimeGateway,
     MetricsService

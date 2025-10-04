@@ -3,8 +3,8 @@ import { PlanningService } from './planning.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { QueueService } from '../services/queue.service';
 import { ConfigService } from '@nestjs/config';
-import { GeminiService } from '../services/gemini.service';
-import { GeminiFunctionCallingService } from '../services/gemini-fc.service';
+// import { GeminiService } from '../services/gemini.service'; // DEVRE DIŞI - OPENAI KULLANILIYOR
+// import { GeminiFunctionCallingService } from '../services/gemini-fc.service'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 import { SolverService } from '../services/solver.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { MetricsService } from '../monitoring/metrics.service';
@@ -69,13 +69,13 @@ describe('PlanningService', () => {
     get: jest.fn(),
   };
 
-  const mockGeminiService = {
-    generateContent: jest.fn(),
-  };
+  // const mockGeminiService = { // DEVRE DIŞI - OPENAI KULLANILIYOR
+  //   generateContent: jest.fn(),
+  // };
 
-  const mockGeminiFunctionCallingService = {
-    callFunction: jest.fn(),
-  };
+  // const mockGeminiFunctionCallingService = { // DEVRE DIŞI - OPENAI KULLANILIYOR
+  //   callFunction: jest.fn(),
+  // };
 
   const mockSolverService = {
     solve: jest.fn(),
@@ -177,8 +177,8 @@ describe('PlanningService', () => {
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: QueueService, useValue: mockQueueService },
         { provide: ConfigService, useValue: mockConfigService },
-        { provide: GeminiService, useValue: mockGeminiService },
-        { provide: GeminiFunctionCallingService, useValue: mockGeminiFunctionCallingService },
+        // { provide: GeminiService, useValue: mockGeminiService }, // DEVRE DIŞI - OPENAI KULLANILIYOR
+        // { provide: GeminiFunctionCallingService, useValue: mockGeminiFunctionCallingService }, // DEVRE DIŞI - OPENAI KULLANILIYOR
         { provide: SolverService, useValue: mockSolverService },
         { provide: RealtimeGateway, useValue: mockRealtimeGateway },
         { provide: MetricsService, useValue: mockMetricsService },

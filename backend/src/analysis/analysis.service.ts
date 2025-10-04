@@ -2,7 +2,8 @@ import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { GeminiService } from '../services/gemini.service';
+// import { GeminiService } from '../services/gemini.service'; // DEVRE DIŞI - OPENAI KULLANILIYOR
+import { OpenAIService } from '../services/openai.service';
 import { AnalyzeLearningPathDto } from './dto/analyze-learning-path.dto';
 
 interface ExamAnalysisData {
@@ -39,7 +40,8 @@ interface LearningPattern {
 export class AnalysisService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly geminiService: GeminiService,
+    // private readonly geminiService: GeminiService, // DEVRE DIŞI - OPENAI KULLANILIYOR
+    private readonly openaiService: OpenAIService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -135,7 +137,7 @@ export class AnalysisService {
     `;
 
     try {
-      const aiResponse = await this.geminiService.generateContent(aiAnalysisPrompt);
+      const aiResponse = await this.openaiService.generateContent(aiAnalysisPrompt);
       const aiAnalysis = JSON.parse(aiResponse);
       analysis.aiInsights = aiAnalysis;
     } catch (error) {
@@ -541,7 +543,7 @@ export class AnalysisService {
     `;
 
     try {
-      const aiResponse = await this.geminiService.generateContent(aiRecommendationPrompt);
+      const aiResponse = await this.openaiService.generateContent(aiRecommendationPrompt);
       recommendations.push({
         type: 'ai_personalized',
         title: 'AI Önerisi',

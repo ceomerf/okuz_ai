@@ -6,7 +6,7 @@ import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './common/prisma/prisma.module';
-import { GeminiModule } from './services/gemini.module';
+// import { GeminiModule } from './services/gemini.module'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 import { QueueModule } from './services/queue.module';
 import { CacheModule } from './services/cache.module';
 import { AuthModule } from './auth/auth.module';
@@ -38,10 +38,10 @@ import { MonitoringModule } from './monitoring/monitoring.module';
         REDIS_URL: Joi.string().uri().required(),
         JWT_SECRET: Joi.string().min(32).required(),
         JWT_REFRESH_SECRET: Joi.string().min(32).required(),
-        GEMINI_API_KEY: Joi.string().optional(),
-        GEMINI_MODEL: Joi.string().optional(),
+        // GEMINI_API_KEY: Joi.string().optional(), // DEVRE DIŞI - OPENAI KULLANILIYOR
+        // GEMINI_MODEL: Joi.string().optional(), // DEVRE DIŞI - OPENAI KULLANILIYOR
         OPENAI_API_KEY: Joi.string().optional(),
-        AI_PROVIDER: Joi.string().valid('gemini', 'openai').optional(),
+        // AI_PROVIDER: Joi.string().valid('gemini', 'openai').optional(), // DEVRE DIŞI - SADECE OPENAI
         CORS_ORIGINS: Joi.string().allow('').optional(),
         PROMETHEUS_PORT: Joi.number().port().optional(),
         SWAGGER_ENABLE: Joi.boolean().optional(),
@@ -70,7 +70,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     }),
     PrismaModule,
     ScheduleModule.forRoot(),
-    GeminiModule,
+    // GeminiModule, // DEVRE DIŞI - OPENAI KULLANILIYOR
     // OpenAIModule, // OpenAI modülü eklenebilir
     QueueModule,
     CacheModule,

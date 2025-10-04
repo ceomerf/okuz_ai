@@ -33,8 +33,8 @@ describe('OpenAIService', () => {
   } as any as ConfigService;
 
   const mockMetrics = {
-    recordGeminiUsage: jest.fn(),
-    recordGeminiRequest: jest.fn(),
+    recordGeminiUsage: jest.fn(), // OPENAI İÇİN KULLANILIYOR
+    recordGeminiRequest: jest.fn(), // OPENAI İÇİN KULLANILIYOR
     recordCacheHit: jest.fn(),
   } as any as MetricsService;
 

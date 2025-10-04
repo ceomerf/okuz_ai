@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { GeminiService } from '../services/gemini.service';
+import { OpenAIService } from '../services/openai.service';
 import { MetricsService } from '../monitoring/metrics.service';
 
 @Injectable()
 export class AiAnalysisService {
   constructor(
-    private readonly geminiService: GeminiService,
+    private readonly openaiService: OpenAIService,
     private readonly metrics: MetricsService,
   ) {}
 
@@ -17,7 +17,7 @@ export class AiAnalysisService {
 
     while (attempt <= maxRetries) {
       try {
-        const result = await this.geminiService.generateContent(prompt);
+        const result = await this.openaiService.generateContent(prompt);
         success = true;
         return result;
       } catch (err: any) {
@@ -34,9 +34,9 @@ export class AiAnalysisService {
     }
 
     const duration = Date.now() - startTime;
-    this.metrics.recordAiApiCall('gemini', duration, success);
+    this.metrics.recordAiApiCall('openai', duration, success);
 
-    throw lastError || new Error('GeminiService request failed');
+    throw lastError || new Error('OpenAIService request failed');
   }
 
   cleanAiJsonResponse(text: string): string {

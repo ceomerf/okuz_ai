@@ -4,7 +4,7 @@ import { PlanningService } from './planning.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { QueueService } from '../../services/queue.service';
 import { ConfigService } from '@nestjs/config';
-import { GeminiService } from '../../services/gemini.service';
+// import { GeminiService } from '../../services/gemini.service'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 
 // Mock services
 const mockPlanningService = {
@@ -34,11 +34,11 @@ const mockConfigService = {
   get: jest.fn(),
 };
 
-const mockGeminiService = {
-  generateContent: jest.fn(),
-  generateContentStream: jest.fn(),
-  callFunction: jest.fn(),
-};
+// const mockGeminiService = { // DEVRE DIŞI - OPENAI KULLANILIYOR
+//   generateContent: jest.fn(),
+//   generateContentStream: jest.fn(),
+//   callFunction: jest.fn(),
+// };
 
 describe('PlanningController', () => {
   let controller: PlanningController;
@@ -51,7 +51,7 @@ describe('PlanningController', () => {
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: QueueService, useValue: mockQueueService },
         { provide: ConfigService, useValue: mockConfigService },
-        { provide: GeminiService, useValue: mockGeminiService },
+        // { provide: GeminiService, useValue: mockGeminiService }, // DEVRE DIŞI - OPENAI KULLANILIYOR
       ],
     }).compile();
 

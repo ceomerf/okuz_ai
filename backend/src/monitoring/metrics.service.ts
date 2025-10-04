@@ -13,15 +13,15 @@ export interface MetricData {
 export class MetricsService {
   private metrics: Map<string, MetricData[]> = new Map();
   private registry: any;
-  private geminiRequests: any;
-  private geminiDuration: any;
+  private openaiRequests: any;
+  private openaiDuration: any;
   private queueSizeGauge: any;
 
   constructor() {
     this.registry = new Registry();
     collectDefaultMetrics({ register: this.registry });
-    this.geminiRequests = new Counter({ name: 'gemini_requests_total', help: 'Total Gemini API requests', labelNames: ['status', 'endpoint', 'model_name'], registers: [this.registry] });
-    this.geminiDuration = new Histogram({ name: 'gemini_call_duration_seconds', help: 'Gemini API call duration in seconds', labelNames: ['user_id', 'plan_type', 'model_name', 'endpoint', 'success'], buckets: [0.1, 0.5, 1, 2, 5, 10, 30], registers: [this.registry] });
+    this.openaiRequests = new Counter({ name: 'openai_requests_total', help: 'Total OpenAI API requests', labelNames: ['status', 'endpoint', 'model_name'], registers: [this.registry] });
+    this.openaiDuration = new Histogram({ name: 'openai_call_duration_seconds', help: 'OpenAI API call duration in seconds', labelNames: ['user_id', 'plan_type', 'model_name', 'endpoint', 'success'], buckets: [0.1, 0.5, 1, 2, 5, 10, 30], registers: [this.registry] });
     this.queueSizeGauge = new Gauge({ name: 'queue_size', help: 'Queue size by name', labelNames: ['queue_name'], registers: [this.registry] });
   }
 
@@ -72,7 +72,7 @@ export class MetricsService {
     this.storeMetric(metric);
   }
 
-  // AI/Gemini metrikleri
+  // AI/OpenAI metrikleri
   recordAiApiCall(provider: string, duration: number, success: boolean, tokensUsed?: number) {
     const metric: MetricData = {
       name: 'ai_api_duration_seconds',
@@ -98,15 +98,15 @@ export class MetricsService {
     }
   }
 
-  // Gemini istek sayacı (success/error)
+  // OpenAI istek sayacı (success/error)
   recordGeminiRequest(status: 'success' | 'error', endpoint: string, modelName?: string) {
-    this.geminiRequests.labels(status, endpoint, modelName || 'unknown').inc();
+    this.openaiRequests.labels(status, endpoint, modelName || 'unknown').inc();
   }
 
-  // Gemini özel metrikleri (etiketli)
+  // OpenAI özel metrikleri (etiketli)
   recordGeminiUsage(userId: string | undefined, planType: string | undefined, modelName: string | undefined, endpoint: string | undefined, tokensUsed: number) {
     const metric: MetricData = {
-      name: 'gemini_tokens_used',
+      name: 'openai_tokens_used',
       value: Math.max(0, tokensUsed || 0),
       labels: {
         user_id: userId || 'unknown',
@@ -120,7 +120,7 @@ export class MetricsService {
   }
 
   recordGeminiCallDuration(userId: string | undefined, planType: string | undefined, modelName: string | undefined, endpoint: string | undefined, durationMs: number, success: boolean) {
-    this.geminiDuration.labels(userId || 'unknown', planType || 'unknown', modelName || 'unknown', endpoint || 'unknown', success.toString()).observe((durationMs || 0) / 1000);
+    this.openaiDuration.labels(userId || 'unknown', planType || 'unknown', modelName || 'unknown', endpoint || 'unknown', success.toString()).observe((durationMs || 0) / 1000);
   }
 
   // Plan üretim metrikleri

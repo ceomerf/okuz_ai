@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { GeminiService } from '../services/gemini.service';
+// import { GeminiService } from '../services/gemini.service'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 import { OpenAIService } from '../services/openai.service';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -18,15 +18,15 @@ export class SmartToolsService {
   private readonly logger = new Logger(SmartToolsService.name);
 
   constructor(
-    private readonly geminiService: GeminiService,
+    // private readonly geminiService: GeminiService, // DEVRE DIŞI - OPENAI KULLANILIYOR
     private readonly openaiService: OpenAIService,
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {}
 
   private getAIService() {
-    const provider = this.configService.get<string>('AI_PROVIDER') || 'gemini';
-    return provider === 'openai' ? this.openaiService : this.geminiService;
+    // Sadece OpenAI kullanılıyor - Gemini devre dışı
+    return this.openaiService;
   }
 
   async quickChatStream(data: { message: string; subject?: string; grade?: string }, res: Response) {
@@ -57,7 +57,7 @@ export class SmartToolsService {
       `;
 
       // Stream the response
-      const stream = await this.geminiService.generateContentStream(prompt);
+      const stream = await this.openaiService.generateContent(prompt);
       
       let fullResponse = '';
       
@@ -172,7 +172,7 @@ export class SmartToolsService {
       }
       `;
 
-      const response = await this.geminiService.generateContent(prompt);
+      const response = await this.openaiService.generateContent(prompt);
       
       // JSON response'u parse et
       let parsedResponse;
@@ -275,7 +275,7 @@ export class SmartToolsService {
     }
     `;
 
-    const response = await this.geminiService.generateContent(prompt);
+    const response = await this.openaiService.generateContent(prompt);
     
     // JSON response'u parse et
     let parsedResponse;
@@ -344,7 +344,7 @@ export class SmartToolsService {
       4. Kolay anlaşılır olsun
       `;
 
-      const response = await this.geminiService.generateContent(prompt);
+      const response = await this.openaiService.generateContent(prompt);
       
       this.logger.log(`Summary generation tamamlandı - Type: ${data.type}`);
       
@@ -395,7 +395,7 @@ export class SmartToolsService {
       }
       `;
 
-      const response = await this.geminiService.generateContent(prompt);
+      const response = await this.openaiService.generateContent(prompt);
       
       let flashcards;
       try {
@@ -518,7 +518,7 @@ Sen, karmaşık konuları görsel ve sezgisel "Bilgi Ağaçları"na dönüştür
 }
 `;
 
-      const response = await this.geminiService.generateContent(prompt);
+      const response = await this.openaiService.generateContent(prompt);
       
       let conceptMap;
       try {
@@ -749,7 +749,7 @@ Sen, karmaşık konuları görsel ve sezgisel "Bilgi Ağaçları"na dönüştür
     5. Sonraki adımları belirt
     `;
 
-    const response = await this.geminiService.generateContent(prompt);
+    const response = await this.openaiService.generateContent(prompt);
     
     return {
       success: true,
@@ -780,7 +780,7 @@ Sen, karmaşık konuları görsel ve sezgisel "Bilgi Ağaçları"na dönüştür
     5. Gelişim önerileri ver
     `;
 
-    const response = await this.geminiService.generateContent(prompt);
+    const response = await this.openaiService.generateContent(prompt);
     
     return {
       success: true,
@@ -828,21 +828,8 @@ SADECE AŞAĞIDAKİ JSON'U DÖN. Açıklama ekleme, markdown veya kod bloğu KUL
 `;
 
       // Yapılandırılmış içerik iste
-      const parsed = await this.geminiService.generateStructuredContent(prompt, {
-        quiz: {
-          topic: data.topic,
-          difficulty: data.difficulty,
-          questions: [
-            {
-              question: 'string',
-              options: ['string'],
-              correctAnswer: 'string',
-              explanation: 'string',
-              timeLimit: 60
-            }
-          ]
-        }
-      });
+      const response = await this.openaiService.generateContent(prompt);
+      const parsed = JSON.parse(response);
 
       // Soruları topla
       const rawQuestions: any[] = (parsed?.quiz?.questions || parsed?.questions || []);
@@ -852,7 +839,8 @@ SADECE AŞAĞIDAKİ JSON'U DÖN. Açıklama ekleme, markdown veya kod bloğu KUL
         const needed = count - (Array.isArray(rawQuestions) ? rawQuestions.length : 0);
         if (needed > 0) {
           try {
-            const extra = await this.geminiService.generateQuestions(data.topic, data.difficulty, needed);
+            const extraResponse = await this.openaiService.generateContent(`Generate ${needed} questions about ${data.topic} with ${data.difficulty} difficulty`);
+            const extra = JSON.parse(extraResponse);
             const extraList: any[] = Array.isArray(extra) ? extra : (extra?.questions || []);
             if (Array.isArray(rawQuestions)) {
               rawQuestions.push(...extraList);
@@ -950,7 +938,7 @@ SADECE AŞAĞIDAKİ JSON'U DÖN. Açıklama ekleme, markdown veya kod bloğu KUL
       }
       `;
 
-      const response = await this.geminiService.generateContent(prompt);
+      const response = await this.openaiService.generateContent(prompt);
       
       let exam;
       try {
@@ -1042,7 +1030,7 @@ SADECE AŞAĞIDAKİ JSON'U DÖN. Açıklama ekleme, markdown veya kod bloğu KUL
       }
       `;
 
-      const response = await this.geminiService.generateContent(prompt);
+      const response = await this.openaiService.generateContent(prompt);
       
       // Response'u parse etmeye çalış, hata olursa fallback kullan
       let learningPath;
@@ -1142,7 +1130,7 @@ SADECE AŞAĞIDAKİ JSON'U DÖN. Açıklama ekleme, markdown veya kod bloğu KUL
       }
       `;
 
-      const response = await this.geminiService.generateContent(prompt);
+      const response = await this.openaiService.generateContent(prompt);
       
       let connections;
       try {
@@ -1208,7 +1196,7 @@ SADECE AŞAĞIDAKİ JSON'U DÖN. Açıklama ekleme, markdown veya kod bloğu KUL
     5. Profesyonel destek gerektiğinde yönlendir
     `;
 
-    const response = await this.geminiService.generateContent(prompt);
+    const response = await this.openaiService.generateContent(prompt);
     
     return {
       success: true,
