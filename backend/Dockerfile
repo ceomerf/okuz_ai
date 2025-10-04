@@ -32,8 +32,14 @@ RUN echo "=== Build completed, checking dist/ contents ==="
 RUN ls -la dist/
 RUN echo "=== Checking if main.js exists ==="
 RUN ls -la dist/main.js || echo "main.js not found!"
+RUN echo "=== Checking if main exists ==="
+RUN ls -la dist/main || echo "main not found!"
 RUN echo "=== All files in dist/ ==="
 RUN find dist/ -type f -name "*.js" | head -10
+RUN echo "=== All files in dist/ (including no extension) ==="
+RUN find dist/ -type f | head -10
+RUN echo "=== Build output directory structure ==="
+RUN tree dist/ || find dist/ -type d
 
 # Production stage
 FROM node:18-alpine AS production
