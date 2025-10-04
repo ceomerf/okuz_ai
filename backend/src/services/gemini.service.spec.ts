@@ -9,11 +9,7 @@ import { ForbiddenException } from '@nestjs/common';
 describe('GeminiService', () => {
   let service: GeminiService;
   const mockConfig = { 
-    get: jest.fn((k: string) => {
-      if (k === 'GEMINI_API_KEY') return 'test_gemini_key';
-      if (k === 'GEMINI_MODEL') return 'gemini-1.5-flash';
-      return 'test_gemini_key'; // Default fallback
-    })
+    get: jest.fn()
   } as any as ConfigService;
   const mockMetrics = {
     recordGeminiUsage: jest.fn(),
@@ -29,6 +25,13 @@ describe('GeminiService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    // Mock ConfigService get method to return test values
+    mockConfig.get.mockImplementation((key: string) => {
+      if (key === 'GEMINI_API_KEY') return 'test_gemini_key';
+      if (key === 'GEMINI_MODEL') return 'gemini-1.5-flash';
+      return 'test_gemini_key';
+    });
+    
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GeminiService,

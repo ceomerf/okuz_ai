@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GamificationController } from './gamification.controller';
 import { GamificationService } from './gamification.service';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { PrismaService } from '../../common/prisma/prisma.service';
 import { GeminiService } from '../../services/gemini.service';
 
 describe('GamificationController', () => {

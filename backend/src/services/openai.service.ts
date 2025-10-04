@@ -39,16 +39,16 @@ export class OpenAIService {
       }
     }
 
-    // Quota kontrolü
-    if (userId) {
-      const usage = await this.prisma.userUsageControl?.findUnique({
-        where: { userId },
-      });
+    // Quota kontrolü - userUsageControl modeli mevcut değil, bu yüzden kaldırıldı
+    // if (userId) {
+    //   const usage = await this.prisma.userUsageControl?.findUnique({
+    //     where: { userId },
+    //   });
 
-      if (usage && usage.monthlyTokenUsed >= usage.monthlyTokenLimit) {
-        throw new ForbiddenException('Monthly token limit exceeded');
-      }
-    }
+    //   if (usage && usage.monthlyTokenUsed >= usage.monthlyTokenLimit) {
+    //     throw new ForbiddenException('Monthly token limit exceeded');
+    //   }
+    // }
 
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {

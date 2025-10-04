@@ -26,6 +26,7 @@ describe('PlanningService', () => {
     plan: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -33,6 +34,15 @@ describe('PlanningService', () => {
     user: {
       findUnique: jest.fn(),
     },
+    curriculum: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    $transaction: jest.fn().mockImplementation(async (callback) => {
+      return callback({
+        studySession: { deleteMany: jest.fn() },
+        plan: { delete: jest.fn() }
+      });
+    }),
   };
 
   const mockQueueService = {
@@ -67,6 +77,7 @@ describe('PlanningService', () => {
 
   const mockPlanGenerationService = {
     generatePlan: jest.fn(),
+    buildScheduleFromTopics: jest.fn().mockResolvedValue({}),
   };
 
   const mockPlanValidationService = {
@@ -85,6 +96,7 @@ describe('PlanningService', () => {
 
   const mockAdaptiveInsightsService = {
     generateInsights: jest.fn(),
+    computeUserInsights: jest.fn().mockResolvedValue({}),
   };
 
   const mockAdaptiveStrategyService = {
@@ -166,6 +178,8 @@ describe('PlanningService', () => {
       ];
 
       mockPrismaService.plan.findMany.mockResolvedValue(mockPlans);
+      mockPrismaService.plan.findFirst.mockResolvedValue({ id: 'plan-1', sessions: [] });
+      mockPrismaService.plan.findMany.mockResolvedValueOnce(mockPlans).mockResolvedValueOnce([]);
 
       const result = await service.getUserPlans(userId);
 
@@ -193,11 +207,14 @@ describe('PlanningService', () => {
       const updateData = { title: 'Updated Plan' };
       const mockUpdatedPlan = { id: planId, ...updateData };
 
+      mockPrismaService.plan.findFirst.mockResolvedValue({ id: planId, userId: 'user-123' });
       mockPrismaService.plan.update.mockResolvedValue(mockUpdatedPlan);
 
-      const result = await service.updatePlan(planId, updateData);
+      const result = await service.updatePlan('user-123', planId, updateData);
 
-      expect(result).toEqual(mockUpdatedPlan);
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('message');
+      expect(result).toHaveProperty('plan');
       expect(mockPrismaService.plan.update).toHaveBeenCalledWith({
         where: { id: planId },
         data: updateData,
@@ -212,7 +229,7 @@ describe('PlanningService', () => {
         new Error('Record not found')
       );
 
-      await expect(service.updatePlan(planId, updateData))
+      await expect(service.updatePlan('user-123', planId, updateData))
         .rejects.toThrow();
     });
   });
@@ -221,9 +238,10 @@ describe('PlanningService', () => {
     it('should delete plan successfully', async () => {
       const planId = 'plan-123';
 
+      mockPrismaService.plan.findFirst.mockResolvedValue({ id: planId, userId: 'user-123' });
       mockPrismaService.plan.delete.mockResolvedValue({ id: planId });
 
-      const result = await service.deletePlan(planId);
+      const result = await service.deletePlan('user-123', planId);
 
       expect(result).toEqual({ id: planId });
       expect(mockPrismaService.plan.delete).toHaveBeenCalledWith({
@@ -238,7 +256,7 @@ describe('PlanningService', () => {
         new Error('Record not found')
       );
 
-      await expect(service.deletePlan(planId))
+      await expect(service.deletePlan('user-123', planId))
         .rejects.toThrow();
     });
   });

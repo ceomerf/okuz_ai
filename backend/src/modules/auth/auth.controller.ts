@@ -11,17 +11,17 @@ export class AuthController {
   }
 
   @Post('login')
-  login(@Body() loginDto: any) {
-    return { message: 'Login endpoint', data: loginDto };
+  async login(@Body() loginDto: any) {
+    return this.authService.login(loginDto);
   }
 
   @Post('register')
-  register(@Body() registerDto: any) {
-    return { message: 'Register endpoint', data: registerDto };
+  async register(@Body() registerDto: any) {
+    return this.authService.register(registerDto);
   }
 
   @Post('refresh')
-  refresh(@Body() refreshDto: any) {
-    return { message: 'Refresh token endpoint', data: refreshDto };
+  async refreshToken(@Body() refreshDto: any) {
+    return this.authService.refreshToken(refreshDto);
   }
 }

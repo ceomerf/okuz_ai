@@ -4,7 +4,7 @@ import { AuthService } from './auth.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { SubscriptionService } from '../subscription/subscription.service';
+import { SubscriptionService } from '../../subscription/subscription.service';
 
 // Mock services
 const mockAuthService = {

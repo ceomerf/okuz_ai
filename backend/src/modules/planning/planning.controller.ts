@@ -14,4 +14,14 @@ export class PlanningController {
   create(@Body() createPlanDto: any) {
     return { message: 'Plan created', data: createPlanDto };
   }
+
+  @Post('generate/:userId')
+  async generatePlan(@Param('userId') userId: string, @Body() planData: any) {
+    return this.planningService.generatePlan(userId, planData);
+  }
+
+  @Get('user/:userId')
+  async getUserPlans(@Param('userId') userId: string) {
+    return this.planningService.getUserPlans(userId);
+  }
 }
