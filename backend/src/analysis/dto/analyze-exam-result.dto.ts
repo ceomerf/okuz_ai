@@ -1,9 +1,33 @@
-import { IsNotEmpty, IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class QuestionResult {
+  @IsString()
+  @IsNotEmpty()
+  questionId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  studentAnswer: string;
+
+  @IsString()
+  @IsNotEmpty()
+  correctAnswer: string;
+
+  @IsString()
+  @IsNotEmpty()
+  topic: string;
+
+  @IsString()
+  @IsNotEmpty()
+  difficulty: string;
+}
 
 export class AnalyzeExamResultDto {
-  @IsObject()
-  @IsNotEmpty()
-  examData: any; // İleride ayrı bir sınıf ile tiplenebilir
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => QuestionResult)
+  examData: QuestionResult[];
 
   @IsString()
   @IsNotEmpty()

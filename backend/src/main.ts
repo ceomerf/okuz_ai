@@ -14,10 +14,10 @@ async function bootstrap() {
   // Güvenlik ve performans middleware'leri
   app.use(helmet());
   // compression import'u CJS olduğundan namespace import ile çağırıyoruz
-  app.use((compression as unknown as () => any)());
+  app.use((compression as unknown as () => void)());
 
   // CORS configuration (yalnızca izinli origin'ler)
-  const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean);
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
   app.enableCors({
     origin: (origin, callback) => {
       // Origin header yoksa reddet

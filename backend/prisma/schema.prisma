@@ -90,6 +90,23 @@ model UserUsageControl {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  isRevoked Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@index([isRevoked])
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -155,6 +172,9 @@ model User {
   
   // Usage control
   usageCtrl UserUsageControl?
+
+  // Refresh tokens
+  refreshTokens RefreshToken[]
 }
 
 model StudentProfile {

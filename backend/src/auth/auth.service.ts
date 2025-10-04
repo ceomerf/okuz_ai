@@ -15,7 +15,7 @@ export class AuthService {
   ) {}
 
   private async issueTokens(user: { id: string; email: string; role?: string }) {
-    const payload: any = { email: user.email, sub: user.id };
+    const payload: { email: string; sub: string; role?: string } = { email: user.email, sub: user.id };
     if (user.role) payload.role = user.role;
 
     const access_token = this.jwtService.sign(payload); // uses default secret and expiry from JwtModule
@@ -23,6 +23,18 @@ export class AuthService {
     const refreshToken = this.jwtService.sign(payload, {
       secret: refreshSecret,
       expiresIn: '7d',
+    });
+
+    // Refresh token'ı veritabanına kaydet
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 gün sonra
+
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        token: refreshToken,
+        expiresAt,
+      },
     });
 
     return { access_token, refreshToken };
@@ -131,18 +143,47 @@ export class AuthService {
     }
 
     try {
-      const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET') || this.configService.get<string>('JWT_SECRET');
-      const decoded = await this.jwtService.verifyAsync<any>(refreshToken, { secret: refreshSecret });
+      // Önce veritabanından refresh token'ı kontrol et
+      const storedToken = await this.prisma.refreshToken.findUnique({
+        where: { token: refreshToken },
+        include: { user: true },
+      });
+
+      if (!storedToken || storedToken.isRevoked || storedToken.expiresAt < new Date()) {
+        // Token geçersiz, kullanıcının tüm refresh token'larını iptal et
+        if (storedToken?.userId) {
+          await this.prisma.refreshToken.updateMany({
+            where: { userId: storedToken.userId },
+            data: { isRevoked: true },
+          });
+        }
+        throw new UnauthorizedException('Geçersiz veya süresi dolmuş refresh token');
+      }
 
       // Kullanıcının varlığını doğrula
-      const user = await this.prisma.user.findUnique({ where: { id: decoded.sub } });
+      const user = storedToken.user;
       if (!user) {
         throw new UnauthorizedException('Kullanıcı bulunamadı');
       }
 
-      const { access_token, refreshToken: newRefreshToken } = await this.issueTokens({ id: user.id, email: user.email, role: user.role });
+      // Eski refresh token'ı iptal et (rotation)
+      await this.prisma.refreshToken.update({
+        where: { id: storedToken.id },
+        data: { isRevoked: true },
+      });
+
+      // Yeni token'ları oluştur
+      const { access_token, refreshToken: newRefreshToken } = await this.issueTokens({ 
+        id: user.id, 
+        email: user.email, 
+        role: user.role 
+      });
+
       return { token: access_token, refreshToken: newRefreshToken };
     } catch (e) {
+      if (e instanceof UnauthorizedException) {
+        throw e;
+      }
       throw new UnauthorizedException('Geçersiz veya süresi dolmuş refresh token');
     }
   }

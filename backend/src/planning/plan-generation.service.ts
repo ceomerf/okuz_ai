@@ -48,6 +48,49 @@ export class PlanGenerationService {
 		throw lastError || new Error('GeminiService request failed');
 	}
 
+	/**
+	 * Ana plan üretimi
+	 */
+	async generatePlan(data: any): Promise<{ plan: any; sessions: any[] }> {
+		// Basit plan üretimi - gerçek implementasyon için AI kullanılabilir
+		const plan = {
+			title: `${data.subjects.join(', ')} Çalışma Planı`,
+			description: `${data.goals.join(', ')} hedefleri için oluşturulmuş plan`,
+			type: 'STUDY',
+			subjects: data.subjects,
+			goals: data.goals,
+			startDate: new Date(),
+			endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+		};
+
+		const sessions = this.generateSampleSessions(data);
+
+		return { plan, sessions };
+	}
+
+	private generateSampleSessions(data: any): any[] {
+		const sessions = [];
+		const subjects = data.subjects || ['Matematik', 'Türkçe'];
+		const totalSessions = Math.min(data.availableTime || 20, 30);
+
+		for (let i = 0; i < totalSessions; i++) {
+			const subject = subjects[i % subjects.length];
+			const startTime = new Date();
+			startTime.setDate(startTime.getDate() + i);
+
+			sessions.push({
+				subject,
+				topic: `${subject} - Konu ${i + 1}`,
+				startTime,
+				duration: 60,
+				difficulty: 'medium',
+				type: 'study',
+			});
+		}
+
+		return sessions;
+	}
+
 	// ---- Taşınan yardımcılar ----
 	filterSubjectsForGradeAndTrack(subjects: string[], grade: number, track: string): string[] {
 		if (!Array.isArray(subjects) || subjects.length === 0) return [];
