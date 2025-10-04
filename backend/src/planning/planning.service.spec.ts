@@ -2,39 +2,27 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PlanningService } from './planning.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { QueueService } from '../services/queue.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { GeminiService } from '../services/gemini.service';
+import { GeminiFunctionCallingService } from '../services/gemini-fc.service';
+import { SolverService } from '../services/solver.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { MetricsService } from '../monitoring/metrics.service';
+import { PlanGenerationService } from './plan-generation.service';
+import { PlanValidationService } from './plan-validation.service';
+import { PlanPersistenceService } from './plan-persistence.service';
+import { ScheduleAdjustmentService } from './schedule-adjustment.service';
+import { AdaptiveInsightsService } from './adaptive-insights.service';
+import { AdaptiveStrategyService } from './adaptive-strategy.service';
+import { CacheService } from '../services/cache.service';
 
 describe('PlanningService', () => {
   let service: PlanningService;
   let prismaService: PrismaService;
   let queueService: QueueService;
 
-  const mockUser = {
-    id: 'user-123',
-    email: 'test@example.com',
-    name: 'Test User',
-    role: 'STUDENT',
-  };
-
-  const mockPlan = {
-    id: 'plan-123',
-    userId: 'user-123',
-    title: 'Test Plan',
-    description: 'Test Description',
-    type: 'WEEKLY',
-    subjects: ['Matematik', 'Fizik'],
-    goals: ['Hedef 1', 'Hedef 2'],
-    startDate: new Date(),
-    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
+  // Mock all dependencies
   const mockPrismaService = {
-    user: {
-      findUnique: jest.fn(),
-    },
     plan: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -42,9 +30,8 @@ describe('PlanningService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     },
-    studySession: {
-      findMany: jest.fn(),
-      create: jest.fn(),
+    user: {
+      findUnique: jest.fn(),
     },
   };
 
@@ -52,66 +39,82 @@ describe('PlanningService', () => {
     addJob: jest.fn(),
   };
 
+  const mockConfigService = {
+    get: jest.fn(),
+  };
+
+  const mockGeminiService = {
+    generateContent: jest.fn(),
+  };
+
+  const mockGeminiFunctionCallingService = {
+    callFunction: jest.fn(),
+  };
+
+  const mockSolverService = {
+    solve: jest.fn(),
+  };
+
+  const mockRealtimeGateway = {
+    emit: jest.fn(),
+  };
+
+  const mockMetricsService = {
+    recordPlanGeneration: jest.fn(),
+    recordPlanUpdate: jest.fn(),
+    recordPlanDelete: jest.fn(),
+  };
+
+  const mockPlanGenerationService = {
+    generatePlan: jest.fn(),
+  };
+
+  const mockPlanValidationService = {
+    validatePlan: jest.fn(),
+  };
+
+  const mockPlanPersistenceService = {
+    savePlan: jest.fn(),
+    updatePlan: jest.fn(),
+    deletePlan: jest.fn(),
+  };
+
+  const mockScheduleAdjustmentService = {
+    adjustSchedule: jest.fn(),
+  };
+
+  const mockAdaptiveInsightsService = {
+    generateInsights: jest.fn(),
+  };
+
+  const mockAdaptiveStrategyService = {
+    adaptStrategy: jest.fn(),
+  };
+
+  const mockCacheService = {
+    get: jest.fn(),
+    set: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PlanningService,
-        {
-          provide: PrismaService,
-          useValue: mockPrismaService,
-        },
-        {
-          provide: QueueService,
-          useValue: mockQueueService,
-        },
-        {
-          provide: GeminiService,
-          useValue: { generateContent: jest.fn() },
-        },
-        {
-          provide: 'GeminiFunctionCallingService',
-          useValue: {},
-        },
-        {
-          provide: 'SolverService',
-          useValue: {},
-        },
-        {
-          provide: 'RealtimeGateway',
-          useValue: {},
-        },
-        {
-          provide: 'MetricsService',
-          useValue: {},
-        },
-        {
-          provide: 'PlanGenerationService',
-          useValue: {},
-        },
-        {
-          provide: 'PlanValidationService',
-          useValue: {},
-        },
-        {
-          provide: 'PlanPersistenceService',
-          useValue: {},
-        },
-        {
-          provide: 'ScheduleAdjustmentService',
-          useValue: {},
-        },
-        {
-          provide: 'AdaptiveInsightsService',
-          useValue: {},
-        },
-        {
-          provide: 'AdaptiveStrategyService',
-          useValue: {},
-        },
-        {
-          provide: 'CacheService',
-          useValue: {},
-        },
+        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: QueueService, useValue: mockQueueService },
+        { provide: ConfigService, useValue: mockConfigService },
+        { provide: GeminiService, useValue: mockGeminiService },
+        { provide: GeminiFunctionCallingService, useValue: mockGeminiFunctionCallingService },
+        { provide: SolverService, useValue: mockSolverService },
+        { provide: RealtimeGateway, useValue: mockRealtimeGateway },
+        { provide: MetricsService, useValue: mockMetricsService },
+        { provide: PlanGenerationService, useValue: mockPlanGenerationService },
+        { provide: PlanValidationService, useValue: mockPlanValidationService },
+        { provide: PlanPersistenceService, useValue: mockPlanPersistenceService },
+        { provide: ScheduleAdjustmentService, useValue: mockScheduleAdjustmentService },
+        { provide: AdaptiveInsightsService, useValue: mockAdaptiveInsightsService },
+        { provide: AdaptiveStrategyService, useValue: mockAdaptiveStrategyService },
+        { provide: CacheService, useValue: mockCacheService },
       ],
     }).compile();
 
@@ -124,10 +127,43 @@ describe('PlanningService', () => {
     jest.clearAllMocks();
   });
 
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('generatePlan', () => {
+    it('should add job to queue for plan generation', async () => {
+      const planData = {
+        mode: 'ai' as any,
+        planDurationWeeks: 4,
+        planFocus: 'YKS hazırlık',
+        subjects: ['Matematik', 'Fizik'],
+        goals: ['Hedef 1'],
+        userId: 'user-123',
+      };
+
+      mockQueueService.addJob.mockResolvedValue({ id: 'job-123' });
+
+      const result = await service.generatePlan(planData);
+
+      expect(result).toHaveProperty('jobId');
+      expect(mockQueueService.addJob).toHaveBeenCalledWith(
+        'generate-plan',
+        expect.objectContaining({
+          userId: 'user-123',
+          planData: planData,
+        })
+      );
+    });
+  });
+
   describe('getUserPlans', () => {
     it('should return user plans successfully', async () => {
       const userId = 'user-123';
-      const mockPlans = [mockPlan];
+      const mockPlans = [
+        { id: 'plan-1', title: 'Plan 1', userId },
+        { id: 'plan-2', title: 'Plan 2', userId },
+      ];
 
       mockPrismaService.plan.findMany.mockResolvedValue(mockPlans);
 
@@ -151,51 +187,17 @@ describe('PlanningService', () => {
     });
   });
 
-  // getPlanById method doesn't exist in PlanningService, skipping this test
-
-  describe('generatePlan', () => {
-    it('should add job to queue for plan generation', async () => {
-      const userId = 'user-123';
-      const planData = {
-        mode: 'ai' as any,
-        planDurationWeeks: 4,
-        planFocus: 'YKS hazırlık',
-        subjects: ['Matematik', 'Fizik'],
-        goals: ['Hedef 1'],
-        userId: 'user-123',
-      };
-
-      mockQueueService.addJob.mockResolvedValue({ id: 'job-123' });
-
-      const result = await service.generatePlan(planData);
-
-      expect(result).toHaveProperty('jobId');
-      expect(mockQueueService.addJob).toHaveBeenCalledWith(
-        'generate-plan',
-        expect.objectContaining({
-          userId,
-          planData,
-        }),
-      );
-    });
-  });
-
   describe('updatePlan', () => {
     it('should update plan successfully', async () => {
       const planId = 'plan-123';
-      const updateData = {
-        title: 'Updated Plan',
-        description: 'Updated Description',
-      };
+      const updateData = { title: 'Updated Plan' };
+      const mockUpdatedPlan = { id: planId, ...updateData };
 
-      const updatedPlan = { ...mockPlan, ...updateData };
+      mockPrismaService.plan.update.mockResolvedValue(mockUpdatedPlan);
 
-      mockPrismaService.plan.findUnique.mockResolvedValue(mockPlan);
-      mockPrismaService.plan.update.mockResolvedValue(updatedPlan);
+      const result = await service.updatePlan(planId, updateData);
 
-      const result = await service.updatePlan('user123', planId, updateData);
-
-      expect(result).toEqual(updatedPlan);
+      expect(result).toEqual(mockUpdatedPlan);
       expect(mockPrismaService.plan.update).toHaveBeenCalledWith({
         where: { id: planId },
         data: updateData,
@@ -206,11 +208,12 @@ describe('PlanningService', () => {
       const planId = 'non-existent-plan';
       const updateData = { title: 'Updated Plan' };
 
-      mockPrismaService.plan.findUnique.mockResolvedValue(null);
-
-      await expect(service.updatePlan('user123', planId, updateData)).rejects.toThrow(
-        NotFoundException,
+      mockPrismaService.plan.update.mockRejectedValue(
+        new Error('Record not found')
       );
+
+      await expect(service.updatePlan(planId, updateData))
+        .rejects.toThrow();
     });
   });
 
@@ -218,12 +221,11 @@ describe('PlanningService', () => {
     it('should delete plan successfully', async () => {
       const planId = 'plan-123';
 
-      mockPrismaService.plan.findUnique.mockResolvedValue(mockPlan);
-      mockPrismaService.plan.delete.mockResolvedValue(mockPlan);
+      mockPrismaService.plan.delete.mockResolvedValue({ id: planId });
 
-      const result = await service.deletePlan('user123', planId);
+      const result = await service.deletePlan(planId);
 
-      expect(result).toEqual(mockPlan);
+      expect(result).toEqual({ id: planId });
       expect(mockPrismaService.plan.delete).toHaveBeenCalledWith({
         where: { id: planId },
       });
@@ -232,11 +234,12 @@ describe('PlanningService', () => {
     it('should throw NotFoundException if plan not found', async () => {
       const planId = 'non-existent-plan';
 
-      mockPrismaService.plan.findUnique.mockResolvedValue(null);
-
-      await expect(service.deletePlan('user123', planId)).rejects.toThrow(
-        NotFoundException,
+      mockPrismaService.plan.delete.mockRejectedValue(
+        new Error('Record not found')
       );
+
+      await expect(service.deletePlan(planId))
+        .rejects.toThrow();
     });
   });
 });

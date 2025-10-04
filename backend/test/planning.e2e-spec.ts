@@ -1,49 +1,97 @@
+import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { QueueService } from '../src/services/queue.service';
-import { GeminiService } from '../src/services/gemini.service';
+import { PrismaService } from '../src/common/prisma/prisma.service';
+import * as request from 'supertest';
+import { JwtService } from '@nestjs/jwt';
 
 describe('PlanningController (e2e)', () => {
   let app: INestApplication;
-  const mockQueue = { addJob: jest.fn().mockResolvedValue({ id: 'job123' }) } as any;
-  const mockGemini = { generateContent: jest.fn().mockResolvedValue('OK') } as any;
+  let prismaService: PrismaService;
+  let jwtService: JwtService;
+  let authToken: string;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(QueueService)
-      .useValue(mockQueue)
-      .overrideProvider(GeminiService)
-      .useValue(mockGemini)
-      .compile();
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
 
-    app = moduleRef.createNestApplication();
+    app = moduleFixture.createNestApplication();
+    prismaService = moduleFixture.get<PrismaService>(PrismaService);
+    jwtService = moduleFixture.get<JwtService>(JwtService);
+    
     await app.init();
+
+    // Create test user and generate auth token
+    const testUser = await prismaService.user.create({
+      data: {
+        email: 'test@example.com',
+        name: 'Test User',
+        password: 'hashedpassword',
+        role: 'STUDENT',
+      },
+    });
+
+    authToken = jwtService.sign({ 
+      sub: testUser.id, 
+      email: testUser.email,
+      role: testUser.role 
+    });
   });
 
   afterAll(async () => {
+    // Cleanup test data
+    await prismaService.user.deleteMany({
+      where: { email: 'test@example.com' },
+    });
     await app.close();
   });
 
-  it('/planning/generate-plan (POST) should queue job with stable jobId', async () => {
-    const token = 'Bearer ey.fake.jwt';
-    // JwtAuthGuard gerçek doğrulama yapacağından, prod guard devredeyse bu testte bypass gerekebilir.
-    // Basitçe header veriyoruz; test ayarında guard override edilmesi önerilir.
-    const payload = { mode: 'ai', planDurationWeeks: 1, planFocus: 'math' };
-    const res = await request(app.getHttpServer())
-      .post('/planning/generate-plan')
-      .set('Authorization', token)
-      .send(payload)
-      .expect(201)
-      .catch(async () => await request(app.getHttpServer())
-        .post('/planning/generate-plan').set('Authorization', token).send(payload).expect(200));
+  describe('/planning/generate-plan (POST)', () => {
+    it('should generate a plan successfully', () => {
+      const planData = {
+        mode: 'ai',
+        planDurationWeeks: 4,
+        planFocus: 'YKS hazırlık',
+        subjects: ['Matematik', 'Fizik'],
+        goals: ['Hedef 1'],
+      };
 
-    expect(mockQueue.addJob).toHaveBeenCalled();
-    const call = (mockQueue.addJob as jest.Mock).mock.calls[0];
-    expect(call[0]).toBe('generate-plan');
-    expect(call[2]).toHaveProperty('jobId');
+      return request(app.getHttpServer())
+        .post('/planning/generate-plan')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(planData)
+        .expect(201)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('jobId');
+        });
+    });
+
+    it('should return 401 without auth token', () => {
+      const planData = {
+        mode: 'ai',
+        planDurationWeeks: 4,
+        planFocus: 'YKS hazırlık',
+        subjects: ['Matematik', 'Fizik'],
+        goals: ['Hedef 1'],
+      };
+
+      return request(app.getHttpServer())
+        .post('/planning/generate-plan')
+        .send(planData)
+        .expect(401);
+    });
+  });
+
+  describe('/planning/user-plans (GET)', () => {
+    it('should return user plans', () => {
+      return request(app.getHttpServer())
+        .get('/planning/user-plans')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200)
+        .expect((res) => {
+          expect(Array.isArray(res.body)).toBe(true);
+        });
+    });
   });
 });
-
-

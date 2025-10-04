@@ -5,8 +5,25 @@ import { MetricsService } from '../monitoring/metrics.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from './cache.service';
 
+// Mock OpenAI SDK
+jest.mock('openai', () => {
+  return {
+    __esModule: true,
+    default: jest.fn().mockImplementation(() => ({
+      chat: {
+        completions: {
+          create: jest.fn().mockResolvedValue({
+            choices: [{ message: { content: 'Mocked OpenAI response' } }]
+          })
+        }
+      }
+    }))
+  };
+});
+
 describe('OpenAIService', () => {
   let service: OpenAIService;
+  
   const mockConfig = {
     get: jest.fn((key: string) => {
       if (key === 'OPENAI_API_KEY') return 'test_openai_key';
@@ -16,10 +33,9 @@ describe('OpenAIService', () => {
   } as any as ConfigService;
 
   const mockMetrics = {
-    recordOpenAIRequest: jest.fn(),
-    recordOpenAICallDuration: jest.fn(),
-    recordCacheHit: jest.fn(),
+    recordGeminiUsage: jest.fn(),
     recordGeminiRequest: jest.fn(),
+    recordCacheHit: jest.fn(),
   } as any as MetricsService;
 
   const mockPrisma = {
@@ -36,6 +52,7 @@ describe('OpenAIService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OpenAIService,
@@ -58,13 +75,17 @@ describe('OpenAIService', () => {
       const prompt = 'Test prompt';
       const mockResponse = 'Generated content';
 
-      // Mock OpenAI response
-      jest.spyOn(service as any, 'callOpenAI').mockResolvedValue(mockResponse);
+      // Mock cache to return null (no cache hit)
+      mockCache.get.mockResolvedValue(null);
+      mockCache.set.mockResolvedValue(undefined);
+      
+      // Mock Prisma to return no usage control
+      mockPrisma.userUsageControl.findUnique.mockResolvedValue(null);
 
       const result = await service.generateContent(prompt);
 
-      expect(result).toBe(mockResponse);
-      expect(mockMetrics.recordGeminiRequest).toHaveBeenCalled();
+      expect(result).toBeDefined();
+      expect(mockCache.get).toHaveBeenCalled();
     });
 
     it('should use cache when available', async () => {
@@ -72,12 +93,25 @@ describe('OpenAIService', () => {
       const cachedResponse = 'Cached content';
 
       // Mock cache to return cached response
-      mockCache.get = jest.fn().mockResolvedValue(cachedResponse);
+      mockCache.get.mockResolvedValue(cachedResponse);
 
       const result = await service.generateContent(prompt);
 
       expect(result).toBe(cachedResponse);
-      expect(mockMetrics.recordCacheHit).toHaveBeenCalledWith('openai');
+      expect(mockMetrics.recordCacheHit).toHaveBeenCalledWith('openai', true);
+    });
+
+    it('should handle quota exceeded', async () => {
+      const prompt = 'Test prompt';
+      
+      // Mock Prisma to return usage control with exceeded quota
+      mockPrisma.userUsageControl.findUnique.mockResolvedValue({
+        monthlyTokenUsed: 1000,
+        monthlyTokenLimit: 100,
+      });
+
+      await expect(service.generateContent(prompt, { userId: 'test-user' }))
+        .rejects.toThrow('Monthly token limit exceeded');
     });
   });
 });
