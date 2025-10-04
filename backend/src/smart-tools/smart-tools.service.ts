@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { GeminiService } from '../services/gemini.service';
+import { OpenAIService } from '../services/openai.service';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { Response } from 'express';
 
@@ -17,8 +19,15 @@ export class SmartToolsService {
 
   constructor(
     private readonly geminiService: GeminiService,
+    private readonly openaiService: OpenAIService,
+    private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {}
+
+  private getAIService() {
+    const provider = this.configService.get<string>('AI_PROVIDER') || 'gemini';
+    return provider === 'openai' ? this.openaiService : this.geminiService;
+  }
 
   async quickChatStream(data: { message: string; subject?: string; grade?: string }, res: Response) {
     // Set SSE headers
