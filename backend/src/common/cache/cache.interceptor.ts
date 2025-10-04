@@ -97,6 +97,19 @@ export class CacheInterceptor implements NestInterceptor {
       if (data.error || data.message?.includes('error')) {
         return true;
       }
+      
+      // Skip caching if data is too large (prevent memory issues)
+      const dataSize = JSON.stringify(data).length;
+      if (dataSize > 1024 * 1024) { // 1MB limit
+        this.logger.warn(`Skipping cache for large data: ${dataSize} bytes`);
+        return true;
+      }
+      
+      // Skip caching if data contains sensitive information
+      if (data.password || data.token || data.secret) {
+        this.logger.warn('Skipping cache for sensitive data');
+        return true;
+      }
     }
     return false;
   }

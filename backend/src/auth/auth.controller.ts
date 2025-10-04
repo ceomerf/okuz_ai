@@ -10,7 +10,7 @@ class RegisterDto {
   email!: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   password!: string;
 
   @IsString()
@@ -27,7 +27,7 @@ class LoginDto {
   email!: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   password!: string;
 }
 
@@ -42,14 +42,14 @@ class RefreshTokenDto {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Throttle({ short: { limit: 5, ttl: 60000 } })
+  @Throttle({ short: { limit: 3, ttl: 300000 } }) // 3 attempts per 5 minutes
   @Post('register')
   @ApiOperation({ summary: 'Register new user' })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
-  @Throttle({ short: { limit: 5, ttl: 60000 } })
+  @Throttle({ short: { limit: 5, ttl: 300000 } }) // 5 attempts per 5 minutes
   @Post('login')
   @ApiOperation({ summary: 'Login user' })
   async login(@Body() loginDto: LoginDto) {

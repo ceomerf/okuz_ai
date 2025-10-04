@@ -38,13 +38,19 @@ import { MonitoringModule } from './monitoring/monitoring.module';
         REDIS_URL: Joi.string().uri().required(),
         JWT_SECRET: Joi.string().min(32).required(),
         JWT_REFRESH_SECRET: Joi.string().min(32).required(),
-        // GEMINI_API_KEY: Joi.string().optional(), // DEVRE DIŞI - OPENAI KULLANILIYOR
-        // GEMINI_MODEL: Joi.string().optional(), // DEVRE DIŞI - OPENAI KULLANILIYOR
-        OPENAI_API_KEY: Joi.string().optional(),
-        // AI_PROVIDER: Joi.string().valid('gemini', 'openai').optional(), // DEVRE DIŞI - SADECE OPENAI
-        CORS_ORIGINS: Joi.string().allow('').optional(),
+        OPENAI_API_KEY: Joi.string().min(20).required(),
+        CORS_ALLOWED_ORIGINS: Joi.string().min(1).required(),
+        BCRYPT_SALT_ROUNDS: Joi.number().integer().min(10).max(15).default(12),
+        JWT_ACCESS_TOKEN_EXPIRATION: Joi.string().default('1h'),
+        JWT_REFRESH_TOKEN_EXPIRATION: Joi.string().default('7d'),
+        THROTTLER_SHORT_TTL: Joi.number().integer().min(1000).default(60000),
+        THROTTLER_SHORT_LIMIT: Joi.number().integer().min(1).default(5),
+        THROTTLER_MEDIUM_TTL: Joi.number().integer().min(1000).default(60000),
+        THROTTLER_MEDIUM_LIMIT: Joi.number().integer().min(1).default(20),
+        THROTTLER_LONG_TTL: Joi.number().integer().min(1000).default(60000),
+        THROTTLER_LONG_LIMIT: Joi.number().integer().min(1).default(100),
         PROMETHEUS_PORT: Joi.number().port().optional(),
-        SWAGGER_ENABLE: Joi.boolean().optional(),
+        SWAGGER_ENABLE: Joi.boolean().default(true),
       }),
     }),
     ThrottlerModule.forRootAsync({

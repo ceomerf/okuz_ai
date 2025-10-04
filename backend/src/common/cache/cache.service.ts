@@ -14,6 +14,11 @@ export class CacheService {
       password: this.configService.get<string>('REDIS_PASSWORD'),
       db: this.configService.get<number>('REDIS_DB', 0),
       maxRetriesPerRequest: 3,
+      enableReadyCheck: false,
+      lazyConnect: true,
+      keepAlive: 30000,
+      connectTimeout: 10000,
+      commandTimeout: 5000,
     });
 
     this.redis.on('error', (err) => {
@@ -22,6 +27,18 @@ export class CacheService {
 
     this.redis.on('connect', () => {
       this.logger.log('Redis connected successfully');
+    });
+
+    this.redis.on('ready', () => {
+      this.logger.log('Redis ready for operations');
+    });
+
+    this.redis.on('close', () => {
+      this.logger.warn('Redis connection closed');
+    });
+
+    this.redis.on('reconnecting', () => {
+      this.logger.log('Redis reconnecting...');
     });
   }
 
@@ -42,10 +59,55 @@ export class CacheService {
       if (ttlSeconds) {
         await this.redis.setex(key, ttlSeconds, serialized);
       } else {
-        await this.redis.set(key, serialized);
+        // Default TTL for cache entries (1 hour)
+        await this.redis.setex(key, 3600, serialized);
       }
     } catch (error) {
       this.logger.error(`Cache set error for key ${key}:`, error);
+    }
+  }
+
+  // Memory leak prevention - cache cleanup
+  async cleanupExpiredKeys(): Promise<void> {
+    try {
+      // Redis automatically handles TTL, but we can add manual cleanup
+      const keys = await this.redis.keys('*');
+      const expiredKeys = [];
+      
+      for (const key of keys) {
+        const ttl = await this.redis.ttl(key);
+        if (ttl === -1) { // No expiration set
+          expiredKeys.push(key);
+        }
+      }
+      
+      if (expiredKeys.length > 0) {
+        await this.redis.del(...expiredKeys);
+        this.logger.log(`Cleaned up ${expiredKeys.length} expired cache keys`);
+      }
+    } catch (error) {
+      this.logger.error('Cache cleanup error:', error);
+    }
+  }
+
+  // Cache memory usage monitoring
+  async getMemoryUsage(): Promise<any> {
+    try {
+      const info = await this.redis.info('memory');
+      const lines = info.split('\r\n');
+      const memoryInfo: any = {};
+      
+      lines.forEach(line => {
+        if (line.includes(':')) {
+          const [key, value] = line.split(':');
+          memoryInfo[key] = value;
+        }
+      });
+      
+      return memoryInfo;
+    } catch (error) {
+      this.logger.error('Cache memory usage error:', error);
+      return null;
     }
   }
 

@@ -17,12 +17,14 @@ export const CacheEvict = (options: CacheEvictOptions) => {
 export const EvictUserCache = (userIdParam = 'userId') => {
   return CacheEvict({
     pattern: `user:{${userIdParam}}*`,
+    beforeInvocation: true,
   });
 };
 
 export const EvictPlanCache = (planIdParam = 'planId', userIdParam?: string) => {
   const options: CacheEvictOptions = {
     key: `plan:{${planIdParam}}`,
+    beforeInvocation: true,
   };
   
   if (userIdParam) {
@@ -35,11 +37,35 @@ export const EvictPlanCache = (planIdParam = 'planId', userIdParam?: string) => 
 export const EvictProgressCache = (userIdParam = 'userId') => {
   return CacheEvict({
     pattern: `user:{${userIdParam}}:progress`,
+    beforeInvocation: true,
   });
 };
 
 export const EvictAllCache = () => {
   return CacheEvict({
     allEntries: true,
+    beforeInvocation: true,
+  });
+};
+
+// New enterprise-grade cache eviction decorators
+export const EvictUserProfileCache = (userIdParam = 'userId') => {
+  return CacheEvict({
+    pattern: `user:{${userIdParam}}:profile*`,
+    beforeInvocation: true,
+  });
+};
+
+export const EvictStudySessionCache = (userIdParam = 'userId') => {
+  return CacheEvict({
+    pattern: `user:{${userIdParam}}:sessions*`,
+    beforeInvocation: true,
+  });
+};
+
+export const EvictAnalyticsCache = (userIdParam = 'userId') => {
+  return CacheEvict({
+    pattern: `user:{${userIdParam}}:analytics*`,
+    beforeInvocation: true,
   });
 };

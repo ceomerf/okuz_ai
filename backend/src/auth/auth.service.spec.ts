@@ -29,6 +29,13 @@ describe('AuthService', () => {
       findUnique: jest.fn(),
       create: jest.fn(),
     },
+    refreshToken: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      delete: jest.fn(),
+    },
   };
 
   const mockJwtService = {
@@ -83,7 +90,7 @@ describe('AuthService', () => {
     it('should register a new user successfully', async () => {
       const registerDto = {
         email: 'test@example.com',
-        password: 'password123',
+        password: 'Password123',
         name: 'Test User',
       };
 
@@ -91,7 +98,12 @@ describe('AuthService', () => {
       mockPrismaService.user.create.mockResolvedValue(mockUser);
       mockSubscriptionService.startTrial.mockResolvedValue({});
       mockJwtService.sign.mockReturnValue('access-token');
-      mockConfigService.get.mockReturnValue('refresh-secret');
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'JWT_SECRET') return 'jwt-secret';
+        if (key === 'JWT_REFRESH_SECRET') return 'refresh-secret';
+        if (key === 'BCRYPT_SALT_ROUNDS') return '12';
+        return undefined;
+      });
 
       const result = await service.register(registerDto);
 
@@ -108,7 +120,7 @@ describe('AuthService', () => {
     it('should throw BadRequestException if user already exists', async () => {
       const registerDto = {
         email: 'test@example.com',
-        password: 'password123',
+        password: 'Password123',
         name: 'Test User',
       };
 
@@ -124,15 +136,20 @@ describe('AuthService', () => {
     it('should login user successfully', async () => {
       const loginDto = {
         email: 'test@example.com',
-        password: 'password123',
+        password: 'Password123',
       };
 
-      const hashedPassword = await bcrypt.hash('password123', 10);
+      const hashedPassword = await bcrypt.hash('Password123', 10);
       const userWithHashedPassword = { ...mockUser, password: hashedPassword };
 
       mockPrismaService.user.findUnique.mockResolvedValue(userWithHashedPassword);
       mockJwtService.sign.mockReturnValue('access-token');
-      mockConfigService.get.mockReturnValue('refresh-secret');
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'JWT_SECRET') return 'jwt-secret';
+        if (key === 'JWT_REFRESH_SECRET') return 'refresh-secret';
+        if (key === 'BCRYPT_SALT_ROUNDS') return '12';
+        return undefined;
+      });
 
       const result = await service.login(loginDto);
 
@@ -179,10 +196,41 @@ describe('AuthService', () => {
       const decodedToken = { sub: 'user-123', email: 'test@example.com' };
       const user = { id: 'user-123', email: 'test@example.com', role: 'STUDENT' };
 
-      mockJwtService.verifyAsync.mockResolvedValue(decodedToken);
-      mockPrismaService.user.findUnique.mockResolvedValue(user);
+      // Mock refreshToken.findUnique to return a valid token
+      mockPrismaService.refreshToken.findUnique.mockResolvedValue({
+        id: 'token-123',
+        token: 'valid-refresh-token',
+        userId: 'user-123',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        isRevoked: false,
+        user: user,
+      });
+      
+      // Mock refresh token update (for revoking old token)
+      mockPrismaService.refreshToken.update.mockResolvedValue({
+        id: 'token-123',
+        token: 'valid-refresh-token',
+        userId: 'user-123',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        isRevoked: true,
+      });
+      
       mockJwtService.sign.mockReturnValue('new-access-token');
-      mockConfigService.get.mockReturnValue('refresh-secret');
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'JWT_SECRET') return 'jwt-secret';
+        if (key === 'JWT_REFRESH_SECRET') return 'refresh-secret';
+        if (key === 'BCRYPT_SALT_ROUNDS') return '12';
+        return undefined;
+      });
+      
+      // Mock refresh token creation
+      mockPrismaService.refreshToken.create.mockResolvedValue({
+        id: 'new-token-123',
+        token: 'new-refresh-token',
+        userId: 'user-123',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        isRevoked: false,
+      });
 
       const result = await service.refreshToken(refreshTokenDto);
 
@@ -195,7 +243,7 @@ describe('AuthService', () => {
         refreshToken: 'invalid-refresh-token',
       };
 
-      mockJwtService.verifyAsync.mockRejectedValue(new Error('Invalid token'));
+      mockPrismaService.refreshToken.findUnique.mockResolvedValue(null);
 
       await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow(
         UnauthorizedException,
@@ -207,10 +255,14 @@ describe('AuthService', () => {
         refreshToken: 'valid-refresh-token',
       };
 
-      const decodedToken = { sub: 'user-123', email: 'test@example.com' };
-
-      mockJwtService.verifyAsync.mockResolvedValue(decodedToken);
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockPrismaService.refreshToken.findUnique.mockResolvedValue({
+        id: 'token-123',
+        token: 'valid-refresh-token',
+        userId: 'user-123',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        isRevoked: false,
+        user: null
+      });
 
       await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow(
         UnauthorizedException,

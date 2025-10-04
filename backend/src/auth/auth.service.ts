@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { SubscriptionService } from '../subscription/subscription.service';
@@ -15,11 +15,30 @@ export class AuthService {
   ) {}
 
   private async issueTokens(user: { id: string; email: string; role?: string }) {
-    const payload: { email: string; sub: string; role?: string } = { email: user.email, sub: user.id };
+    const now = Math.floor(Date.now() / 1000);
+    const payload: { 
+      email: string; 
+      sub: string; 
+      role?: string; 
+      iat: number;
+      jti: string;
+    } = { 
+      email: user.email, 
+      sub: user.id,
+      iat: now,
+      jti: `${user.id}-${now}-${Math.random().toString(36).substr(2, 9)}`
+    };
     if (user.role) payload.role = user.role;
 
-    const access_token = this.jwtService.sign(payload); // uses default secret and expiry from JwtModule
-    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET') || this.configService.get<string>('JWT_SECRET');
+    // Access token - kısa süreli
+    const access_token = this.jwtService.sign(payload);
+    
+    // Refresh token - uzun süreli, farklı secret ile
+    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
+    if (!refreshSecret || refreshSecret === this.configService.get<string>('JWT_SECRET')) {
+      throw new Error('JWT_REFRESH_SECRET must be different from JWT_SECRET');
+    }
+    
     const refreshToken = this.jwtService.sign(payload, {
       secret: refreshSecret,
       expiresIn: '7d',
@@ -51,6 +70,15 @@ export class AuthService {
 
       if (existingUser) {
         throw new ConflictException('Email already exists');
+      }
+
+      // Şifre güvenlik kontrolü
+      if (password.length < 8) {
+        throw new BadRequestException('Password must be at least 8 characters long');
+      }
+      
+      if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+        throw new BadRequestException('Password must contain at least one uppercase letter, one lowercase letter, and one number');
       }
 
       // Şifre hash'leme - güvenli salt rounds
