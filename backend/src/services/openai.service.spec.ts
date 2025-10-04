@@ -19,6 +19,7 @@ describe('OpenAIService', () => {
     recordOpenAIRequest: jest.fn(),
     recordOpenAICallDuration: jest.fn(),
     recordCacheHit: jest.fn(),
+    recordGeminiRequest: jest.fn(),
   } as any as MetricsService;
 
   const mockPrisma = {
@@ -29,8 +30,8 @@ describe('OpenAIService', () => {
   } as any as PrismaService;
 
   const mockCache = {
-    get: jest.fn(),
-    set: jest.fn(),
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(undefined),
   } as any as CacheService;
 
   beforeEach(async () => {
@@ -59,8 +60,6 @@ describe('OpenAIService', () => {
 
       // Mock OpenAI response
       jest.spyOn(service as any, 'callOpenAI').mockResolvedValue(mockResponse);
-      mockCache.get.mockResolvedValue(null);
-      mockCache.set.mockResolvedValue(undefined);
 
       const result = await service.generateContent(prompt);
 

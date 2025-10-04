@@ -64,6 +64,54 @@ describe('PlanningService', () => {
           provide: QueueService,
           useValue: mockQueueService,
         },
+        {
+          provide: 'GeminiService',
+          useValue: { generateContent: jest.fn() },
+        },
+        {
+          provide: 'GeminiFunctionCallingService',
+          useValue: {},
+        },
+        {
+          provide: 'SolverService',
+          useValue: {},
+        },
+        {
+          provide: 'RealtimeGateway',
+          useValue: {},
+        },
+        {
+          provide: 'MetricsService',
+          useValue: {},
+        },
+        {
+          provide: 'PlanGenerationService',
+          useValue: {},
+        },
+        {
+          provide: 'PlanValidationService',
+          useValue: {},
+        },
+        {
+          provide: 'PlanPersistenceService',
+          useValue: {},
+        },
+        {
+          provide: 'ScheduleAdjustmentService',
+          useValue: {},
+        },
+        {
+          provide: 'AdaptiveInsightsService',
+          useValue: {},
+        },
+        {
+          provide: 'AdaptiveStrategyService',
+          useValue: {},
+        },
+        {
+          provide: 'CacheService',
+          useValue: {},
+        },
       ],
     }).compile();
 
