@@ -12,7 +12,7 @@ describe('GeminiService', () => {
     get: jest.fn((k: string) => {
       if (k === 'GEMINI_API_KEY') return 'test_gemini_key';
       if (k === 'GEMINI_MODEL') return 'gemini-1.5-flash';
-      return null;
+      return 'test_gemini_key'; // Default fallback
     })
   } as any as ConfigService;
   const mockMetrics = {

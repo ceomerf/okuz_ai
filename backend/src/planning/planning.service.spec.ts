@@ -109,7 +109,7 @@ describe('PlanningService', () => {
     it('should add job to queue for plan generation', async () => {
       const userId = 'user-123';
       const planData = {
-        mode: 'ai',
+        mode: 'ai' as any,
         planDurationWeeks: 4,
         planFocus: 'YKS hazırlık',
         subjects: ['Matematik', 'Fizik'],

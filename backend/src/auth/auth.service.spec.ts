@@ -42,6 +42,7 @@ describe('AuthService', () => {
 
   const mockSubscriptionService = {
     createTrialSubscription: jest.fn(),
+    startTrial: jest.fn(),
   };
 
   beforeEach(async () => {
