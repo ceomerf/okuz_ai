@@ -21,16 +21,16 @@ import { TopicManagementService } from './topic-management.service';
 import { ProgressTrackingService } from './progress-tracking.service';
 import { AssessmentService } from './assessment.service';
 import { CoachingService } from './coaching.service';
-import { CacheService } from '../services/cache.service';
 import { SolverService } from '../services/solver.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { MetricsService } from '../monitoring/metrics.service';
+import { CacheModule } from '../services/cache.module';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { MonitoringModule } from '../monitoring/monitoring.module';
 
 @Module({
-  imports: [PrismaModule, GeminiModule, AuthModule, RealtimeModule, MonitoringModule],
+  imports: [PrismaModule, GeminiModule, CacheModule, AuthModule, RealtimeModule, MonitoringModule],
   controllers: [PlanningController],
   providers: [
     PlanningService, 
@@ -52,7 +52,6 @@ import { MonitoringModule } from '../monitoring/monitoring.module';
     ProgressTrackingService,
     AssessmentService,
     CoachingService,
-    CacheService,
     SolverService,
     RealtimeGateway,
     MetricsService
