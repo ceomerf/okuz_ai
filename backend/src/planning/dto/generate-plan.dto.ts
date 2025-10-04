@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsArray, IsOptional, Min, Max, IsEnum } from 'class-validator';
+import { IsString, IsNumber, IsArray, IsOptional, Min, Max, IsEnum, IsBoolean } from 'class-validator';
 
 export enum PlanMode {
   AI = 'ai',
@@ -29,4 +29,18 @@ export class GeneratePlanDto {
   @IsString()
   @IsOptional()
   learningStyle?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  @Max(600)
+  dailyMaxMinutes?: number;
+
+  @IsArray()
+  @IsOptional()
+  preferredTimes?: string[];
+
+  @IsBoolean()
+  @IsOptional()
+  force?: boolean;
 }

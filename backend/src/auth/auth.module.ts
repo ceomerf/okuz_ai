@@ -29,7 +29,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       },
     }),
     JwtModule.registerAsync({
-      name: 'refresh',
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {

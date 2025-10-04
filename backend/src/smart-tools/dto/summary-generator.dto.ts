@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, Length, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsNotEmpty, Length, IsOptional, IsEnum, IsNumber, Min, Max } from 'class-validator';
 
 export enum SummaryType {
   PARAGRAPH = 'paragraph',

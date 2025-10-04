@@ -49,7 +49,7 @@ export class PlanningController {
 
   @Post('generate-plan')
   @ApiOperation({ summary: 'Generate personalized study plan (basic or AI) [async]' })
-  async generatePlan(@Request() req, @Body() planData: GeneratePlanDto & { mode?: 'basic' | 'ai'; planDurationWeeks?: number; planFocus?: string; dailyMaxMinutes?: number; preferredTimes?: string[]; force?: boolean }) {
+  async generatePlan(@Request() req, @Body() planData: GeneratePlanDto) {
     // Idempotency: aynı kullanıcı ve aynı normalized payload için tek job (yalnızca AI modda uygula)
     const payload = { userId: req.user.id, payload: planData } as any;
     const normalized = JSON.stringify(payload);
