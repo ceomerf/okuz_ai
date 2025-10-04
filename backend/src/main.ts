@@ -4,6 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import helmet from 'helmet';
 import * as compression from 'compression';
 import rateLimit from 'express-rate-limit';
@@ -42,6 +43,9 @@ async function bootstrap() {
     forbidNonWhitelisted: true,
     transform: true,
   }));
+
+  // Global exception filter
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // Swagger API documentation
   const config = new DocumentBuilder()
