@@ -36,4 +36,37 @@ final studyDashboardNotifierProvider = StateNotifierProvider<StudyDashboardNotif
   return StudyDashboardNotifier(apiClient);
 });
 
+// Optimized selectors for better performance - prevents unnecessary rebuilds
+final studentNameProvider = Provider<String>((ref) {
+  return ref.watch(studyDashboardNotifierProvider.select((state) => state.studentName));
+});
+
+final totalXPProvider = Provider<int>((ref) {
+  return ref.watch(studyDashboardNotifierProvider.select((state) => state.totalXP));
+});
+
+final studyStreakProvider = Provider<int>((ref) {
+  return ref.watch(studyDashboardNotifierProvider.select((state) => state.studyStreak));
+});
+
+final currentLevelProvider = Provider<int>((ref) {
+  return ref.watch(studyDashboardNotifierProvider.select((state) => state.currentLevel));
+});
+
+final weeklyProgressProvider = Provider<double>((ref) {
+  return ref.watch(studyDashboardNotifierProvider.select((state) => state.weeklyProgress));
+});
+
+final todayTasksProvider = Provider<int>((ref) {
+  return ref.watch(studyDashboardNotifierProvider.select((state) => state.todayTasks));
+});
+
+final isLoadingProvider = Provider<bool>((ref) {
+  return ref.watch(studyDashboardNotifierProvider.select((state) => state.isLoading));
+});
+
+final errorMessageProvider = Provider<String?>((ref) {
+  return ref.watch(studyDashboardNotifierProvider.select((state) => state.errorMessage));
+});
+
 
