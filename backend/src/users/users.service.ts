@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { Cacheable } from '../common/interceptors/cache.interceptor';
 
 @Injectable()
 export class UsersService {
@@ -10,7 +9,6 @@ export class UsersService {
     return { message: 'Users service implementation' };
   }
 
-  @Cacheable('user-profile', 1800) // 30 dakika cache
   async findOne(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
