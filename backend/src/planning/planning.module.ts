@@ -16,6 +16,15 @@ import { ScheduleAdjustmentService } from './schedule-adjustment.service';
 import { AdaptiveInsightsService } from './adaptive-insights.service';
 import { AdaptiveStrategyService } from './adaptive-strategy.service';
 import { DigitalDossierService } from './digital-dossier.service';
+import { AiAnalysisService } from './ai-analysis.service';
+import { TopicManagementService } from './topic-management.service';
+import { ProgressTrackingService } from './progress-tracking.service';
+import { AssessmentService } from './assessment.service';
+import { CoachingService } from './coaching.service';
+import { CacheService } from '../services/cache.service';
+import { SolverService } from '../services/solver.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { MetricsService } from '../monitoring/metrics.service';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { MonitoringModule } from '../monitoring/monitoring.module';
@@ -37,7 +46,16 @@ import { MonitoringModule } from '../monitoring/monitoring.module';
     ScheduleAdjustmentService, 
     AdaptiveInsightsService, 
     AdaptiveStrategyService, 
-    DigitalDossierService
+    DigitalDossierService,
+    AiAnalysisService,
+    TopicManagementService,
+    ProgressTrackingService,
+    AssessmentService,
+    CoachingService,
+    CacheService,
+    SolverService,
+    RealtimeGateway,
+    MetricsService
   ],
   exports: [
     PlanningService, 
