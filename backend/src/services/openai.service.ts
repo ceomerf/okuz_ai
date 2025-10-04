@@ -34,14 +34,14 @@ export class OpenAIService {
       const cacheKey = `openai:${crypto.createHash('md5').update(prompt).digest('hex')}`;
       const cached = await this.cache.get(cacheKey);
       if (cached) {
-        this.metrics.recordCacheHit('openai');
+        this.metrics.recordCacheHit('openai', true);
         return cached;
       }
     }
 
     // Quota kontrolü
     if (userId) {
-      const usage = await this.prisma.userUsageControl.findUnique({
+      const usage = await this.prisma.userUsageControl?.findUnique({
         where: { userId },
       });
 
@@ -79,9 +79,9 @@ export class OpenAIService {
       }
 
       // Metrics kaydet
-      this.metrics.recordOpenAIUsage(content.length);
+      this.metrics.recordGeminiUsage(userId, 'openai', 'gpt-3.5-turbo', 'generateContent', content.length);
       if (userId) {
-        this.metrics.recordOpenAIRequest(userId);
+        this.metrics.recordGeminiRequest('success', 'generateContent', 'gpt-3.5-turbo');
       }
 
       return content;
