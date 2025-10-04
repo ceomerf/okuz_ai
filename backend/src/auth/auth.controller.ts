@@ -1,5 +1,6 @@
 import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
@@ -41,18 +42,21 @@ class RefreshTokenDto {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Throttle({ short: { limit: 3, ttl: 1000 } })
   @Post('register')
   @ApiOperation({ summary: 'Register new user' })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
+  @Throttle({ short: { limit: 3, ttl: 1000 } })
   @Post('login')
   @ApiOperation({ summary: 'Login user' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
+  @Throttle({ medium: { limit: 10, ttl: 10000 } })
   @Post('refresh-token')
   @ApiOperation({ summary: 'Refresh JWT access token' })
   async refresh(@Body() dto: RefreshTokenDto) {

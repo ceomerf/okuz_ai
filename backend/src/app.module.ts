@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -36,7 +37,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
         DATABASE_URL: Joi.string().uri().required(),
         REDIS_URL: Joi.string().uri().required(),
         JWT_SECRET: Joi.string().min(32).required(),
-        JWT_REFRESH_SECRET: Joi.string().min(32).optional(),
+        JWT_REFRESH_SECRET: Joi.string().min(32).required(),
         GEMINI_API_KEY: Joi.string().required(),
         GEMINI_MODEL: Joi.string().optional(),
         CORS_ORIGINS: Joi.string().allow('').optional(),
@@ -44,6 +45,23 @@ import { MonitoringModule } from './monitoring/monitoring.module';
         SWAGGER_ENABLE: Joi.boolean().optional(),
       }),
     }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'short',
+        ttl: 1000, // 1 saniye
+        limit: 3, // 3 istek
+      },
+      {
+        name: 'medium',
+        ttl: 10000, // 10 saniye
+        limit: 20, // 20 istek
+      },
+      {
+        name: 'long',
+        ttl: 60000, // 1 dakika
+        limit: 100, // 100 istek
+      },
+    ]),
     PrismaModule,
     ScheduleModule.forRoot(),
     GeminiModule,

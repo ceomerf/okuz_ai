@@ -1,62 +1,32 @@
-import { IsNotEmpty, IsArray, IsString, IsObject, IsOptional, ArrayNotEmpty, IsNumber, Min, ValidateNested, IsDateString } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsNumber, IsArray, IsOptional, Min, Max, IsEnum } from 'class-validator';
 
-class WeeklyPlanItemDto {
-  @IsNumber()
-  @Min(1)
-  weekNumber: number;
-
-  @IsDateString()
-  startDate: string;
-
-  @IsDateString()
-  endDate: string;
-
-  @IsNumber()
-  @Min(0)
-  totalStudyTime: number;
+export enum PlanMode {
+  AI = 'ai',
+  MANUAL = 'manual',
+  HYBRID = 'hybrid'
 }
 
 export class GeneratePlanDto {
-  @IsString()
-  @IsNotEmpty()
-  planTitle: string;
-
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsString({ each: true })
-  subjects: string[];
-
-  @IsArray()
-  @ArrayNotEmpty()
-  @ValidateNested({ each: true })
-  @Type(() => WeeklyPlanItemDto)
-  weeklyPlans: WeeklyPlanItemDto[];
-
-  @IsArray()
-  @IsOptional()
-  @IsString({ each: true })
-  goals?: string[];
-
-  @IsObject()
-  @IsOptional()
-  studentProfile?: { grade?: number; field?: string };
+  @IsEnum(PlanMode)
+  mode: PlanMode;
 
   @IsNumber()
-  @Min(0)
-  @IsOptional()
-  availableTime?: number; // dakika/gün
+  @Min(1)
+  @Max(52)
+  planDurationWeeks: number;
 
   @IsString()
-  @IsNotEmpty()
-  learningStyle: string;
+  planFocus: string;
+
+  @IsArray()
+  @IsOptional()
+  subjects?: string[];
+
+  @IsArray()
+  @IsOptional()
+  goals?: string[];
 
   @IsString()
-  @IsNotEmpty()
-  currentLevel: string;
-
-  @IsObject()
   @IsOptional()
-  preferences?: { focusAreas?: string[]; previousPlanId?: string };
+  learningStyle?: string;
 }
-

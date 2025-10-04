@@ -24,7 +24,22 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         }
         return {
           secret,
-          signOptions: { expiresIn: '24h' },
+          signOptions: { expiresIn: '15m' }, // Access token: 15 dakika
+        };
+      },
+    }),
+    JwtModule.registerAsync({
+      name: 'refresh',
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_REFRESH_SECRET');
+        if (!secret) {
+          throw new Error('JWT_REFRESH_SECRET environment variable is required');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: '7d' }, // Refresh token: 7 gün
         };
       },
     }),

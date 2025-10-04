@@ -1,9 +1,13 @@
 import { Controller, Post, Get, Body, UseGuards, Request, Param, Res, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SmartToolsService } from './smart-tools.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Response } from 'express';
+import { SosQuestionDto } from './dto/sos-question.dto';
+import { QuickChatDto } from './dto/quick-chat.dto';
+import { SummaryGeneratorDto } from './dto/summary-generator.dto';
 
 @ApiTags('Smart Tools')
 @Controller('smart-tools')
@@ -12,18 +16,20 @@ import { Response } from 'express';
 export class SmartToolsController {
   constructor(private readonly smartToolsService: SmartToolsService) {}
 
+  @Throttle({ medium: { limit: 20, ttl: 60000 } })
   @Post('quick-chat-stream')
   @ApiOperation({ summary: 'Quick Chat Stream - Hızlı sohbet akışı' })
   async quickChatStream(
-    @Body() data: { message: string; subject?: string; grade?: string },
+    @Body() data: QuickChatDto,
     @Res() res: Response
   ) {
     return this.smartToolsService.quickChatStream(data, res);
   }
 
+  @Throttle({ medium: { limit: 10, ttl: 60000 } })
   @Post('sos-question-solver')
   @ApiOperation({ summary: 'SOS Question Solver - Acil soru çözümü' })
-  async solveQuestion(@Body() data: { questionText?: string; subject: string; grade?: number; imageBase64?: string; userId?: string }) {
+  async solveQuestion(@Body() data: SosQuestionDto) {
     return this.smartToolsService.solveQuestion(data);
   }
 
