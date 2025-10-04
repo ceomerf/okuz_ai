@@ -19,12 +19,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
         const secret = configService.get<string>('JWT_SECRET');
+        const expiresIn = configService.get<string>('JWT_ACCESS_TOKEN_EXPIRATION') || '1h';
         if (!secret) {
           throw new Error('JWT_SECRET environment variable is required');
         }
         return {
           secret,
-          signOptions: { expiresIn: '15m' }, // Access token: 15 dakika
+          signOptions: { expiresIn }, // Access token: 1 saat (yapılandırılabilir)
         };
       },
     }),
@@ -33,12 +34,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
         const secret = configService.get<string>('JWT_REFRESH_SECRET');
+        const expiresIn = configService.get<string>('JWT_REFRESH_TOKEN_EXPIRATION') || '24h';
         if (!secret) {
           throw new Error('JWT_REFRESH_SECRET environment variable is required');
         }
         return {
           secret,
-          signOptions: { expiresIn: '7d' }, // Refresh token: 7 gün
+          signOptions: { expiresIn }, // Refresh token: 24 saat (yapılandırılabilir)
         };
       },
     }),

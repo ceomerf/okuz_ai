@@ -42,21 +42,21 @@ class RefreshTokenDto {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Throttle({ short: { limit: 3, ttl: 1000 } })
+  @Throttle({ short: { limit: 5, ttl: 60000 } })
   @Post('register')
   @ApiOperation({ summary: 'Register new user' })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
-  @Throttle({ short: { limit: 3, ttl: 1000 } })
+  @Throttle({ short: { limit: 5, ttl: 60000 } })
   @Post('login')
   @ApiOperation({ summary: 'Login user' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
-  @Throttle({ medium: { limit: 10, ttl: 10000 } })
+  @Throttle({ medium: { limit: 20, ttl: 60000 } })
   @Post('refresh-token')
   @ApiOperation({ summary: 'Refresh JWT access token' })
   async refresh(@Body() dto: RefreshTokenDto) {

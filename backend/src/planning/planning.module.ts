@@ -11,6 +11,7 @@ import { GeminiFunctionCallingService } from '../services/gemini-fc.service';
 import { PlanGenerationService } from './plan-generation.service';
 import { PlanValidationService } from './plan-validation.service';
 import { PlanPersistenceService } from './plan-persistence.service';
+import { PlanAnalysisService } from './plan-analysis.service';
 import { ScheduleAdjustmentService } from './schedule-adjustment.service';
 import { AdaptiveInsightsService } from './adaptive-insights.service';
 import { AdaptiveStrategyService } from './adaptive-strategy.service';
@@ -22,7 +23,36 @@ import { MonitoringModule } from '../monitoring/monitoring.module';
 @Module({
   imports: [PrismaModule, GeminiModule, AuthModule, RealtimeModule, MonitoringModule],
   controllers: [PlanningController],
-  providers: [PlanningService, PlanningQueryService, PlanningPersistenceService, PlanningRuleService, ReplanService, GeminiFunctionCallingService, PlanGenerationService, PlanValidationService, PlanPersistenceService, ScheduleAdjustmentService, AdaptiveInsightsService, AdaptiveStrategyService, DigitalDossierService],
-  exports: [PlanningService, PlanningQueryService, PlanningPersistenceService, PlanningRuleService, ReplanService, PlanGenerationService, PlanValidationService, PlanPersistenceService, ScheduleAdjustmentService, AdaptiveInsightsService, AdaptiveStrategyService, DigitalDossierService],
+  providers: [
+    PlanningService, 
+    PlanningQueryService, 
+    PlanningPersistenceService, 
+    PlanningRuleService, 
+    ReplanService, 
+    GeminiFunctionCallingService, 
+    PlanGenerationService, 
+    PlanValidationService, 
+    PlanPersistenceService, 
+    PlanAnalysisService,
+    ScheduleAdjustmentService, 
+    AdaptiveInsightsService, 
+    AdaptiveStrategyService, 
+    DigitalDossierService
+  ],
+  exports: [
+    PlanningService, 
+    PlanningQueryService, 
+    PlanningPersistenceService, 
+    PlanningRuleService, 
+    ReplanService, 
+    PlanGenerationService, 
+    PlanValidationService, 
+    PlanPersistenceService, 
+    PlanAnalysisService,
+    ScheduleAdjustmentService, 
+    AdaptiveInsightsService, 
+    AdaptiveStrategyService, 
+    DigitalDossierService
+  ],
 })
 export class PlanningModule {}

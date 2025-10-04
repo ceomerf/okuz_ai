@@ -41,8 +41,9 @@ export class AuthService {
         throw new ConflictException('Email already exists');
       }
 
-      // Şifre hash'leme
-      const hashedPassword = await bcrypt.hash(password, 10);
+      // Şifre hash'leme - güvenli salt rounds
+      const saltRounds = parseInt(this.configService.get<string>('BCRYPT_SALT_ROUNDS') || '12');
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
 
       // Account type'ı role'a çevir
       let role: 'STUDENT' | 'PARENT' | 'TEACHER' | 'ADMIN' = 'STUDENT';

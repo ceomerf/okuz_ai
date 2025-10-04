@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
@@ -47,23 +47,27 @@ import { MonitoringModule } from './monitoring/monitoring.module';
         SWAGGER_ENABLE: Joi.boolean().optional(),
       }),
     }),
-    ThrottlerModule.forRoot([
-      {
-        name: 'short',
-        ttl: 1000, // 1 saniye
-        limit: 3, // 3 istek
-      },
-      {
-        name: 'medium',
-        ttl: 10000, // 10 saniye
-        limit: 20, // 20 istek
-      },
-      {
-        name: 'long',
-        ttl: 60000, // 1 dakika
-        limit: 100, // 100 istek
-      },
-    ]),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => [
+        {
+          name: 'short',
+          ttl: parseInt(configService.get<string>('THROTTLER_SHORT_TTL') || '60000'), // 1 dakika
+          limit: parseInt(configService.get<string>('THROTTLER_SHORT_LIMIT') || '5'), // 5 istek
+        },
+        {
+          name: 'medium',
+          ttl: parseInt(configService.get<string>('THROTTLER_MEDIUM_TTL') || '60000'), // 1 dakika
+          limit: parseInt(configService.get<string>('THROTTLER_MEDIUM_LIMIT') || '20'), // 20 istek
+        },
+        {
+          name: 'long',
+          ttl: parseInt(configService.get<string>('THROTTLER_LONG_TTL') || '60000'), // 1 dakika
+          limit: parseInt(configService.get<string>('THROTTLER_LONG_LIMIT') || '100'), // 100 istek
+        },
+      ],
+    }),
     PrismaModule,
     ScheduleModule.forRoot(),
     GeminiModule,

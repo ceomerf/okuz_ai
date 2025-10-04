@@ -26,7 +26,7 @@ export class SmartToolsController {
     return this.smartToolsService.quickChatStream(data, res);
   }
 
-  @Throttle({ medium: { limit: 10, ttl: 60000 } })
+  @Throttle({ medium: { limit: 20, ttl: 60000 } })
   @Post('sos-question-solver')
   @ApiOperation({ summary: 'SOS Question Solver - Acil soru çözümü' })
   async solveQuestion(@Body() data: SosQuestionDto) {

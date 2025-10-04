@@ -1,6 +1,10 @@
 import { Controller, Post, Get, Put, Delete, Body, UseGuards, Request, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PlanningService } from './planning.service';
+import { PlanGenerationService } from './plan-generation.service';
+import { PlanAnalysisService } from './plan-analysis.service';
+import { PlanPersistenceService } from './plan-persistence.service';
+import { PlanValidationService } from './plan-validation.service';
 import { QueueService } from '../services/queue.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GeneratePlanDto } from './dto/generate-plan.dto';
@@ -44,6 +48,10 @@ class SkipSessionDto {
 export class PlanningController {
   constructor(
     private readonly planningService: PlanningService,
+    private readonly planGenerationService: PlanGenerationService,
+    private readonly planAnalysisService: PlanAnalysisService,
+    private readonly planPersistenceService: PlanPersistenceService,
+    private readonly planValidationService: PlanValidationService,
     private readonly queue: QueueService,
   ) {}
 
@@ -79,25 +87,75 @@ export class PlanningController {
   @Get('user-plans')
   @ApiOperation({ summary: 'Get user plans' })
   async getUserPlans(@Request() req) {
-    return this.planningService.getUserPlans(req.user.id);
+    const plans = await this.planPersistenceService.getUserPlans(req.user.id);
+    
+    return plans.map(plan => ({
+      ...plan,
+      progress: this.planAnalysisService.calculatePlanProgress(plan.sessions),
+      nextSession: this.planAnalysisService.getNextSession(plan.sessions),
+      stats: {
+        totalSessions: plan.sessions.length,
+        completedSessions: plan.sessions.filter(s => s.isCompleted).length,
+        totalStudyTime: plan.sessions.reduce((sum, s) => sum + s.duration, 0),
+        completedStudyTime: plan.sessions.filter(s => s.isCompleted).reduce((sum, s) => sum + s.duration, 0),
+      },
+    }));
   }
 
   @Get('plan/:planId')
   @ApiOperation({ summary: 'Get specific plan' })
   async getPlan(@Request() req, @Param('planId') planId: string) {
-    return this.planningService.getPlan(req.user.id, planId);
+    const plan = await this.planPersistenceService.getPlan(req.user.id, planId);
+    
+    return {
+      ...plan,
+      progress: this.planAnalysisService.calculatePlanProgress(plan.sessions),
+      analytics: await this.planAnalysisService.getPlanAnalytics(planId),
+      recommendations: await this.planAnalysisService.getPlanRecommendations(plan),
+    };
   }
 
   @Put('plan/:planId')
   @ApiOperation({ summary: 'Update plan' })
   async updatePlan(@Request() req, @Param('planId') planId: string, @Body() data: any) {
-    return this.planningService.updatePlan(req.user.id, planId, data);
+    // Doğrulama
+    const validation = this.planValidationService.validatePlanUpdate(data);
+    if (!validation.isValid) {
+      throw new Error(validation.errors.join(', '));
+    }
+
+    // Sahiplik kontrolü
+    const isOwner = await this.planPersistenceService.verifyPlanOwnership(req.user.id, planId);
+    if (!isOwner) {
+      throw new Error('Plan not found or access denied');
+    }
+
+    // Güncelleme
+    const updatedPlan = await this.planPersistenceService.updatePlan(planId, data);
+    
+    return {
+      success: true,
+      message: 'Plan updated successfully',
+      plan: updatedPlan,
+    };
   }
 
   @Delete('plan/:planId')
   @ApiOperation({ summary: 'Delete plan' })
   async deletePlan(@Request() req, @Param('planId') planId: string) {
-    return this.planningService.deletePlan(req.user.id, planId);
+    // Sahiplik kontrolü
+    const isOwner = await this.planPersistenceService.verifyPlanOwnership(req.user.id, planId);
+    if (!isOwner) {
+      throw new Error('Plan not found or access denied');
+    }
+
+    // Silme
+    await this.planPersistenceService.deletePlan(planId);
+    
+    return {
+      success: true,
+      message: 'Plan deleted successfully',
+    };
   }
 
   @Post('reschedule')

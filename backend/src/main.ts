@@ -7,7 +7,6 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import helmet from 'helmet';
 import * as compression from 'compression';
-import rateLimit from 'express-rate-limit';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -16,22 +15,27 @@ async function bootstrap() {
   app.use(helmet());
   // compression import'u CJS olduğundan namespace import ile çağırıyoruz
   app.use((compression as unknown as () => any)());
-  app.use(
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 1000,
-      standardHeaders: true,
-      legacyHeaders: false,
-    }) as any,
-  );
 
   // CORS configuration (yalnızca izinli origin'ler)
   const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean);
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      // Origin header yoksa reddet
+      if (!origin) {
+        return callback(new Error('Not allowed by CORS - No origin header'));
+      }
+      
+      // Allowed origins listesi boşsa hiçbir origin'e izin verme
+      if (allowedOrigins.length === 0) {
+        return callback(new Error('Not allowed by CORS - No allowed origins configured'));
+      }
+      
+      // Origin listede varsa izin ver
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
+      
+      // Origin listede yoksa reddet
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,

@@ -1189,9 +1189,9 @@ export class PlanningService {
     const hints = this.adaptiveStrategy.deriveHints(insights);
 
     // Zod ile doğrulama ve iş kuralları
-    const validatedPlan = this.planValidation.assertBusinessRules(finalPlanStructure);
+    this.planValidation.assertBusinessRules(finalPlanStructure);
     // Seansları çıkar
-    const sessionsFromStructure = validatedPlan.weeklyPlans?.flatMap((w: any) => w?.sessions || []) || [];
+    const sessionsFromStructure = finalPlanStructure.weeklyPlans?.flatMap((w: any) => w?.sessions || []) || [];
     this.planValidation.validateSessions(sessionsFromStructure);
     
     // Veritabanına kaydet
@@ -1253,7 +1253,7 @@ export class PlanningService {
           availableTime: normalized.availableTime,
           preferences: normalized.preferences,
           aiGenerated: true,
-        planStructure: validatedPlan,
+        planStructure: finalPlanStructure,
         adaptiveHints: hints,
           planDurationDays,
         },
