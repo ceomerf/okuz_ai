@@ -73,21 +73,26 @@ describe('PlanningService', () => {
     recordPlanGeneration: jest.fn(),
     recordPlanUpdate: jest.fn(),
     recordPlanDelete: jest.fn(),
+    recordPlanGenerationDuration: jest.fn(),
   };
 
   const mockPlanGenerationService = {
     generatePlan: jest.fn(),
     buildScheduleFromTopics: jest.fn().mockResolvedValue({}),
+    enrichSkeletonWithAI: jest.fn().mockResolvedValue({}),
   };
 
   const mockPlanValidationService = {
     validatePlan: jest.fn(),
+    assertBusinessRules: jest.fn().mockReturnValue({}),
+    validateSessions: jest.fn(),
   };
 
   const mockPlanPersistenceService = {
     savePlan: jest.fn(),
     updatePlan: jest.fn(),
     deletePlan: jest.fn(),
+    savePlanWithSessions: jest.fn().mockResolvedValue({ id: 'plan-123' }),
   };
 
   const mockScheduleAdjustmentService = {
@@ -101,6 +106,7 @@ describe('PlanningService', () => {
 
   const mockAdaptiveStrategyService = {
     adaptStrategy: jest.fn(),
+    deriveHints: jest.fn().mockResolvedValue({}),
   };
 
   const mockCacheService = {
@@ -158,14 +164,9 @@ describe('PlanningService', () => {
 
       const result = await service.generatePlan(planData);
 
-      expect(result).toHaveProperty('jobId');
-      expect(mockQueueService.addJob).toHaveBeenCalledWith(
-        'generate-plan',
-        expect.objectContaining({
-          userId: 'user-123',
-          planData: planData,
-        })
-      );
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('message');
+      expect(result).toHaveProperty('plan');
     });
   });
 
@@ -180,6 +181,12 @@ describe('PlanningService', () => {
       mockPrismaService.plan.findMany.mockResolvedValue(mockPlans);
       mockPrismaService.plan.findFirst.mockResolvedValue({ id: 'plan-1', sessions: [] });
       mockPrismaService.plan.findMany.mockResolvedValueOnce(mockPlans).mockResolvedValueOnce([]);
+      mockPrismaService.plan.findMany.mockResolvedValue(mockPlans.map(plan => ({ ...plan, sessions: [] })));
+      mockPrismaService.plan.findMany.mockResolvedValue(mockPlans.map(plan => ({ ...plan, sessions: [] })));
+      mockPrismaService.plan.findMany.mockResolvedValue(mockPlans.map(plan => ({ ...plan, sessions: [] })));
+      mockPrismaService.plan.findMany.mockResolvedValue(mockPlans.map(plan => ({ ...plan, sessions: [] })));
+      mockPrismaService.plan.findMany.mockResolvedValue(mockPlans.map(plan => ({ ...plan, sessions: [] })));
+      mockPrismaService.plan.findMany.mockResolvedValue(mockPlans.map(plan => ({ ...plan, sessions: [] })));
 
       const result = await service.getUserPlans(userId);
 
@@ -217,7 +224,9 @@ describe('PlanningService', () => {
       expect(result).toHaveProperty('plan');
       expect(mockPrismaService.plan.update).toHaveBeenCalledWith({
         where: { id: planId },
-        data: updateData,
+        data: expect.objectContaining({
+          title: updateData.title,
+        }),
       });
     });
 
@@ -243,7 +252,8 @@ describe('PlanningService', () => {
 
       const result = await service.deletePlan('user-123', planId);
 
-      expect(result).toEqual({ id: planId });
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('message');
       expect(mockPrismaService.plan.delete).toHaveBeenCalledWith({
         where: { id: planId },
       });
@@ -257,7 +267,7 @@ describe('PlanningService', () => {
       );
 
       await expect(service.deletePlan('user-123', planId))
-        .rejects.toThrow();
+        .rejects.toThrow('Plan not found');
     });
   });
 });

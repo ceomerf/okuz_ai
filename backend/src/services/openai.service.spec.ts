@@ -25,11 +25,11 @@ describe('OpenAIService', () => {
   let service: OpenAIService;
   
   const mockConfig = {
-    get: jest.fn((key: string) => {
+    get: jest.fn().mockImplementation((key: string) => {
       if (key === 'OPENAI_API_KEY') return 'test_openai_key';
       if (key === 'OPENAI_MODEL') return 'gpt-3.5-turbo';
       return 'test_openai_key';
-    }),
+    })
   } as any as ConfigService;
 
   const mockMetrics = {
