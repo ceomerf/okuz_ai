@@ -65,7 +65,7 @@ describe('PlanningService', () => {
           useValue: mockQueueService,
         },
         {
-          provide: 'GeminiService',
+          provide: GeminiService,
           useValue: { generateContent: jest.fn() },
         },
         {

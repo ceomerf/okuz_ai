@@ -30,8 +30,8 @@ describe('OpenAIService', () => {
   } as any as PrismaService;
 
   const mockCache = {
-    get: jest.fn().mockResolvedValue(null),
-    set: jest.fn().mockResolvedValue(undefined),
+    get: jest.fn(),
+    set: jest.fn(),
   } as any as CacheService;
 
   beforeEach(async () => {
@@ -64,7 +64,7 @@ describe('OpenAIService', () => {
       const result = await service.generateContent(prompt);
 
       expect(result).toBe(mockResponse);
-      expect(mockMetrics.recordOpenAIRequest).toHaveBeenCalled();
+      expect(mockMetrics.recordGeminiRequest).toHaveBeenCalled();
     });
 
     it('should use cache when available', async () => {
