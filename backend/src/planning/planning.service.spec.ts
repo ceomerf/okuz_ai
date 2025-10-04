@@ -114,6 +114,7 @@ describe('PlanningService', () => {
         planFocus: 'YKS hazırlık',
         subjects: ['Matematik', 'Fizik'],
         goals: ['Hedef 1'],
+        userId: 'user-123',
       };
 
       mockQueueService.addJob.mockResolvedValue({ id: 'job-123' });
