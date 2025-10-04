@@ -25,11 +25,7 @@ describe('OpenAIService', () => {
   let service: OpenAIService;
   
   const mockConfig = {
-    get: jest.fn().mockImplementation((key: string) => {
-      if (key === 'OPENAI_API_KEY') return 'test_openai_key';
-      if (key === 'OPENAI_MODEL') return 'gpt-3.5-turbo';
-      return 'test_openai_key';
-    })
+    get: jest.fn()
   } as any as ConfigService;
 
   const mockMetrics = {
@@ -49,6 +45,13 @@ describe('OpenAIService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    
+    // Mock config'i yeniden ayarla
+    (mockConfig.get as jest.Mock).mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'test_openai_key';
+      if (key === 'OPENAI_MODEL') return 'gpt-3.5-turbo';
+      return 'test_openai_key';
+    });
     
     const module: TestingModule = await Test.createTestingModule({
       providers: [
