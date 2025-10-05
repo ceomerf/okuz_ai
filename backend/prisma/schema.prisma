@@ -116,6 +116,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Usage fields
+  dailyUsage   Int @default(0)
+  weeklyUsage  Int @default(0)
+  monthlyUsage Int @default(0)
+  dailyLimit   Int @default(100)
+  weeklyLimit  Int @default(500)
+  monthlyLimit Int @default(2000)
+
   // Subscription fields
   subscriptionStatus  SubscriptionStatus @default(TRIAL)
   trialEndDate        DateTime?
@@ -182,6 +190,11 @@ model User {
 
   // Additional relations
   assessments Assessment[]
+
+  // Smart Tools relations
+  quickChats QuickChat[]
+  sosQuestions SosQuestion[]
+  summaries SummaryGenerator[]
 }
 
 model StudentProfile {
@@ -214,16 +227,20 @@ model ParentProfile {
 }
 
 model Invite {
-  id        String   @id @default(cuid())
-  inviterId String
-  inviteeId String?
-  email     String
-  token     String   @unique
-  type      String // "student" or "parent"
-  status    String   @default("pending") // "pending", "accepted", "expired"
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String    @id @default(cuid())
+  inviterId  String
+  inviteeId  String?
+  email      String
+  token      String    @unique
+  type       String    // "student" or "parent"
+  role       String?   // "STUDENT", "PARENT", "TEACHER"
+  status     String    @default("pending") // "pending", "accepted", "expired", "declined"
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  declinedAt DateTime?
+  resentAt   DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   inviter User? @relation("Inviter", fields: [inviterId], references: [id])
   invitee User? @relation("Invitee", fields: [inviteeId], references: [id])
@@ -685,4 +702,55 @@ model Curriculum {
   @@index([subject])
   @@index([grade])
   @@index([subject, grade])
+}
+
+// Smart Tools Models
+model QuickChat {
+  id        String   @id @default(cuid())
+  userId    String
+  question  String
+  answer    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model SosQuestion {
+  id        String   @id @default(cuid())
+  userId    String
+  question  String
+  answer    String
+  priority  String   @default("normal") // "low", "normal", "high", "urgent"
+  status    String   @default("pending") // "pending", "answered", "escalated"
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+model SummaryGenerator {
+  id          String   @id @default(cuid())
+  userId      String
+  originalText String
+  summary     String
+  compressionRatio Float
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
 }

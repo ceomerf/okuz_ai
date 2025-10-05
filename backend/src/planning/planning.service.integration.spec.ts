@@ -14,6 +14,7 @@ import { AdaptiveInsightsService } from './adaptive-insights.service';
 import { AdaptiveStrategyService } from './adaptive-strategy.service';
 import { ScheduleAdjustmentService } from './schedule-adjustment.service';
 import { AiAnalysisService } from './ai-analysis.service';
+import { QueueService } from '../services/queue.service';
 
 describe('PlanningService Integration Tests', () => {
   let service: PlanningService;
@@ -51,6 +52,13 @@ describe('PlanningService Integration Tests', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PlanningService,
+        {
+          provide: QueueService,
+          useValue: {
+            addJob: jest.fn().mockResolvedValue({ id: 'job123' }),
+            processJob: jest.fn().mockResolvedValue({ success: true }),
+          },
+        },
         {
           provide: PrismaService,
           useValue: {

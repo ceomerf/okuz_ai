@@ -67,4 +67,23 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     response.status(status).json(errorResponse);
   }
+
+  // Test için gerekli methodlar
+  getStatus(exception: unknown): number {
+    if (exception instanceof HttpException) {
+      return exception.getStatus();
+    }
+    return HttpStatus.INTERNAL_SERVER_ERROR;
+  }
+
+  getErrorMessage(exception: unknown): string {
+    if (exception instanceof HttpException) {
+      const response = exception.getResponse();
+      if (typeof response === 'string') {
+        return response;
+      }
+      return (response as any).message || 'Unknown error';
+    }
+    return 'Internal server error';
+  }
 }

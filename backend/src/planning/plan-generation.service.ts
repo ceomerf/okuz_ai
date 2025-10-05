@@ -24,16 +24,22 @@ export class PlanGenerationService {
 		let lastError: any;
 		let success = false;
 
-		while (attempt <= maxRetries) {
+    while (attempt <= maxRetries) {
 			try {
 				const result = await this.openaiService.generateContent(prompt);
 				success = true;
 				return result;
 			} catch (err: any) {
 				lastError = err;
-				const status = (err && err.status) || (err && err.response && err.response.status);
-				const isTransient = status ? (status >= 500 || status === 429) : true;
-				if (!isTransient || attempt === maxRetries) {
+        const status = (err && err.status) || (err && err.response && err.response.status);
+        const message = (err && err.message) || '';
+        // Mesaja göre ayrım: "Bad Request" gibi client hatalarında retry yapma
+        if (/bad\s*request/i.test(message)) {
+          break;
+        }
+        // Status bilinmiyorsa transient varsay (API Error vb.)
+        const isTransient = status == null ? true : (status >= 500 || status === 429);
+        if (!isTransient || attempt === maxRetries) {
 					break;
 				}
 				const backoff = initialDelayMs * Math.pow(2, attempt);
@@ -236,6 +242,30 @@ export class PlanGenerationService {
 		seed = (seed * 9301 + 49297) % 233280;
 		return seed / 233280;
 	}
+
+	// Test için gerekli metodlar
+	parseJsonBlock(jsonString: string): any {
+		try {
+			const cleaned = this.cleanAiJsonResponse(jsonString);
+			return JSON.parse(cleaned);
+		} catch (error) {
+			return {};
+		}
+	}
+
+  normalizeText(input: string): string {
+    if (!input) return '';
+    return input
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLowerCase()
+      .replace(/[şŞ]/g, 's')
+      .replace(/[ıİ]/g, 'i')
+      .replace(/[çÇ]/g, 'c')
+      .replace(/[ğĞ]/g, 'g')
+      .replace(/[üÜ]/g, 'u')
+      .replace(/[öÖ]/g, 'o');
+  }
 }
 
 

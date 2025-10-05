@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { CacheService } from '../common/cache/cache.service';
 
 @Injectable()
 export class InteractionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly cache: CacheService) {}
 
   async createInteraction(interactionData: any) {
-    return { message: 'Create interaction implementation' };
+    const interaction = await this.prisma.interaction.create({
+      data: interactionData,
+    });
+    return interaction;
   }
 
   async getInteractions(userId: string) {
@@ -14,7 +18,12 @@ export class InteractionService {
   }
 
   async updateInteraction(id: string, updateData: any) {
-    return { message: 'Update interaction implementation' };
+    const interaction = await this.prisma.interaction.update({
+      where: { id },
+      data: updateData,
+    });
+    await this.cache.del?.(`interaction:${id}`);
+    return interaction;
   }
 
   async handleChat(userId: string, message: string, context?: string) {
@@ -47,5 +56,62 @@ export class InteractionService {
       priority,
       ticketId: 'mock-ticket-id'
     };
+  }
+
+  async getInteraction(id: string) {
+    const cacheKey = `interaction:${id}`;
+    const cached = await this.cache.get<any>(cacheKey);
+    if (cached) {
+      return cached as any;
+    }
+    const interaction = await this.prisma.interaction.findUnique({
+      where: { id },
+    });
+    if (interaction) {
+      await this.cache.set(cacheKey, interaction, 3600);
+    }
+    return interaction as any;
+  }
+
+  async getUserInteractions(userId: string) {
+    return await this.prisma.interaction.findMany({
+      where: { userId },
+      orderBy: { timestamp: 'desc' },
+    });
+  }
+
+  async getInteractionsByType(type: string) {
+    return await this.prisma.interaction.findMany({
+      where: { type },
+      orderBy: { timestamp: 'desc' },
+    });
+  }
+
+  async deleteInteraction(id: string) {
+    await (this.prisma as any).interaction.delete({
+      where: { id },
+    });
+    await this.cache.del?.(`interaction:${id}`);
+    return { message: 'Interaction deleted', id } as any;
+  }
+
+  async getInteractionStats(userId: string) {
+    return { message: 'Get interaction stats implementation', userId };
+  }
+
+  async getUserBehaviorPattern(userId: string) {
+    return { message: 'Get user behavior pattern implementation', userId };
+  }
+
+  async trackUserJourney(userId: string) {
+    return { message: 'Track user journey implementation', userId };
+  }
+
+  async getHeatmapData(page: string) {
+    return { message: 'Get heatmap data implementation', page };
+  }
+
+  async getUserEngagement(userId: string) {
+    return { message: 'Get user engagement implementation', userId };
   }
 }

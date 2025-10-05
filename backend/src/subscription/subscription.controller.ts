@@ -42,6 +42,32 @@ export class SubscriptionController {
     }
   }
 
+  // Eksik methodları ekleyelim
+  @Get(':id')
+  async getSubscription(@Param('id') id: string) {
+    return this.subscriptionService.getSubscription(id);
+  }
+
+  @Get('user/:userId')
+  async getUserSubscriptions(@Param('userId') userId: string) {
+    return this.subscriptionService.getUserSubscriptions(userId);
+  }
+
+  @Put(':id')
+  async updateSubscription(@Param('id') id: string, @Body() data: any) {
+    return this.subscriptionService.updateSubscription(id, data);
+  }
+
+  @Post('process-payment')
+  async processPayment(@Body() data: any) {
+    return this.subscriptionService.processPayment(data);
+  }
+
+  @Get(':id/status')
+  async checkStatus(@Param('id') id: string) {
+    return this.subscriptionService.checkSubscriptionStatus(id);
+  }
+
   // Trial başlat (yeni kullanıcılar için)
   @UseGuards(JwtAuthGuard)
   @Post('start-trial')

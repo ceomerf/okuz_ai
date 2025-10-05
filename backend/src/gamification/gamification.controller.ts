@@ -42,6 +42,69 @@ export class GamificationController {
     return this.gamificationService.getAchievements(userId);
   }
 
+  // Eksik methodları ekleyelim
+  @Post('award-achievement')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Award an achievement to user' })
+  async awardAchievement(@Request() req: any, @Body() data: any) {
+    this.logger.log('awardAchievement endpoint called');
+    const userId = req.user?.userId || 'user-1753052679951';
+    return this.gamificationService.awardAchievement(userId, data);
+  }
+
+  @Get('user-achievements')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get user achievements' })
+  async getUserAchievements(@Request() req: any) {
+    this.logger.log('getUserAchievements endpoint called');
+    const userId = req.user?.userId || 'user-1753052679951';
+    return this.gamificationService.getUserAchievements(userId);
+  }
+
+  @Post('create-badge')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a new badge' })
+  async createBadge(@Request() req: any, @Body() data: any) {
+    this.logger.log('createBadge endpoint called');
+    return this.gamificationService.createBadge(data);
+  }
+
+  @Get('user-badges')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get user badges' })
+  async getUserBadges(@Request() req: any) {
+    this.logger.log('getUserBadges endpoint called');
+    const userId = req.user?.userId || 'user-1753052679951';
+    return this.gamificationService.getUserBadges(userId);
+  }
+
+  @Post('update-user-score')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update user score' })
+  async updateUserScore(@Request() req: any, @Body() data: any) {
+    this.logger.log('updateUserScore endpoint called');
+    const userId = req.user?.userId || 'user-1753052679951';
+    return this.gamificationService.updateUserScore(userId, data);
+  }
+
+  @Post('check-achievements')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check user achievements' })
+  async checkAchievements(@Request() req: any) {
+    this.logger.log('checkAchievements endpoint called');
+    const userId = req.user?.userId || 'user-1753052679951';
+    return this.gamificationService.checkAchievements(userId);
+  }
+
+  @Get('user-stats')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get user stats' })
+  async getUserStats(@Request() req: any) {
+    this.logger.log('getUserStats endpoint called');
+    const userId = req.user?.userId || 'user-1753052679951';
+    return this.gamificationService.getUserStats(userId);
+  }
+
   // @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
   @Post('unlock-achievement')
   @ApiBearerAuth()

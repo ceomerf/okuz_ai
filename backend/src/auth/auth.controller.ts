@@ -70,4 +70,19 @@ export class AuthController {
   getProfile(@Request() req: any) {
     return req.user;
   }
+
+  @Throttle({ short: { limit: 3, ttl: 300000 } })
+  @Post('refresh-token')
+  @ApiOperation({ summary: 'Refresh JWT access token' })
+  async refreshToken(@Body() dto: RefreshTokenDto) {
+    return this.authService.refreshToken(dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Logout user' })
+  async logout(@Request() req: any, @Body() body: { refreshToken: string }) {
+    return this.authService.logout(req.user.id, body.refreshToken);
+  }
 }

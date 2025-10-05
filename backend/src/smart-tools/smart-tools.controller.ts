@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, Request, Param, Res, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, Request, Param, Res, UseInterceptors, UploadedFile, Delete, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -39,7 +39,8 @@ export class SmartToolsController {
   @UseInterceptors(FileInterceptor('sourceFile'))
   async generateSummary(
     @Body() data: any,
-    @UploadedFile() file?: any
+    @UploadedFile() file?: any,
+    @Req() req?: any
   ) {
     // Debug log ekle
     console.log('🔍 Received data:', JSON.stringify(data, null, 2));
@@ -47,8 +48,9 @@ export class SmartToolsController {
     
     // FormData'dan gelen verileri işle
     const processedData = {
-      content: data.sourceText || data.content || '',
-      type: data.format || data.type || 'paragraph'
+      message: data.sourceText || data.content || '',
+      context: data.format || data.type || 'paragraph',
+      userId: req?.user?.id || 'anonymous'
     };
     
     console.log('🔍 Processed data:', JSON.stringify(processedData, null, 2));
@@ -114,5 +116,54 @@ export class SmartToolsController {
   @ApiOperation({ summary: 'Get all available smart tools' })
   async getToolsList() {
     return this.smartToolsService.getToolsList();
+  }
+
+  // Eksik method'ları ekleyelim
+  @Get('chat-history/:userId')
+  @ApiOperation({ summary: 'Get user chat history' })
+  async getUserChatHistory(@Param('userId') userId: string) {
+    return this.smartToolsService.getUserChatHistory(userId);
+  }
+
+  @Get('sos-history/:userId')
+  @ApiOperation({ summary: 'Get user SOS history' })
+  async getUserSOSHistory(@Param('userId') userId: string) {
+    return this.smartToolsService.getUserSOSHistory(userId);
+  }
+
+  @Get('summaries/:userId')
+  @ApiOperation({ summary: 'Get user summaries' })
+  async getUserSummaries(@Param('userId') userId: string) {
+    return this.smartToolsService.getUserSummaries(userId);
+  }
+
+  @Post('quick-chat')
+  @ApiOperation({ summary: 'Quick chat without streaming' })
+  async quickChat(@Param('userId') userId: string, @Body() data: { message: string; context?: string }) {
+    return this.smartToolsService.generateSummary({ ...data, userId });
+  }
+
+  @Post('sos-question')
+  @ApiOperation({ summary: 'SOS question without streaming' })
+  async sosQuestion(@Param('userId') userId: string, @Body() data: SosQuestionDto) {
+    return this.smartToolsService.generateSummary({ ...data, userId });
+  }
+
+  @Delete('chat/:chatId')
+  @ApiOperation({ summary: 'Delete chat' })
+  async deleteChat(@Param('chatId') chatId: string) {
+    return this.smartToolsService.deleteChat(chatId);
+  }
+
+  @Delete('sos/:sosId')
+  @ApiOperation({ summary: 'Delete SOS question' })
+  async deleteSOS(@Param('sosId') sosId: string) {
+    return this.smartToolsService.deleteSOS(sosId);
+  }
+
+  @Delete('summary/:summaryId')
+  @ApiOperation({ summary: 'Delete summary' })
+  async deleteSummary(@Param('summaryId') summaryId: string) {
+    return this.smartToolsService.deleteSummary(summaryId);
   }
 } 
