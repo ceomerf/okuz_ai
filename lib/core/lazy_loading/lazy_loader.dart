@@ -112,10 +112,10 @@ class _DeferredLoaderState extends State<DeferredLoader> {
 
   Future<void> _loadWidget() async {
     try {
-      final widget = await widget.loader().timeout(widget.timeout);
+      final loadedWidget = await widget.loader().timeout(widget.timeout);
       if (mounted) {
         setState(() {
-          _loadedWidget = widget;
+          _loadedWidget = loadedWidget;
           _isLoading = false;
         });
       }
@@ -193,7 +193,7 @@ class OptimizedWidget extends StatelessWidget {
     }
 
     if (enableAutomaticKeepAlive) {
-      optimizedChild = AutomaticKeepAliveClient(
+      optimizedChild = KeepAlive(
         child: optimizedChild,
       );
     }
