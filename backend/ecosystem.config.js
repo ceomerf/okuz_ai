@@ -8,11 +8,16 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
-        PORT: 3002
+        PORT: 3002,
+        // Aşağıdaki değerleri kendi ortamınıza göre güncelleyin
+        DATABASE_URL: 'postgresql://OKUZ_USER:OKUZ_PASS@127.0.0.1:5432/OKUZ_DB?schema=public',
+        REDIS_URL: 'redis://127.0.0.1:6379'
       },
       env_production: {
         NODE_ENV: 'production',
-        PORT: 3002
+        PORT: 3002,
+        DATABASE_URL: 'postgresql://OKUZ_USER:OKUZ_PASS@127.0.0.1:5432/OKUZ_DB?schema=public',
+        REDIS_URL: 'redis://127.0.0.1:6379'
       },
       error_file: './logs/err.log',
       out_file: './logs/out.log',
@@ -29,7 +34,11 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       max_memory_restart: '500M',
-      env: { NODE_ENV: 'production' },
+      env: {
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://OKUZ_USER:OKUZ_PASS@127.0.0.1:5432/OKUZ_DB?schema=public',
+        REDIS_URL: 'redis://127.0.0.1:6379'
+      },
       out_file: './logs/generate-plan-out.log',
       error_file: './logs/generate-plan-error.log',
       merge_logs: true,
