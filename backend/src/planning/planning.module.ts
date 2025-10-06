@@ -20,7 +20,6 @@ import { ProgressTrackingService } from './progress-tracking.service';
 import { AssessmentService } from './assessment.service';
 import { CoachingService } from './coaching.service';
 import { SolverService } from '../services/solver.service';
-import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { MetricsService } from '../monitoring/metrics.service';
 import { CacheModule } from '../common/cache/cache.module';
 import { CacheService } from '../common/cache/cache.service';
@@ -55,7 +54,6 @@ import { MonitoringModule } from '../monitoring/monitoring.module';
     CacheService,
     OpenAIService,
     SolverService,
-    RealtimeGateway,
     MetricsService
   ],
   exports: [
