@@ -40,8 +40,9 @@ export class RateLimitGuard implements CanActivate {
     const ttl = await this.getTTL(key);
 
     if (current >= options.max) {
+      const uid = (request as any)?.user?.id as string | undefined;
       this.logger.warn(`Rate limit exceeded for key: ${key}`, {
-        userId: request.user?.id,
+        userId: uid,
         ip: request.ip,
         userAgent: request.headers['user-agent'],
         current,
@@ -80,7 +81,7 @@ export class RateLimitGuard implements CanActivate {
   }
 
   private generateKey(request: Request, options: RateLimitOptions): string {
-    const userId = request.user?.id;
+    const userId = (request as any)?.user?.id as string | undefined;
     const ip = request.ip;
     
     // User-based rate limiting (preferred)

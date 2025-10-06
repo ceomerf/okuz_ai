@@ -1,4 +1,4 @@
-import { Injectable, LoggerService, LogLevel } from '@nestjs/common';
+import { Injectable, Logger, LoggerService, LogLevel } from '@nestjs/common';
 
 export interface LogContext {
   userId?: string;

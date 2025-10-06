@@ -60,9 +60,10 @@ export class SecurityMiddleware implements NestMiddleware {
     );
 
     if (isSuspicious) {
+      const uid = (req as any)?.user?.id as string | undefined;
       this.structuredLogger.logSecurityEvent(
         'Suspicious request detected',
-        req.user?.id,
+        uid,
         {
           ip: req.ip,
           userAgent,
@@ -79,12 +80,12 @@ export class SecurityMiddleware implements NestMiddleware {
       url,
       0, // Status code will be set later
       0, // Duration will be calculated later
-      req.user?.id
+      (req as any)?.user?.id as string | undefined
     );
   }
 
   private detectSuspiciousActivity(req: Request): void {
-    const ip = req.ip;
+    const ip = (req.ip || (req.headers['x-forwarded-for'] as string) || (req.connection as any)?.remoteAddress || '') as string;
     const userAgent = req.headers['user-agent'] || '';
     
     // Rate limiting için basit IP tracking
@@ -93,15 +94,15 @@ export class SecurityMiddleware implements NestMiddleware {
     const requestCounts = new Map<string, number>();
     
     // IP-based rate limiting detection
-    const currentCount = requestCounts.get(ip) || 0;
-    requestCounts.set(ip, currentCount + 1);
+    const currentCount = (ip && requestCounts.get(ip)) || 0;
+    if (ip) requestCounts.set(ip, currentCount + 1);
     
     if (currentCount > 100) { // 100 requests threshold
-      suspiciousIps.add(ip);
+      if (ip) suspiciousIps.add(ip);
       
       this.structuredLogger.logSecurityEvent(
         'High request volume detected',
-        req.user?.id,
+        (req as any)?.user?.id as string | undefined,
         {
           ip,
           requestCount: currentCount,
@@ -114,7 +115,7 @@ export class SecurityMiddleware implements NestMiddleware {
     if (this.isSuspiciousUserAgent(userAgent)) {
       this.structuredLogger.logSecurityEvent(
         'Suspicious User-Agent detected',
-        req.user?.id,
+        (req as any)?.user?.id as string | undefined,
         {
           ip,
           userAgent,
