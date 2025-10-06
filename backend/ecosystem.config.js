@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'okuz-api',
-      script: 'dist/src/main.js',
+      script: 'dist/main.js',
       instances: 1,
       exec_mode: 'fork',
       max_memory_restart: '1G',
@@ -25,7 +25,7 @@ module.exports = {
     {
       name: 'generate-plan-worker',
       script: 'node',
-      args: 'dist/src/planning/workers/generate-plan.worker.js',
+      args: 'dist/planning/workers/generate-plan.worker.js',
       instances: 1,
       exec_mode: 'fork',
       max_memory_restart: '500M',
