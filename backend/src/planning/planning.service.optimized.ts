@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PlanType } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PlanGenerationService } from './plan-generation.service';
 import { PlanPersistenceService } from './plan-persistence.service';
@@ -81,7 +82,7 @@ export class PlanningService {
         userId: data.userId,
         title: planResult.plan.title,
         description: planResult.plan.description,
-        type: 'STUDY',
+        type: PlanType.WEEKLY,
         subjects: data.subjects,
         goals: data.goals,
         startDate: new Date(),

@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PlanType } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PlanGenerationService } from './plan-generation.service';
 import { PlanPersistenceService } from './plan-persistence.service';
@@ -110,7 +111,7 @@ export class PlanningService {
         userId: (data as any).userId,
         title: safePlan.title,
         description: safePlan.description,
-        type: 'STUDY',
+        type: PlanType.WEEKLY,
         subjects: (data as any).subjects,
         goals: (data as any).goals,
         startDate: new Date(),
@@ -127,7 +128,7 @@ export class PlanningService {
             userId: (data as any).userId,
             title: safePlan.title,
             description: safePlan.description,
-            type: 'STUDY',
+            type: PlanType.WEEKLY,
             subjects: (data as any).subjects,
             goals: (data as any).goals,
             startDate: new Date(),
@@ -616,7 +617,7 @@ export class PlanningService {
   async generateAndPersistHolidayPlan(userId: string, data: any) {
     const holidayPlan = {
       ...data,
-      type: 'HOLIDAY',
+      type: PlanType.HOLIDAY,
       title: 'Tatil Çalışma Planı',
       description: 'Tatil dönemi için özel plan',
     };

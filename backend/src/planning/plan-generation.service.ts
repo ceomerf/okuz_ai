@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PlanType } from '@prisma/client';
 import { OpenAIService } from '../services/openai.service';
 import { MetricsService } from '../monitoring/metrics.service';
 import { DigitalDossierService } from './digital-dossier.service';
@@ -59,10 +60,10 @@ export class PlanGenerationService {
 	 */
 	async generatePlan(data: any): Promise<{ plan: any; sessions: any[] }> {
 		// Basit plan üretimi - gerçek implementasyon için AI kullanılabilir
-		const plan = {
+    const plan = {
 			title: `${data.subjects.join(', ')} Çalışma Planı`,
 			description: `${data.goals.join(', ')} hedefleri için oluşturulmuş plan`,
-			type: 'STUDY',
+      type: PlanType.WEEKLY,
 			subjects: data.subjects,
 			goals: data.goals,
 			startDate: new Date(),
