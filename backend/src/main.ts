@@ -41,9 +41,7 @@ async function bootstrap() {
   // CORS configuration (yalnızca izinli origin'ler) - ENTERPRISE GRADE
   const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(',').filter(Boolean) || [];
   
-  if (allowedOrigins.length === 0) {
-    throw new Error('CORS_ALLOWED_ORIGINS environment variable is required and must contain at least one origin');
-  }
+  // allowedOrigins boş olsa bile sağlık kontrolleri ve Origin başlığı olmayan istekler için izin vereceğiz
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -52,9 +50,9 @@ async function bootstrap() {
         return callback(null, true);
       }
       
-      // Origin header yoksa reddet (production'da)
+      // Origin header yoksa (ör. internal health checks, server-to-server), izin ver
       if (!origin) {
-        return callback(new Error('Not allowed by CORS - No origin header'), false);
+        return callback(null, true);
       }
       
       // Origin listede varsa izin ver
