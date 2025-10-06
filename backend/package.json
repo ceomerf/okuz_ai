@@ -6,6 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -21,7 +22,8 @@
     "swagger:gen": "ts-node src/swagger.ts",
     "swagger:gen:build": "node dist/src/swagger.js",
     "openapi:generate:dart": "openapi-generator-cli generate -i ./swagger.json -g dart-dio-next -o ../lib/generated/api --additional-properties=pubName=okuz_api_client,nullableFields=true,withoutEqualAndHashCode=true",
-    "deploy-test": "echo 'Deployment test successful - $(date)'"
+    "deploy-test": "echo 'Deployment test successful - $(date)'",
+    "prisma:generate": "prisma generate"
   },
   "dependencies": {
     "@google/generative-ai": "^0.2.1",
