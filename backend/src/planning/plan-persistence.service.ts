@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { PlanType } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 
 @Injectable()
@@ -64,8 +65,22 @@ export class PlanPersistenceService {
    * Plan oluşturur
    */
   async createPlan(planData: any): Promise<any> {
+    // Güvenli: string gelirse enum'a çevir
+    const normalizedType = (() => {
+      const t = planData?.type;
+      if (!t) return PlanType.WEEKLY;
+      if (typeof t === 'string') {
+        // Örn. 'WEEKLY' ya da yanlışlıkla 'STUDY' gelebilir
+        return (PlanType as any)[t] || PlanType.WEEKLY;
+      }
+      return t as PlanType;
+    })();
+
     return this.prisma.plan.create({
-      data: planData,
+      data: {
+        ...planData,
+        type: normalizedType,
+      },
     });
   }
 
