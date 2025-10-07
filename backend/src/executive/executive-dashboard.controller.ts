@@ -8,7 +8,7 @@ import { ExecutiveDashboardService } from './executive-dashboard.service';
 @ApiTags('Executive Dashboard')
 @Controller('executive')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'EXECUTIVE', 'PRODUCT_MANAGER')
+@Roles('ADMIN')
 @ApiBearerAuth()
 export class ExecutiveDashboardController {
   constructor(
@@ -91,8 +91,8 @@ export class ExecutiveDashboardController {
     } catch (error) {
       return {
         success: false,
-        message: `Aksiyon başarısız: ${error.message}`,
-        error: error.message,
+        message: `Aksiyon başarısız: ${(error as Error).message}`,
+        error: (error as Error).message,
         timestamp: new Date().toISOString(),
       };
     }
@@ -181,7 +181,7 @@ export class ExecutiveDashboardController {
       })),
       summary: {
         total: dashboard.urgentIssues.length,
-        critical: dashboard.urgentIssues.filter(i => i.severity === 'critical').length,
+        critical: dashboard.urgentIssues.filter(i => i.severity === 'high').length,
         high: dashboard.urgentIssues.filter(i => i.severity === 'high').length,
         medium: dashboard.urgentIssues.filter(i => i.severity === 'medium').length,
         autoFixable: dashboard.urgentIssues.filter(i => i.autoFixable).length,
@@ -213,7 +213,7 @@ export class ExecutiveDashboardController {
       'clear-cache': 'Tüm cache\'leri temizleyecek. Performans geçici olarak düşebilir.',
     };
     
-    return descriptions[action] || 'Bu aksiyon sistem üzerinde değişiklik yapacak.';
+    return descriptions[action as keyof typeof descriptions] || 'Bu aksiyon sistem üzerinde değişiklik yapacak.';
   }
 
   private async executeAction(action: string): Promise<any> {

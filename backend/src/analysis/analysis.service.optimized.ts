@@ -41,7 +41,6 @@ export class AnalysisService {
           select: {
             score: true,
             totalScore: true,
-            subject: true,
             createdAt: true,
           }
         },
@@ -52,7 +51,6 @@ export class AnalysisService {
           select: {
             score: true,
             totalScore: true,
-            subject: true,
             createdAt: true,
           }
         },
@@ -62,7 +60,6 @@ export class AnalysisService {
           take: 100,
           select: {
             performance: true,
-            subject: true,
             createdAt: true,
           }
         }
@@ -84,12 +81,12 @@ export class AnalysisService {
     // Konu bazlı skorları hesapla
     const subjectScores: Record<string, number[]> = {};
     
-    examResults.forEach(exam => {
+    examResults.forEach((exam: any) => {
       if (!subjectScores[exam.subject]) subjectScores[exam.subject] = [];
       subjectScores[exam.subject].push((exam.score / exam.totalScore) * 100);
     });
 
-    quizzes.forEach(quiz => {
+    quizzes.forEach((quiz: any) => {
       if (!subjectScores[quiz.subject]) subjectScores[quiz.subject] = [];
       subjectScores[quiz.subject].push(((quiz.score || 0) / quiz.totalScore) * 100);
     });
@@ -135,7 +132,6 @@ export class AnalysisService {
         select: {
           score: true,
           totalScore: true,
-          subject: true,
           createdAt: true,
         }
       }),
@@ -146,7 +142,6 @@ export class AnalysisService {
         select: {
           score: true,
           totalScore: true,
-          subject: true,
           createdAt: true,
         }
       }),
@@ -156,7 +151,6 @@ export class AnalysisService {
         take: 100,
         select: {
           performance: true,
-          subject: true,
           createdAt: true,
         }
       })

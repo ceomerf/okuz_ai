@@ -100,7 +100,7 @@ export class AutoManagementService {
       const dashboard = await this.executiveDashboardService.getExecutiveDashboard();
       await this.evaluateRules(dashboard);
     } catch (error) {
-      this.logger.error(`❌ Sistem sağlık kontrolü hatası: ${error.message}`);
+      this.logger.error(`❌ Sistem sağlık kontrolü hatası: ${(error as Error).message}`);
     }
   }
 
@@ -115,7 +115,7 @@ export class AutoManagementService {
       const dashboard = await this.executiveDashboardService.getExecutiveDashboard();
       await this.performDetailedAnalysis(dashboard);
     } catch (error) {
-      this.logger.error(`❌ Saatlik analiz hatası: ${error.message}`);
+      this.logger.error(`❌ Saatlik analiz hatası: ${(error as Error).message}`);
     }
   }
 
@@ -130,7 +130,7 @@ export class AutoManagementService {
       const dashboard = await this.executiveDashboardService.getExecutiveDashboard();
       await this.generateReport(dashboard);
     } catch (error) {
-      this.logger.error(`❌ Günlük rapor hatası: ${error.message}`);
+      this.logger.error(`❌ Günlük rapor hatası: ${(error as Error).message}`);
     }
   }
 
@@ -164,7 +164,7 @@ export class AutoManagementService {
           });
         }
       } catch (error) {
-        this.logger.error(`❌ Kural değerlendirme hatası (${rule.name}): ${error.message}`);
+        this.logger.error(`❌ Kural değerlendirme hatası (${rule.name}): ${(error as Error).message}`);
       }
     }
   }
@@ -188,7 +188,7 @@ export class AutoManagementService {
     }
 
     // Trend analizi
-    const negativeTrends = dashboard.trends.filter(t => t.direction === 'down' && t.significance === 'high');
+    const negativeTrends = dashboard.trends.filter((t: any) => t.direction === 'down' && t.significance === 'high');
     if (negativeTrends.length > 0) {
       this.logger.warn(`⚠️ ${negativeTrends.length} negatif trend tespit edildi`);
       await this.handleNegativeTrends(negativeTrends);
@@ -211,7 +211,7 @@ export class AutoManagementService {
         revenue: dashboard.criticalMetrics.revenue.current,
         performance: dashboard.criticalMetrics.performance.uptime,
       },
-      issues: dashboard.urgentIssues.map(issue => ({
+      issues: dashboard.urgentIssues.map((issue: any) => ({
         type: issue.type,
         title: issue.title,
         severity: issue.severity,

@@ -35,6 +35,7 @@ export class OutboxService {
     try {
       await this.prisma.outboxEvent.create({
         data: {
+          userId: 'system', // Default user for system events
           aggregateId,
           aggregateType,
           eventType,
@@ -46,7 +47,7 @@ export class OutboxService {
 
       this.logger.log(`Outbox event created: ${eventType} for ${aggregateType}:${aggregateId}`);
     } catch (error) {
-      this.logger.error(`Failed to create outbox event: ${error.message}`);
+      this.logger.error(`Failed to create outbox event: ${(error as Error).message}`);
       throw error;
     }
   }
@@ -70,7 +71,7 @@ export class OutboxService {
       try {
         await this.processEvent(event);
       } catch (error) {
-        this.logger.error(`Failed to process event ${event.id}: ${error.message}`);
+        this.logger.error(`Failed to process event ${event.id}: ${(error as Error).message}`);
         await this.incrementRetryCount(event.id);
       }
     }

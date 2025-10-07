@@ -64,7 +64,7 @@ export class AnalyticsService {
 
       this.logger.log(`Event tracked: ${event} for user ${userId}`);
     } catch (error) {
-      this.logger.error(`Failed to track event ${event}: ${error.message}`);
+      this.logger.error(`Failed to track event ${event}: ${(error as Error).message}`);
     }
   }
 
@@ -238,7 +238,7 @@ export class AnalyticsService {
 
       this.logger.log(`User identified: ${userId}`);
     } catch (error) {
-      this.logger.error(`Failed to identify user ${userId}: ${error.message}`);
+      this.logger.error(`Failed to identify user ${userId}: ${(error as Error).message}`);
     }
   }
 

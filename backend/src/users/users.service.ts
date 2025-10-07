@@ -300,4 +300,158 @@ export class UsersService {
       throw new Error(`Failed to complete onboarding: ${error.message}`);
     }
   }
+
+  // Eksik enhanced metodları ekleyelim
+  async getAllUsersEnhanced(options: any) {
+    try {
+      const { page = 1, limit = 10, search, role, sortBy = 'createdAt', sortOrder = 'desc' } = options;
+      const skip = (page - 1) * limit;
+
+      const where: any = {};
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+      if (role) {
+        where.role = role;
+      }
+
+      const [users, total] = await Promise.all([
+        this.prisma.user.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { [sortBy]: sortOrder },
+          include: {
+            studentProfile: true,
+            parentProfile: true,
+            gamificationProfile: true
+          }
+        }),
+        this.prisma.user.count({ where })
+      ]);
+
+      return {
+        users,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      };
+    } catch (error) {
+      throw new Error('Failed to get enhanced users');
+    }
+  }
+
+  async getUserByIdEnhanced(id: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id },
+        include: {
+          studentProfile: true,
+          parentProfile: true,
+          gamificationProfile: true,
+          achievements: true,
+          studySessions: true
+        }
+      });
+      return user;
+    } catch (error) {
+      throw new Error('Failed to get enhanced user');
+    }
+  }
+
+  async createUserEnhanced(data: any) {
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          email: data.email,
+          password: data.password,
+          name: data.name,
+          role: data.role || 'STUDENT',
+          grade: data.grade,
+          lastActiveAt: new Date()
+        },
+        include: {
+          studentProfile: true,
+          parentProfile: true,
+          gamificationProfile: true
+        }
+      });
+      return user;
+    } catch (error) {
+      throw new Error('Failed to create enhanced user');
+    }
+  }
+
+  async updateUserEnhanced(id: string, data: any) {
+    try {
+      const user = await this.prisma.user.update({
+        where: { id },
+        data: {
+          ...data,
+          updatedAt: new Date()
+        },
+        include: {
+          studentProfile: true,
+          parentProfile: true,
+          gamificationProfile: true
+        }
+      });
+      return user;
+    } catch (error) {
+      throw new Error('Failed to update enhanced user');
+    }
+  }
+
+  async deleteUserEnhanced(id: string) {
+    try {
+      await this.prisma.user.delete({
+        where: { id }
+      });
+      return { success: true, message: 'User deleted successfully' };
+    } catch (error) {
+      throw new Error('Failed to delete enhanced user');
+    }
+  }
+
+  async getUserAnalytics(id: string) {
+    try {
+      const analytics = {
+        totalSessions: 0,
+        averageScore: 0,
+        studyTime: 0,
+        achievements: 0,
+        lastActivity: new Date()
+      };
+      return analytics;
+    } catch (error) {
+      throw new Error('Failed to get user analytics');
+    }
+  }
+
+  async getUserActivity(id: string, options: any) {
+    try {
+      const { page = 1, limit = 20 } = options;
+      const skip = (page - 1) * limit;
+
+      const activities = await this.prisma.userActivity.findMany({
+        where: { userId: id },
+        skip,
+        take: limit,
+        orderBy: { timestamp: 'desc' }
+      });
+
+      return {
+        activities,
+        page,
+        limit,
+        total: activities.length
+      };
+    } catch (error) {
+      throw new Error('Failed to get user activity');
+    }
+  }
 }

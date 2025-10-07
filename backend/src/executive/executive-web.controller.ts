@@ -10,7 +10,7 @@ import { Response } from 'express';
 @ApiTags('Executive Web Interface')
 @Controller('executive/web')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'EXECUTIVE', 'PRODUCT_MANAGER')
+@Roles('ADMIN')
 @ApiBearerAuth()
 export class ExecutiveWebController {
   constructor(
@@ -83,7 +83,7 @@ export class ExecutiveWebController {
     } catch (error) {
       return {
         success: false,
-        message: `❌ ${action} başarısız: ${error.message}`,
+        message: `❌ ${action} başarısız: ${(error as Error).message}`,
         timestamp: new Date().toLocaleString('tr-TR'),
       };
     }
@@ -273,7 +273,7 @@ export class ExecutiveWebController {
 
             <div class="card">
                 <h3>🎯 Hedefler</h3>
-                ${dashboard.goals.map(goal => `
+                ${dashboard.goals.map((goal: any) => `
                     <div class="metric">
                         <span>${goal.name}:</span>
                         <span>${goal.progress.toFixed(1)}%</span>
@@ -285,7 +285,7 @@ export class ExecutiveWebController {
                 <h3>🚨 Acil Durumlar</h3>
                 ${dashboard.urgentIssues.length === 0 ? 
                     '<p>✅ Tüm sistemler normal</p>' : 
-                    dashboard.urgentIssues.map(issue => `
+                    dashboard.urgentIssues.map((issue: any) => `
                         <div class="metric">
                             <span>${issue.title}:</span>
                             <span>${issue.severity.toUpperCase()}</span>
@@ -296,7 +296,7 @@ export class ExecutiveWebController {
 
             <div class="card">
                 <h3>🧪 Aktif Testler</h3>
-                ${dashboard.activeExperiments.map(exp => `
+                ${dashboard.activeExperiments.map((exp: any) => `
                     <div class="metric">
                         <span>${exp.name}:</span>
                         <span>${exp.status}</span>
@@ -308,7 +308,7 @@ export class ExecutiveWebController {
         <div class="card">
             <h3>⚡ Hızlı Aksiyonlar</h3>
             <div class="quick-actions">
-                ${dashboard.quickActions.map(action => `
+                ${dashboard.quickActions.map((action: any) => `
                     <button class="action-btn ${action.action.includes('Kapat') || action.action.includes('Durdur') ? 'danger' : ''}" 
                             onclick="executeAction('${action.endpoint}', '${action.action}')">
                         ${action.buttonText}
@@ -423,7 +423,7 @@ export class ExecutiveWebController {
     ${dashboard.urgentIssues.length > 0 ? `
         <div class="alert-card">
             <h3>🚨 ${dashboard.urgentIssues.length} Acil Durum</h3>
-            ${dashboard.urgentIssues.map(issue => `
+            ${dashboard.urgentIssues.map((issue: any) => `
                 <div>${issue.title}</div>
             `).join('')}
         </div>
@@ -431,7 +431,7 @@ export class ExecutiveWebController {
 
     <div class="metric-card">
         <h3>⚡ Hızlı Aksiyonlar</h3>
-        ${dashboard.quickActions.map(action => `
+        ${dashboard.quickActions.map((action: any) => `
             <button class="action-btn" onclick="executeAction('${action.endpoint}', '${action.action}')">
                 ${action.buttonText}
             </button>
@@ -465,7 +465,7 @@ export class ExecutiveWebController {
       warning: 'UYARI',
       critical: 'KRİTİK'
     };
-    return statusTexts[status] || 'BİLİNMEYEN';
+    return statusTexts[status as keyof typeof statusTexts] || 'BİLİNMEYEN';
   }
 
   private getStatusColor(status: string): string {
@@ -475,7 +475,7 @@ export class ExecutiveWebController {
       warning: '#f59e0b',
       critical: '#ef4444'
     };
-    return colors[status] || '#6b7280';
+    return colors[status as keyof typeof colors] || '#6b7280';
   }
 
   private getStatusMessage(health: any): string {
@@ -485,7 +485,7 @@ export class ExecutiveWebController {
       warning: '⚠️ Dikkat edilmesi gereken durumlar var.',
       critical: '🚨 Kritik durum! Hemen müdahale gerekli!'
     };
-    return messages[health.status] || '❓ Durum belirsiz.';
+    return messages[health.status as keyof typeof messages] || '❓ Durum belirsiz.';
   }
 
   private async executeQuickAction(action: string): Promise<any> {

@@ -85,11 +85,11 @@ export class FeatureFlagsService {
     try {
       const cached = await this.cacheService.get(`${this.cacheKey}:${key}`);
       if (cached) {
-        return JSON.parse(cached);
+        return JSON.parse(cached as string);
       }
       return null;
     } catch (error) {
-      this.logger.error(`Failed to get feature flag ${key}: ${error.message}`);
+      this.logger.error(`Failed to get feature flag ${key}: ${(error as Error).message}`);
       return null;
     }
   }
@@ -99,19 +99,19 @@ export class FeatureFlagsService {
    */
   async getAllFeatureFlags(): Promise<FeatureFlag[]> {
     try {
-      const keys = await this.cacheService.keys(`${this.cacheKey}:*`);
+      const keys = await (this.cacheService as any).keys(`${this.cacheKey}:*`);
       const flags: FeatureFlag[] = [];
 
       for (const key of keys) {
         const cached = await this.cacheService.get(key);
         if (cached) {
-          flags.push(JSON.parse(cached));
+          flags.push(JSON.parse(cached as string));
         }
       }
 
       return flags;
     } catch (error) {
-      this.logger.error(`Failed to get all feature flags: ${error.message}`);
+      this.logger.error(`Failed to get all feature flags: ${(error as Error).message}`);
       return [];
     }
   }
@@ -205,7 +205,7 @@ export class FeatureFlagsService {
       };
 
     } catch (error) {
-      this.logger.error(`Failed to evaluate feature flag ${flagKey}: ${error.message}`);
+      this.logger.error(`Failed to evaluate feature flag ${flagKey}: ${(error as Error).message}`);
       return {
         enabled: false,
         reason: 'Evaluation error',
@@ -242,7 +242,7 @@ export class FeatureFlagsService {
       const cached = await this.cacheService.get(statsKey);
       
       if (cached) {
-        return JSON.parse(cached);
+        return JSON.parse(cached as string);
       }
 
       return {
@@ -253,7 +253,7 @@ export class FeatureFlagsService {
         topReasons: {},
       };
     } catch (error) {
-      this.logger.error(`Failed to get feature flag stats: ${error.message}`);
+      this.logger.error(`Failed to get feature flag stats: ${(error as Error).message}`);
       return {
         totalEvaluations: 0,
         enabledCount: 0,
@@ -294,7 +294,7 @@ export class FeatureFlagsService {
 
       await this.cacheService.set(statsKey, JSON.stringify(updatedStats), 3600);
     } catch (error) {
-      this.logger.error(`Failed to record feature flag evaluation: ${error.message}`);
+      this.logger.error(`Failed to record feature flag evaluation: ${(error as Error).message}`);
     }
   }
 

@@ -58,7 +58,7 @@ export class PlanningEnhancedService {
       };
 
     } catch (error) {
-      this.logger.error(`Failed to complete session ${sessionId}: ${error.message}`);
+      this.logger.error(`Failed to complete session ${sessionId}: ${(error as Error).message}`);
       throw error;
     }
   }
@@ -106,7 +106,7 @@ export class PlanningEnhancedService {
       };
 
     } catch (error) {
-      this.logger.error(`Failed to create plan for user ${userId}: ${error.message}`);
+      this.logger.error(`Failed to create plan for user ${userId}: ${(error as Error).message}`);
       throw error;
     }
   }

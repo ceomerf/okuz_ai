@@ -14,7 +14,6 @@ import {
 } from '@nestjs/common';
 import { SubscriptionService, CreateSubscriptionDto } from './subscription.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { UseGuards } from '@nestjs/common';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
 
 @Controller('subscription')

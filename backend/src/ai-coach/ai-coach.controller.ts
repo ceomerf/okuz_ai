@@ -12,21 +12,21 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { AICoachService } from './ai-coach.service';
+import { AiCoachService } from './ai-coach.service';
 import { ProactiveCoachingService } from './proactive-coaching.service';
-import { EmotionalAIService } from './emotional-ai.service';
+import { EmotionalAiService } from './emotional-ai.service';
 import { PersonalizedDashboardService } from './personalized-dashboard.service';
-import { AIExplainabilityService } from './ai-explainability.service';
+import { AiExplainabilityService } from './ai-explainability.service';
 
 @Controller('ai-coach')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AICoachController {
   constructor(
-    private readonly aiCoachService: AICoachService,
+    private readonly aiCoachService: AiCoachService,
     private readonly proactiveCoaching: ProactiveCoachingService,
-    private readonly emotionalAI: EmotionalAIService,
+    private readonly emotionalAI: EmotionalAiService,
     private readonly personalizedDashboard: PersonalizedDashboardService,
-    private readonly aiExplainability: AIExplainabilityService,
+    private readonly aiExplainability: AiExplainabilityService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -127,7 +127,7 @@ export class AICoachController {
   @Roles('STUDENT')
   async getEmotionalState(@Request() req: AuthenticatedRequest) {
     const context = await this.getUserContext(req.user.id);
-    return this.emotionalAI.analyzeEmotionalState(req.user.id, context);
+    return this.emotionalAI.analyzeEmotionalState(req.user.id);
   }
 
   /**

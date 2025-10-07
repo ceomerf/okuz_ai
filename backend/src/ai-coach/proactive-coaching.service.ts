@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 // import { EventBusService } from '../common/events/event-bus.service';
 import { BehaviorAnalysisService } from './behavior-analysis.service';
-import { EmotionalAIService } from './emotional-ai.service';
+import { EmotionalAiService } from './emotional-ai.service';
 import { ContextAwareCoachingService } from './context-aware-coaching.service';
 
 export interface ProactiveCoachingContext {
@@ -49,7 +49,7 @@ export class ProactiveCoachingService {
     private readonly prisma: PrismaService,
     private readonly eventBus: any,
     private readonly behaviorAnalysis: BehaviorAnalysisService,
-    private readonly emotionalAI: EmotionalAIService,
+    private readonly emotionalAI: EmotionalAiService,
     private readonly contextAware: ContextAwareCoachingService,
   ) {}
 
@@ -67,30 +67,30 @@ export class ProactiveCoachingService {
       const behaviorPatterns = await (this.behaviorAnalysis as any).analyzeBehavior(userId, context);
       
       // Analyze emotional state
-      const emotionalState = await this.emotionalAI.analyzeEmotionalState(userId, context);
+      const emotionalState = await this.emotionalAI.analyzeEmotionalState(userId);
       
       // Generate context-aware recommendations
-      const recommendation = await this.contextAware.generateContextAwareRecommendation(
+      const recommendation = await this.contextAware.generateContextAwareRecommendation({
         userId,
         context,
-      );
+      });
       
       // Convert ContextAwareRecommendation to ProactiveRecommendation
       const recommendations: ProactiveRecommendation[] = recommendation ? [{
-        id: recommendation.id,
-        type: recommendation.recommendation.type as any,
-        priority: recommendation.recommendation.urgency as any,
-        title: recommendation.recommendation.title,
-        description: recommendation.recommendation.description,
-        action: recommendation.recommendation.actionItems.join(', '),
-        reasoning: recommendation.personalization.reasoning,
+        id: 'rec-' + Date.now(),
+        type: 'study_focus' as any,
+        priority: 'medium' as any,
+        title: recommendation.recommendation,
+        description: recommendation.recommendation,
+        action: recommendation.recommendation,
+        reasoning: recommendation.factors.join(', '),
         expectedImpact: '0',
-        confidence: recommendation.recommendation.confidence,
+        confidence: recommendation.confidence,
         urgency: 0.5,
-        personalizedMessage: recommendation.personalization.emotionalSupport,
-        followUpActions: recommendation.recommendation.actionItems,
-        expiresAt: recommendation.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000),
-        metadata: recommendation.metadata,
+        personalizedMessage: recommendation.recommendation,
+        followUpActions: [recommendation.recommendation],
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        metadata: {},
       }] : [];
 
       // Store recommendations

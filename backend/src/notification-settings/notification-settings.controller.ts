@@ -23,7 +23,7 @@ export class NotificationSettingsController {
   @Get()
   @Roles('STUDENT', 'PARENT', 'TEACHER', 'ADMIN')
   async getUserNotificationSettings(@Request() req: AuthenticatedRequest) {
-    return this.notificationSettingsService.getUserNotificationSettings(req.user.id);
+    return this.notificationSettingsService.getNotificationSettings(req.user.id);
   }
 
   /**

@@ -46,13 +46,13 @@ export class SystemService {
     } catch (error) {
       return {
         timestamp: new Date().toISOString(),
-        database: { connected: false, error: error.message },
+        database: { connected: false, error: (error as Error).message },
         redis: { connected: false, error: 'Redis bağlantısı yok' },
         users: { total: 0, active: 0, status: 'critical' },
         revenue: { current: 0, target: 10000, status: 'critical' },
         performance: { uptime: 0, status: 'critical' },
         overall: { score: 0, status: 'critical', trend: 'stable' },
-        error: error.message
+        error: (error as Error).message
       };
     }
   }
@@ -68,7 +68,7 @@ export class SystemService {
     } catch (error) {
       return {
         message: 'Servis başlatma hatası',
-        error: error.message,
+        error: (error as Error).message,
         timestamp: new Date().toISOString(),
         status: 'error'
       };
@@ -93,7 +93,7 @@ export class SystemService {
       await this.prisma.$queryRaw`SELECT 1`;
       return { connected: true, message: 'Veritabanı bağlantısı başarılı' };
     } catch (error) {
-      return { connected: false, error: error.message };
+      return { connected: false, error: (error as Error).message };
     }
   }
 
@@ -102,7 +102,7 @@ export class SystemService {
       // Redis bağlantısı test edilebilir
       return { connected: false, message: 'Redis servisi henüz kurulmadı' };
     } catch (error) {
-      return { connected: false, error: error.message };
+      return { connected: false, error: (error as Error).message };
     }
   }
 
@@ -119,15 +119,15 @@ export class SystemService {
     try {
       // Abonelik gelirlerini hesapla
       const subscriptions = await this.prisma.subscription.findMany({
-        where: { status: 'ACTIVE' }
+        where: { status: 'PREMIUM' }
       });
       
       let totalRevenue = 0;
       subscriptions.forEach(sub => {
-        if (sub.planType === 'PREMIUM') {
+        if (sub.planType === 'MONTHLY_PREMIUM' || sub.planType === 'YEARLY_PREMIUM') {
           totalRevenue += 99; // Premium plan fiyatı
-        } else if (sub.planType === 'BASIC') {
-          totalRevenue += 49; // Basic plan fiyatı
+        } else if (sub.planType === 'FAMILY_PLAN') {
+          totalRevenue += 79; // Family plan fiyatı
         }
       });
       

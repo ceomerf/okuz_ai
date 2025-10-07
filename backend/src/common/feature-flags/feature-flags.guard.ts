@@ -78,7 +78,7 @@ export class FeatureFlagsGuard implements CanActivate {
         return true;
       }
 
-      throw new ForbiddenException(`Feature flag evaluation failed: ${error.message}`);
+      throw new ForbiddenException(`Feature flag evaluation failed: ${(error as Error).message}`);
     }
   }
 }

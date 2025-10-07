@@ -11,7 +11,7 @@ import { AnalyticsService } from '../common/analytics/analytics.service';
 @ApiTags('Product Dashboard')
 @Controller('product-dashboard')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'PRODUCT_MANAGER')
+@Roles('ADMIN')
 @ApiBearerAuth()
 export class ProductDashboardController {
   constructor(

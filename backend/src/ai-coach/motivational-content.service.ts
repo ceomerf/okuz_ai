@@ -4,7 +4,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 import { AIService } from '../ai/ai.service';
 import { PromptRegistry } from '../ai/prompt-registry.service'; // DÜZELTME: doğru sınıf adı
-import { EmotionalAIService } from './emotional-ai.service';
+import { EmotionalAiService } from './emotional-ai.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
@@ -100,7 +100,7 @@ export class MotivationalContentService implements OnModuleInit {
     private readonly cache: CacheService,
     private readonly aiService: AIService,
     private readonly promptRegistry: PromptRegistry, // DÜZELTME
-    private readonly emotionalAI: EmotionalAIService,
+    private readonly emotionalAI: EmotionalAiService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 

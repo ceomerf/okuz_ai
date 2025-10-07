@@ -200,7 +200,7 @@ export class VersioningService {
     if (versionInfo.isDeprecated) {
       return {
         isValid: true,
-        warning: this.getDeprecationWarning(version),
+        warning: this.getDeprecationWarning(version) || undefined,
       };
     }
 

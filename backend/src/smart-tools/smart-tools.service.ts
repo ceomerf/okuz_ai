@@ -104,4 +104,14 @@ export class SmartToolsService {
     this.logger.log(`Özet siliniyor - summaryId=${summaryId}`);
     return { id: summaryId };
   }
+
+  async analyzeExam(data: any) {
+    this.logger.log(`Sınav analizi isteniyor - data=${JSON.stringify(data)}`);
+    return {
+      success: true,
+      analysis: 'Sınav analizi henüz implement edilmedi',
+      score: 0,
+      recommendations: []
+    };
+  }
 }

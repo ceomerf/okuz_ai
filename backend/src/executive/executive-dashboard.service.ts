@@ -115,8 +115,8 @@ export class ExecutiveDashboardService {
       const dashboard: ExecutiveDashboard = {
         overallHealth: {
           score: systemStatus.overall.score,
-          status: systemStatus.overall.status,
-          trend: systemStatus.overall.trend,
+          status: systemStatus.overall.status as 'excellent' | 'good' | 'warning' | 'critical',
+          trend: systemStatus.overall.trend as 'stable' | 'up' | 'down',
           lastUpdated: new Date(systemStatus.timestamp),
         },
         criticalMetrics: {
@@ -124,19 +124,19 @@ export class ExecutiveDashboardService {
             total: systemStatus.users.total,
             active: systemStatus.users.active,
             growth: 0, // Gerçek hesaplama yapılacak
-            status: systemStatus.users.status,
+            status: systemStatus.users.status as 'good' | 'warning' | 'critical',
           },
           revenue: {
             current: systemStatus.revenue.current,
             target: systemStatus.revenue.target,
             growth: 0, // Gerçek hesaplama yapılacak
-            status: systemStatus.revenue.status,
+            status: systemStatus.revenue.status as 'good' | 'warning' | 'critical',
           },
           performance: {
             uptime: systemStatus.performance.uptime,
             responseTime: 0, // Gerçek monitoring'den gelecek
             errorRate: 0, // Gerçek monitoring'den gelecek
-            status: systemStatus.performance.status,
+            status: systemStatus.performance.status as 'good' | 'warning' | 'critical',
           },
         },
         urgentIssues: this.generateRealUrgentIssues(systemStatus),
@@ -151,7 +151,7 @@ export class ExecutiveDashboardService {
       return dashboard;
 
     } catch (error) {
-      this.logger.error(`❌ Executive Dashboard oluşturma hatası: ${error.message}`);
+      this.logger.error(`❌ Executive Dashboard oluşturma hatası: ${(error as Error).message}`);
       
       // Hata durumunda gerçek durumu göster
       return {
@@ -169,7 +169,7 @@ export class ExecutiveDashboardService {
         urgentIssues: [{
           type: 'error',
           title: 'Sistem Hatası',
-          description: `Backend servislerinde hata: ${error.message}`,
+          description: `Backend servislerinde hata: ${(error as Error).message}`,
           severity: 'high',
           action: 'Sistem durumunu kontrol edin',
           autoFixable: false,
@@ -210,7 +210,14 @@ export class ExecutiveDashboardService {
   }
 
   private generateRealUrgentIssues(systemStatus: any) {
-    const issues = [];
+    const issues: Array<{
+      type: 'security' | 'error' | 'performance' | 'business';
+      title: string;
+      description: string;
+      severity: 'medium' | 'low' | 'high';
+      action: string;
+      autoFixable: boolean;
+    }> = [];
     
     if (!systemStatus.database?.connected) {
       issues.push({
@@ -249,7 +256,14 @@ export class ExecutiveDashboardService {
   }
 
   private generateRealGoals(systemStatus: any) {
-    const goals = [];
+    const goals: Array<{
+      name: string;
+      current: number;
+      target: number;
+      progress: number;
+      status: 'on-track' | 'behind' | 'ahead';
+      deadline: Date;
+    }> = [];
     
     if (systemStatus.users.active > 0) {
       goals.push({
@@ -276,8 +290,20 @@ export class ExecutiveDashboardService {
     return goals;
   }
 
-  private generateRealRecommendations(systemStatus: any) {
-    const recommendations = [];
+  private generateRealRecommendations(systemStatus: any): Array<{
+    action: string;
+    impact: 'medium' | 'low' | 'high';
+    effort: 'medium' | 'low' | 'high';
+    timeline: string;
+    autoExecutable: boolean;
+  }> {
+    const recommendations: Array<{
+      action: string;
+      impact: 'medium' | 'low' | 'high';
+      effort: 'medium' | 'low' | 'high';
+      timeline: string;
+      autoExecutable: boolean;
+    }> = [];
     
     if (!systemStatus.database?.connected) {
       recommendations.push({
@@ -539,8 +565,20 @@ export class ExecutiveDashboardService {
   /**
    * Öneriler oluştur
    */
-  private generateRecommendations(metrics: any, urgentIssues: any[], trends: any[]): any[] {
-    const recommendations = [];
+  private generateRecommendations(metrics: any, urgentIssues: any[], trends: any[]): Array<{
+    action: string;
+    impact: 'medium' | 'low' | 'high';
+    effort: 'medium' | 'low' | 'high';
+    timeline: string;
+    autoExecutable: boolean;
+  }> {
+    const recommendations: Array<{
+      action: string;
+      impact: 'medium' | 'low' | 'high';
+      effort: 'medium' | 'low' | 'high';
+      timeline: string;
+      autoExecutable: boolean;
+    }> = [];
 
     // Acil durum önerileri
     urgentIssues.forEach(issue => {

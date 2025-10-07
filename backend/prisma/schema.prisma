@@ -142,6 +142,10 @@ model User {
   weeklyLimit  Int @default(500)
   monthlyLimit Int @default(2000)
 
+  // Additional user fields
+  grade         Int?
+  lastActiveAt  DateTime?
+
   // Subscription fields
   subscriptionStatus  SubscriptionStatus @default(TRIAL)
   trialEndDate        DateTime?
@@ -271,6 +275,9 @@ model User {
   progressRecords Progress[]
   userFeedbacks UserFeedback[]
   aiExplanations AIExplanation[]
+  
+  // Analysis relations
+  analyses Analysis[]
 }
 
 model StudentProfile {
@@ -335,6 +342,7 @@ model Plan {
   startDate   DateTime
   endDate     DateTime
   isActive    Boolean  @default(true)
+  status      String?  // ACTIVE, COMPLETED, CANCELLED
   metadata    Json?
   totalSessions Int?   // Eksik alan eklendi
   duration   Int?      // Plan süresi (gün cinsinden)
@@ -369,12 +377,15 @@ model StudySession {
   startTime   DateTime
   endTime     DateTime?
   isCompleted Boolean   @default(false)
+  status      String?   // COMPLETED, IN_PROGRESS, CANCELLED
   performance Int? // 0-100
   notes       String?
   metadata    Json?
   objectives  String[]  // Objectives field added
   resources   String[]  // Resources field added
   techniques  String[]  // Techniques field added
+  dayOfWeek   String?   // dayOfWeek field added
+  completedAt DateTime? // completedAt field added
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -707,6 +718,29 @@ model StudyHabit {
   @@index([userId])
 }
 
+/// Analysis model for performance analytics
+model Analysis {
+  id          String   @id @default(cuid())
+  userId      String
+  subject     String
+  topic       String?
+  difficulty  String?
+  performance Float
+  score       Int?
+  totalScore  Int?
+  duration    Int?     // minutes
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([subject])
+  @@index([performance])
+  @@index([createdAt])
+}
+
 /// Outbox pattern for reliable event publishing to WS/queues
 model OutboxEvent {
   id             String   @id @default(cuid())
@@ -717,7 +751,9 @@ model OutboxEvent {
   eventVersion   Int      @default(1)
   payload        Json
   status         String   @default("PENDING") // PENDING | PROCESSING | PROCESSED | FAILED
+  processed      Boolean  @default(false)
   attemptCount   Int      @default(0)
+  retryCount     Int      @default(0)
   createdAt      DateTime @default(now())
   processedAt    DateTime?
 
@@ -726,6 +762,7 @@ model OutboxEvent {
   @@index([status, createdAt])
   @@index([aggregateType, aggregateId, createdAt])
   @@index([userId, createdAt])
+  @@index([processed])
 }
 
 model Subscription {
@@ -737,6 +774,7 @@ model Subscription {
   endDate   DateTime?
   isActive  Boolean            @default(true)
   features  String[]
+  amount    Float?              // amount field added
   metadata  Json?
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
