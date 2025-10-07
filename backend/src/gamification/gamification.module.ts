@@ -7,11 +7,12 @@ import { OpenAIService } from '../services/openai.service';
 import { CacheModule } from '../services/cache.module';
 import { MonitoringModule } from '../monitoring/monitoring.module';
 import { ConfigModule } from '@nestjs/config';
+import { CacheService } from '../services/cache.service';
 
 @Module({
   imports: [PrismaModule, CacheModule, MonitoringModule, ConfigModule], // GeminiModule kaldırıldı - OPENAI KULLANILIYOR
   controllers: [GamificationController],
-  providers: [GamificationService, OpenAIService],
+  providers: [GamificationService, OpenAIService, CacheService],
   exports: [GamificationService],
 })
 export class GamificationModule {}
