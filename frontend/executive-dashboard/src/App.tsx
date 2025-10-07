@@ -2,7 +2,7 @@ import React from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box } from '@mui/material';
-import ExecutiveDashboard from './components/Dashboard/ExecutiveDashboard';
+import SimpleDashboard from './components/Dashboard/SimpleDashboard';
 
 // Material-UI tema oluştur
 const theme = createTheme({
@@ -60,7 +60,7 @@ function App() {
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         }}
       >
-        <ExecutiveDashboard />
+        <SimpleDashboard />
       </Box>
     </ThemeProvider>
   );
