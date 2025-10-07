@@ -30,6 +30,7 @@ import { ParentReportsModule } from './parent-reports/parent-reports.module';
 import { AICoachModule } from './ai-coach/ai-coach.module';
 import { NotificationSettingsModule } from './notification-settings/notification-settings.module';
 import { ReferralModule } from './referral/referral.module';
+import { SystemModule } from './system/system.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 
@@ -109,6 +110,7 @@ import { APP_GUARD } from '@nestjs/core';
     AICoachModule,
     NotificationSettingsModule,
     ReferralModule,
+    SystemModule,
   ],
   controllers: [AppController],
   providers: [
