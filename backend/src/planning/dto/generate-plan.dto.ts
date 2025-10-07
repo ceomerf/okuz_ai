@@ -43,4 +43,32 @@ export class GeneratePlanDto {
   @IsBoolean()
   @IsOptional()
   force?: boolean;
+
+  // Aşağıdaki alanlar controller tarafında kullanılıyor; opsiyonel eklenir
+  @IsNumber()
+  @IsOptional()
+  availableTime?: number;
+
+  @IsString()
+  @IsOptional()
+  currentLevel?: string;
+
+  @IsOptional()
+  preferences?: any;
+
+  @IsNumber()
+  @IsOptional()
+  planDurationDays?: number;
+
+  @IsString()
+  @IsOptional()
+  planType?: string;
+
+  @IsString()
+  @IsOptional()
+  targetExam?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  optimize?: boolean;
 }

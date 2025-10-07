@@ -1,0 +1,175 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service
+  namespace: okuz-ai
+  labels:
+    app: ai-service
+    component: ai
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: ai-service
+  template:
+    metadata:
+      labels:
+        app: ai-service
+        component: ai
+    spec:
+      containers:
+      - name: ai-service
+        image: okuz-ai/ai-service:latest
+        ports:
+        - containerPort: 3003
+          name: http
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: okuz-ai-config
+              key: NODE_ENV
+        - name: PORT
+          value: "3003"
+        - name: DATABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: okuz-ai-config
+              key: DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: okuz-ai-config
+              key: REDIS_URL
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: okuz-ai-secrets
+              key: OPENAI_API_KEY
+        - name: OPENAI_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: okuz-ai-config
+              key: OPENAI_MODEL
+        - name: OPENAI_TEMPERATURE
+          valueFrom:
+            configMapKeyRef:
+              name: okuz-ai-config
+              key: OPENAI_TEMPERATURE
+        - name: OPENAI_MAX_TOKENS
+          valueFrom:
+            configMapKeyRef:
+              name: okuz-ai-config
+              key: OPENAI_MAX_TOKENS
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: okuz-ai-secrets
+              key: JWT_SECRET
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "4"
+            memory: "8Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3003
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: okuz-ai-config
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service
+  namespace: okuz-ai
+  labels:
+    app: ai-service
+spec:
+  selector:
+    app: ai-service
+  ports:
+  - name: http
+    port: 3003
+    targetPort: 3003
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ai-service-hpa
+  namespace: okuz-ai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ai-service
+  minReplicas: 6
+  maxReplicas: 40
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Pods
+        value: 3
+        periodSeconds: 60
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ai-service-pdb
+  namespace: okuz-ai
+spec:
+  minAvailable: 3
+  selector:
+    matchLabels:
+      app: ai-service

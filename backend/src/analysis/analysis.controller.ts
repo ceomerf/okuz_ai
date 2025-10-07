@@ -122,4 +122,22 @@ export class AnalysisController {
   }) {
     return this.analysisService.customAnalysis(data);
   }
+
+  @Get('user-analysis')
+  @ApiOperation({ summary: 'Get user analysis' })
+  async getUserAnalysis(@Request() req: ExpressRequest & { user: { id: string } }) {
+    return this.analysisService.getUserAnalysis(req.user.id);
+  }
+
+  @Post('update-analysis/:analysisId')
+  @ApiOperation({ summary: 'Update analysis' })
+  async updateAnalysis(@Param('analysisId') analysisId: string, @Body() updateData: any) {
+    return this.analysisService.updateAnalysis(analysisId, updateData);
+  }
+
+  @Post('delete-analysis/:analysisId')
+  @ApiOperation({ summary: 'Delete analysis' })
+  async deleteAnalysis(@Param('analysisId') analysisId: string) {
+    return this.analysisService.deleteAnalysis(analysisId);
+  }
 }

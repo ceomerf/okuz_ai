@@ -189,4 +189,103 @@ export class TopicManagementService {
 
     return subjects[0] || 'Genel';
   }
+
+  async getTopicsByGrade(grade: number) {
+    try {
+      const topics = await this.prisma.topic.findMany({
+        where: { grade },
+        orderBy: { month: 'asc' }
+      });
+      return { message: 'Topics found', topics };
+    } catch (error) {
+      throw new Error('Failed to get topics by grade');
+    }
+  }
+
+  async getTopicsBySubject(subject: string) {
+    try {
+      const topics = await this.prisma.topic.findMany({
+        where: { subject },
+        orderBy: { month: 'asc' }
+      });
+      return { message: 'Topics found', topics };
+    } catch (error) {
+      throw new Error('Failed to get topics by subject');
+    }
+  }
+
+  async createTopic(data: any) {
+    try {
+      const topic = await this.prisma.topic.create({
+        data: {
+          topic: data.topic,
+          subject: data.subject,
+          grade: data.grade,
+          description: data.description,
+          month: data.month,
+          outcomes: data.outcomes || [],
+          tytWeight: data.tytWeight,
+          aytWeight: data.aytWeight
+        }
+      });
+      return { message: 'Topic created', topic };
+    } catch (error) {
+      throw new Error('Failed to create topic');
+    }
+  }
+
+  async updateTopic(id: string, data: any) {
+    try {
+      const topic = await this.prisma.topic.update({
+        where: { id },
+        data
+      });
+      return { message: 'Topic updated', topic };
+    } catch (error) {
+      throw new Error('Failed to update topic');
+    }
+  }
+
+  async deleteTopic(id: string) {
+    try {
+      await this.prisma.topic.delete({
+        where: { id }
+      });
+      return { message: 'Topic deleted' };
+    } catch (error) {
+      throw new Error('Failed to delete topic');
+    }
+  }
+
+  async getCurriculum(grade: number) {
+    try {
+      const curriculum = await this.prisma.topic.findMany({
+        where: { grade },
+        orderBy: [
+          { subject: 'asc' },
+          { month: 'asc' }
+        ]
+      });
+      return { message: 'Curriculum found', curriculum };
+    } catch (error) {
+      throw new Error('Failed to get curriculum');
+    }
+  }
+
+  // Admin: MEB Topic CRUD (basit sürüm)
+  async adminCreateMebTopic(data: { grade: number; subject: string; unit: string; topic: string; month?: number; tytWeight?: number; aytWeight?: number }) {
+    return (this.prisma as any).mebTopic.create({ data });
+  }
+
+  async adminUpdateMebTopic(id: string, data: Partial<{ grade: number; subject: string; unit: string; topic: string; month?: number; tytWeight?: number; aytWeight?: number }>) {
+    return (this.prisma as any).mebTopic.update({ where: { id }, data });
+  }
+
+  async adminDeleteMebTopic(id: string) {
+    return (this.prisma as any).mebTopic.delete({ where: { id } });
+  }
+
+  async adminListMebTopics(filter?: { grade?: number; subject?: string }) {
+    return (this.prisma as any).mebTopic.findMany({ where: { ...(filter?.grade != null ? { grade: filter.grade } : {}), ...(filter?.subject ? { subject: filter.subject } : {}) }, take: 500 });
+  }
 }

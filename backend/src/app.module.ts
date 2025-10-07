@@ -8,7 +8,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './common/prisma/prisma.module';
 // import { GeminiModule } from './services/gemini.module'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 import { QueueModule } from './services/queue.module';
-import { CacheModule } from './services/cache.module';
+import { CacheModule as CommonCacheModule } from './common/cache/cache.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { StudentsModule } from './students/students.module';
@@ -25,6 +25,14 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SolverModule } from './services/solver.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { CoachingModule } from './coaching/coaching.module';
+import { ParentReportsModule } from './parent-reports/parent-reports.module';
+import { AICoachModule } from './ai-coach/ai-coach.module';
+import { NotificationSettingsModule } from './notification-settings/notification-settings.module';
+import { ReferralModule } from './referral/referral.module';
+import { SystemModule } from './system/system.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -38,13 +46,19 @@ import { MonitoringModule } from './monitoring/monitoring.module';
         REDIS_URL: Joi.string().uri().required(),
         JWT_SECRET: Joi.string().min(32).required(),
         JWT_REFRESH_SECRET: Joi.string().min(32).required(),
-        // GEMINI_API_KEY: Joi.string().optional(), // DEVRE DIŞI - OPENAI KULLANILIYOR
-        // GEMINI_MODEL: Joi.string().optional(), // DEVRE DIŞI - OPENAI KULLANILIYOR
-        OPENAI_API_KEY: Joi.string().optional(),
-        // AI_PROVIDER: Joi.string().valid('gemini', 'openai').optional(), // DEVRE DIŞI - SADECE OPENAI
-        CORS_ORIGINS: Joi.string().allow('').optional(),
+        OPENAI_API_KEY: Joi.string().min(20).required(),
+        CORS_ALLOWED_ORIGINS: Joi.string().min(1).required(),
+        BCRYPT_SALT_ROUNDS: Joi.number().integer().min(10).max(15).default(12),
+        JWT_ACCESS_TOKEN_EXPIRATION: Joi.string().default('1h'),
+        JWT_REFRESH_TOKEN_EXPIRATION: Joi.string().default('7d'),
+        THROTTLER_SHORT_TTL: Joi.number().integer().min(1000).default(60000),
+        THROTTLER_SHORT_LIMIT: Joi.number().integer().min(1).default(5),
+        THROTTLER_MEDIUM_TTL: Joi.number().integer().min(1000).default(60000),
+        THROTTLER_MEDIUM_LIMIT: Joi.number().integer().min(1).default(20),
+        THROTTLER_LONG_TTL: Joi.number().integer().min(1000).default(60000),
+        THROTTLER_LONG_LIMIT: Joi.number().integer().min(1).default(100),
         PROMETHEUS_PORT: Joi.number().port().optional(),
-        SWAGGER_ENABLE: Joi.boolean().optional(),
+        SWAGGER_ENABLE: Joi.boolean().default(true),
       }),
     }),
     ThrottlerModule.forRootAsync({
@@ -73,7 +87,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     // GeminiModule, // DEVRE DIŞI - OPENAI KULLANILIYOR
     // OpenAIModule, // OpenAI modülü eklenebilir
     QueueModule,
-    CacheModule,
+    CommonCacheModule,
     AuthModule,
     UsersModule,
     StudentsModule,
@@ -90,8 +104,18 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     RealtimeModule,
     SolverModule,
     MonitoringModule,
+    // Sprint 1: Koç paneli ve veli raporları
+    CoachingModule,
+    ParentReportsModule,
+    AICoachModule,
+    NotificationSettingsModule,
+    ReferralModule,
+    SystemModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

@@ -1,0 +1,157 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Okuz AI - İş Akışı Dashboard",
+    "tags": ["okuz-ai", "business", "metrics"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Plan Üretim Başarı Oranı",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(plan_generation_success_total{job=\"okuz-ai-backend\"}[5m])",
+            "legendFormat": "Plans Generated/min"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Plan Üretim Süresi",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(plan_generation_duration_seconds_bucket{job=\"okuz-ai-backend\"}[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(plan_generation_duration_seconds_bucket{job=\"okuz-ai-backend\"}[5m]))",
+            "legendFormat": "50th percentile"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Aktif Abonelikler",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "active_subscriptions_gauge{job=\"okuz-ai-backend\"}",
+            "legendFormat": "Active Subscriptions"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 100},
+                {"color": "green", "value": 500}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Akıllı Araç Kullanımı",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(smart_tool_usage_total{job=\"okuz-ai-backend\"}[5m])",
+            "legendFormat": "{{tool}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Plan Türü Dağılımı",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (planType) (rate(plan_generation_success_total{job=\"okuz-ai-backend\"}[5m]))",
+            "legendFormat": "{{planType}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Günlük Plan Üretimi",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(increase(plan_generation_success_total{job=\"okuz-ai-backend\"}[1d]))",
+            "legendFormat": "Daily Plans Generated"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "En Popüler Akıllı Araçlar",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(5, sum by (tool) (rate(smart_tool_usage_total{job=\"okuz-ai-backend\"}[5m])))",
+            "legendFormat": "{{tool}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Kullanıcı Başına Ortalama Plan Sayısı",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(plan_generation_success_total{job=\"okuz-ai-backend\"}[5m])) / sum(rate(active_users_gauge{job=\"okuz-ai-backend\"}[5m]))",
+            "legendFormat": "Plans per User"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 2
+          }
+        },
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 24}
+      },
+      {
+        "id": 9,
+        "title": "Abonelik Trendi (Son 7 Gün)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "active_subscriptions_gauge{job=\"okuz-ai-backend\"}",
+            "legendFormat": "Active Subscriptions"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 16, "x": 8, "y": 24}
+      }
+    ],
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "refresh": "1m"
+  }
+}

@@ -132,6 +132,16 @@ export class ReplanService {
           },
         });
 
+        // Uyum yüzdesi: planlanan vs. tamamlanan süre/oturum
+        const totalSessions = sessions.length;
+        const completedSessions = sessions.filter(s => (s as any).isCompleted).length;
+        const plannedMinutes = sessions.reduce((sum, s) => sum + ((s as any).duration || 0), 0);
+        const actualMinutes = sessions.filter(s => (s as any).isCompleted).reduce((sum, s) => sum + ((s as any).duration || 0), 0);
+        const compliance = {
+          sessionCompletionRate: totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0,
+          timeCompletionRate: plannedMinutes > 0 ? Math.round((actualMinutes / plannedMinutes) * 100) : 0,
+        };
+
         const difficultyLevels = ['easy','medium','hard','expert'];
         const clampDifficulty = (d?: string, delta?: number) => {
           const idx = Math.max(0, Math.min(difficultyLevels.length - 1, Math.max(0, difficultyLevels.indexOf((d || 'medium').toLowerCase())) + (delta || 0)));
@@ -153,7 +163,7 @@ export class ReplanService {
 
           await this.prisma.studySession.update({
             where: { id: sess.id },
-            data: { duration: newDuration, metadata: newMeta as any },
+            data: { duration: newDuration, metadata: { ...(newMeta as any), compliance } as any },
           });
 
           // Başarısı düşük alanlar için ek tekrar seansı ekle

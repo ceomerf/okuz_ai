@@ -1,0 +1,268 @@
+// Notification Service Database Schema
+// This schema is specific to the Notification Service and contains only notification-related entities
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("NOTIFICATION_DATABASE_URL")
+}
+
+// User entity (minimal user data for notification service)
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      UserRole @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  notifications     Notification[]
+  notificationSettings NotificationSettings[]
+  notificationHistory NotificationHistory[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  PARENT
+  ADMIN
+}
+
+// Notification entity
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  message     String
+  type        NotificationType
+  priority    NotificationPriority @default(MEDIUM)
+  status      NotificationStatus @default(PENDING)
+  channel     NotificationChannel
+  metadata    Json?
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  STUDY_REMINDER
+  QUIZ_REMINDER
+  ACHIEVEMENT
+  BADGE_EARNED
+  STREAK_MILESTONE
+  LEVEL_UP
+  PLAN_UPDATE
+  SYSTEM_ANNOUNCEMENT
+  SOCIAL_INTERACTION
+  CUSTOM
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELLED
+}
+
+enum NotificationChannel {
+  EMAIL
+  PUSH
+  SMS
+  IN_APP
+  WEBHOOK
+}
+
+// Notification Settings entity
+model NotificationSettings {
+  id                    String   @id @default(cuid())
+  userId                String
+  emailEnabled          Boolean  @default(true)
+  pushEnabled           Boolean  @default(true)
+  smsEnabled            Boolean  @default(false)
+  inAppEnabled          Boolean  @default(true)
+  studyReminders        Boolean  @default(true)
+  quizReminders         Boolean  @default(true)
+  achievements          Boolean  @default(true)
+  badges                Boolean  @default(true)
+  streaks               Boolean  @default(true)
+  levelUps              Boolean  @default(true)
+  planUpdates           Boolean  @default(true)
+  systemAnnouncements   Boolean  @default(true)
+  socialInteractions    Boolean  @default(true)
+  quietHoursStart       String?  // e.g., "22:00"
+  quietHoursEnd         String?  // e.g., "08:00"
+  timezone              String   @default("UTC")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@map("notification_settings")
+}
+
+// Notification History entity
+model NotificationHistory {
+  id             String   @id @default(cuid())
+  userId         String
+  notificationId String
+  action         NotificationAction
+  timestamp      DateTime @default(now())
+  metadata       Json?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_history")
+}
+
+enum NotificationAction {
+  SENT
+  DELIVERED
+  READ
+  CLICKED
+  DISMISSED
+  FAILED
+}
+
+// Notification Template entity
+model NotificationTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  type        NotificationType
+  channel     NotificationChannel
+  subject     String?
+  content     String
+  variables   String[] // Array of variable names
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("notification_templates")
+}
+
+// Notification Campaign entity
+model NotificationCampaign {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  type        NotificationType
+  channel     NotificationChannel
+  templateId  String?
+  content     String
+  targetUsers String[] // Array of user IDs or user segments
+  status      CampaignStatus @default(DRAFT)
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  template NotificationTemplate? @relation(fields: [templateId], references: [id])
+
+  @@map("notification_campaigns")
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+  FAILED
+}
+
+// Notification Queue entity (for queued notifications)
+model NotificationQueue {
+  id             String   @id @default(cuid())
+  userId         String
+  notificationId String
+  priority       Int      @default(0)
+  scheduledAt    DateTime
+  attempts       Int      @default(0)
+  maxAttempts    Int      @default(3)
+  status         QueueStatus @default(PENDING)
+  errorMessage   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("notification_queue")
+}
+
+enum QueueStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Notification Analytics entity
+model NotificationAnalytics {
+  id                    String   @id @default(cuid())
+  userId                String
+  totalSent             Int      @default(0)
+  totalDelivered        Int      @default(0)
+  totalRead             Int      @default(0)
+  totalClicked          Int      @default(0)
+  deliveryRate          Float    @default(0)
+  readRate              Float    @default(0)
+  clickRate             Float    @default(0)
+  averageResponseTime   Float    @default(0) // in milliseconds
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("notification_analytics")
+}
+
+// Notification Events entity (for event sourcing)
+model NotificationEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  eventType String
+  eventData Json
+  timestamp DateTime @default(now()
+
+  @@map("notification_events")
+}
+
+// Notification Statistics entity
+model NotificationStatistics {
+  id                    String   @id @default(cuid())
+  totalNotifications    Int      @default(0)
+  totalSent             Int      @default(0)
+  totalDelivered        Int      @default(0)
+  totalRead             Int      @default(0)
+  totalClicked          Int      @default(0)
+  totalFailed           Int      @default(0)
+  averageDeliveryTime   Float    @default(0) // in milliseconds
+  averageReadTime       Float    @default(0) // in milliseconds
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("notification_statistics")
+}

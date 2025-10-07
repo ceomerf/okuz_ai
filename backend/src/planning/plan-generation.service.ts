@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PlanType } from '@prisma/client';
 import { OpenAIService } from '../services/openai.service';
 import { MetricsService } from '../monitoring/metrics.service';
 import { DigitalDossierService } from './digital-dossier.service';
@@ -24,16 +25,22 @@ export class PlanGenerationService {
 		let lastError: any;
 		let success = false;
 
-		while (attempt <= maxRetries) {
+    while (attempt <= maxRetries) {
 			try {
 				const result = await this.openaiService.generateContent(prompt);
 				success = true;
 				return result;
 			} catch (err: any) {
 				lastError = err;
-				const status = (err && err.status) || (err && err.response && err.response.status);
-				const isTransient = status ? (status >= 500 || status === 429) : true;
-				if (!isTransient || attempt === maxRetries) {
+        const status = (err && err.status) || (err && err.response && err.response.status);
+        const message = (err && err.message) || '';
+        // Mesaja göre ayrım: "Bad Request" gibi client hatalarında retry yapma
+        if (/bad\s*request/i.test(message)) {
+          break;
+        }
+        // Status bilinmiyorsa transient varsay (API Error vb.)
+        const isTransient = status == null ? true : (status >= 500 || status === 429);
+        if (!isTransient || attempt === maxRetries) {
 					break;
 				}
 				const backoff = initialDelayMs * Math.pow(2, attempt);
@@ -53,10 +60,10 @@ export class PlanGenerationService {
 	 */
 	async generatePlan(data: any): Promise<{ plan: any; sessions: any[] }> {
 		// Basit plan üretimi - gerçek implementasyon için AI kullanılabilir
-		const plan = {
+    const plan = {
 			title: `${data.subjects.join(', ')} Çalışma Planı`,
 			description: `${data.goals.join(', ')} hedefleri için oluşturulmuş plan`,
-			type: 'STUDY',
+      type: PlanType.WEEKLY,
 			subjects: data.subjects,
 			goals: data.goals,
 			startDate: new Date(),
@@ -68,15 +75,18 @@ export class PlanGenerationService {
 		return { plan, sessions };
 	}
 
-	private generateSampleSessions(data: any): any[] {
+  private generateSampleSessions(data: any): any[] {
 		const sessions = [];
 		const subjects = data.subjects || ['Matematik', 'Türkçe'];
-		const totalSessions = Math.min(data.availableTime || 20, 30);
+    // 7 gün zorunluluğu weekly modda; aksi halde planDurationDays kullanılacak
+    const planDays = Number(data.planDurationDays) > 0 ? Number(data.planDurationDays) : (String(data.planType || '').toLowerCase() === 'weekly' ? 7 : 3);
+    const sessionsPerDay = 2;
+    const totalSessions = planDays * sessionsPerDay;
 
 		for (let i = 0; i < totalSessions; i++) {
 			const subject = subjects[i % subjects.length];
-			const startTime = new Date();
-			startTime.setDate(startTime.getDate() + i);
+      const startTime = new Date();
+      startTime.setDate(startTime.getDate() + Math.floor(i / sessionsPerDay));
 
 			sessions.push({
 				subject,
@@ -92,7 +102,7 @@ export class PlanGenerationService {
 	}
 
 	// ---- Taşınan yardımcılar ----
-	filterSubjectsForGradeAndTrack(subjects: string[], grade: number, track: string): string[] {
+  filterSubjectsForGradeAndTrack(subjects: string[], grade: number, track: string): string[] {
 		if (!Array.isArray(subjects) || subjects.length === 0) return [];
 		if (grade < 11) return subjects;
 		const norm = (v: string) => String(v || '').toLowerCase();
@@ -117,8 +127,8 @@ export class PlanGenerationService {
 		return filtered.length > 0 ? filtered : subjects;
 	}
 
-	buildScheduleFromTopics(topicList: string[], planData: { planDurationDays?: number; subjects: string[]; userId?: string }): any {
-		const planDurationDays = Number((planData as any)?.planDurationDays) > 0 ? Number((planData as any).planDurationDays) : 3;
+  buildScheduleFromTopics(topicList: string[], planData: { planDurationDays?: number; subjects: string[]; userId?: string }): any {
+    const planDurationDays = Number((planData as any)?.planDurationDays) > 0 ? Number((planData as any).planDurationDays) : 7;
 		const sessionsPerDay = 2;
 		const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
@@ -236,6 +246,30 @@ export class PlanGenerationService {
 		seed = (seed * 9301 + 49297) % 233280;
 		return seed / 233280;
 	}
+
+	// Test için gerekli metodlar
+	parseJsonBlock(jsonString: string): any {
+		try {
+			const cleaned = this.cleanAiJsonResponse(jsonString);
+			return JSON.parse(cleaned);
+		} catch (error) {
+			return {};
+		}
+	}
+
+  normalizeText(input: string): string {
+    if (!input) return '';
+    return input
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLowerCase()
+      .replace(/[şŞ]/g, 's')
+      .replace(/[ıİ]/g, 'i')
+      .replace(/[çÇ]/g, 'c')
+      .replace(/[ğĞ]/g, 'g')
+      .replace(/[üÜ]/g, 'u')
+      .replace(/[öÖ]/g, 'o');
+  }
 }
 
 

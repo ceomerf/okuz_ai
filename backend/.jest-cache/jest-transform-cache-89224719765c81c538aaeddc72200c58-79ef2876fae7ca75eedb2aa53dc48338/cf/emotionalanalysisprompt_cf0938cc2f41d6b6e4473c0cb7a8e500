@@ -1,0 +1,149 @@
+998258c3e762ca923f042e9fc2deab7a
+"use strict";
+
+/* istanbul ignore next */
+function cov_2dti6e5mwk() {
+  var path = "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/ai/prompts/emotional-analysis.prompt.ts";
+  var hash = "8d65ac4872eacff5c338048218e34c05d9e884a5";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/ai/prompts/emotional-analysis.prompt.ts",
+    statementMap: {
+      "0": {
+        start: {
+          line: 2,
+          column: 0
+        },
+        end: {
+          line: 2,
+          column: 62
+        }
+      },
+      "1": {
+        start: {
+          line: 3,
+          column: 0
+        },
+        end: {
+          line: 3,
+          column: 41
+        }
+      },
+      "2": {
+        start: {
+          line: 4,
+          column: 0
+        },
+        end: {
+          line: 65,
+          column: 2
+        }
+      }
+    },
+    fnMap: {},
+    branchMap: {},
+    s: {
+      "0": 0,
+      "1": 0,
+      "2": 0
+    },
+    f: {},
+    b: {},
+    inputSourceMap: {
+      file: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/ai/prompts/emotional-analysis.prompt.ts",
+      mappings: ";;;AAAa,QAAA,uBAAuB,GAAG;IACrC,IAAI,EAAE,oBAAoB;IAC1B,OAAO,EAAE,OAAO;IAChB,WAAW,EAAE,sDAAsD;IACnE,QAAQ,EAAE;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;GAqDT;IACD,SAAS,EAAE,CAAC,QAAQ,EAAE,gBAAgB,EAAE,SAAS,EAAE,WAAW,CAAC;IAC/D,QAAQ,EAAE,oBAAoB;IAC9B,QAAQ,EAAE,IAAI;CACf,CAAC",
+      names: [],
+      sources: ["/Users/ceomerf/Downloads/okuz_ai-main/backend/src/ai/prompts/emotional-analysis.prompt.ts"],
+      sourcesContent: ["export const emotionalAnalysisPrompt = {\n  name: 'emotional_analysis',\n  version: '1.0.0',\n  description: 'Analyze emotional state from student journal content',\n  template: `\nSen bir uzman psikolog ve e\u011Fitim ko\xE7usun. \xD6\u011Frencinin g\xFCnl\xFCk i\xE7eri\u011Fini analiz ederek duygusal durumunu de\u011Ferlendiriyorsun.\n\n**\xD6\u011Frenci Bilgileri:**\n- Kullan\u0131c\u0131 ID: {{userId}}\n- G\xFCnl\xFCk \u0130\xE7eri\u011Fi: {{journalContent}}\n- Ba\u011Flam: {{context}}\n- Zaman: {{timestamp}}\n\n**Analiz G\xF6revi:**\nA\u015Fa\u011F\u0131daki JSON format\u0131nda detayl\u0131 bir duygusal analiz yap:\n\n\\`\\`\\`json\n{\n  \"overallMood\": \"very_positive\" | \"positive\" | \"neutral\" | \"negative\" | \"very_negative\",\n  \"emotions\": {\n    \"joy\": 0.0-1.0,\n    \"sadness\": 0.0-1.0,\n    \"anger\": 0.0-1.0,\n    \"fear\": 0.0-1.0,\n    \"surprise\": 0.0-1.0,\n    \"disgust\": 0.0-1.0,\n    \"anticipation\": 0.0-1.0,\n    \"trust\": 0.0-1.0\n  },\n  \"stressLevel\": 0.0-1.0,\n  \"energyLevel\": 0.0-1.0,\n  \"motivationLevel\": 0.0-1.0,\n  \"confidenceLevel\": 0.0-1.0,\n  \"triggers\": [\"tetikleyici1\", \"tetikleyici2\"],\n  \"copingStrategies\": [\"ba\u015Fa \xE7\u0131kma stratejisi1\", \"ba\u015Fa \xE7\u0131kma stratejisi2\"],\n  \"recommendations\": [\"\xF6neri1\", \"\xF6neri2\"],\n  \"confidence\": 0.0-1.0\n}\n\\`\\`\\`\n\n**Analiz Kriterleri:**\n1. **Duygusal Durum**: Metindeki duygusal ipu\xE7lar\u0131n\u0131 tespit et\n2. **Stres Seviyesi**: Stres belirtilerini de\u011Ferlendir\n3. **Enerji Seviyesi**: Enerji ve motivasyon durumunu analiz et\n4. **G\xFCven Seviyesi**: \xD6zg\xFCven ve ba\u015Far\u0131 alg\u0131s\u0131n\u0131 de\u011Ferlendir\n5. **Tetikleyiciler**: Duygusal durumu etkileyen fakt\xF6rleri belirle\n6. **Ba\u015Fa \xC7\u0131kma Stratejileri**: Kullan\u0131lan veya \xF6nerilebilecek stratejileri tespit et\n7. **\xD6neriler**: \u0130yile\u015Ftirme i\xE7in somut \xF6neriler sun\n\n**\xD6nemli Notlar:**\n- T\xFCrk\xE7e metin analizi yap\n- \xD6\u011Frenci ya\u015F grubuna uygun de\u011Ferlendirme yap\n- Pozitif ve yap\u0131c\u0131 bir yakla\u015F\u0131m benimse\n- G\xFCvenilir ve objektif analiz sa\u011Fla\n- \xD6\u011Frencinin gizlili\u011Fini koru\n\nSadece JSON format\u0131nda yan\u0131t ver, ba\u015Fka a\xE7\u0131klama ekleme.\n  `,\n  variables: ['userId', 'journalContent', 'context', 'timestamp'],\n  category: 'emotional_analysis',\n  isActive: true,\n};\n"],
+      version: 3
+    },
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "8d65ac4872eacff5c338048218e34c05d9e884a5"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    // @ts-ignore
+    cov_2dti6e5mwk = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_2dti6e5mwk();
+cov_2dti6e5mwk().s[0]++;
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+/* istanbul ignore next */
+cov_2dti6e5mwk().s[1]++;
+exports.emotionalAnalysisPrompt = void 0;
+/* istanbul ignore next */
+cov_2dti6e5mwk().s[2]++;
+exports.emotionalAnalysisPrompt = {
+  name: 'emotional_analysis',
+  version: '1.0.0',
+  description: 'Analyze emotional state from student journal content',
+  template: `
+Sen bir uzman psikolog ve eğitim koçusun. Öğrencinin günlük içeriğini analiz ederek duygusal durumunu değerlendiriyorsun.
+
+**Öğrenci Bilgileri:**
+- Kullanıcı ID: {{userId}}
+- Günlük İçeriği: {{journalContent}}
+- Bağlam: {{context}}
+- Zaman: {{timestamp}}
+
+**Analiz Görevi:**
+Aşağıdaki JSON formatında detaylı bir duygusal analiz yap:
+
+\`\`\`json
+{
+  "overallMood": "very_positive" | "positive" | "neutral" | "negative" | "very_negative",
+  "emotions": {
+    "joy": 0.0-1.0,
+    "sadness": 0.0-1.0,
+    "anger": 0.0-1.0,
+    "fear": 0.0-1.0,
+    "surprise": 0.0-1.0,
+    "disgust": 0.0-1.0,
+    "anticipation": 0.0-1.0,
+    "trust": 0.0-1.0
+  },
+  "stressLevel": 0.0-1.0,
+  "energyLevel": 0.0-1.0,
+  "motivationLevel": 0.0-1.0,
+  "confidenceLevel": 0.0-1.0,
+  "triggers": ["tetikleyici1", "tetikleyici2"],
+  "copingStrategies": ["başa çıkma stratejisi1", "başa çıkma stratejisi2"],
+  "recommendations": ["öneri1", "öneri2"],
+  "confidence": 0.0-1.0
+}
+\`\`\`
+
+**Analiz Kriterleri:**
+1. **Duygusal Durum**: Metindeki duygusal ipuçlarını tespit et
+2. **Stres Seviyesi**: Stres belirtilerini değerlendir
+3. **Enerji Seviyesi**: Enerji ve motivasyon durumunu analiz et
+4. **Güven Seviyesi**: Özgüven ve başarı algısını değerlendir
+5. **Tetikleyiciler**: Duygusal durumu etkileyen faktörleri belirle
+6. **Başa Çıkma Stratejileri**: Kullanılan veya önerilebilecek stratejileri tespit et
+7. **Öneriler**: İyileştirme için somut öneriler sun
+
+**Önemli Notlar:**
+- Türkçe metin analizi yap
+- Öğrenci yaş grubuna uygun değerlendirme yap
+- Pozitif ve yapıcı bir yaklaşım benimse
+- Güvenilir ve objektif analiz sağla
+- Öğrencinin gizliliğini koru
+
+Sadece JSON formatında yanıt ver, başka açıklama ekleme.
+  `,
+  variables: ['userId', 'journalContent', 'context', 'timestamp'],
+  category: 'emotional_analysis',
+  isActive: true
+};
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJleHBvcnRzIiwiZW1vdGlvbmFsQW5hbHlzaXNQcm9tcHQiLCJuYW1lIiwidmVyc2lvbiIsImRlc2NyaXB0aW9uIiwidGVtcGxhdGUiLCJ2YXJpYWJsZXMiLCJjYXRlZ29yeSIsImlzQWN0aXZlIl0sInNvdXJjZXMiOlsiL1VzZXJzL2Nlb21lcmYvRG93bmxvYWRzL29rdXpfYWktbWFpbi9iYWNrZW5kL3NyYy9haS9wcm9tcHRzL2Vtb3Rpb25hbC1hbmFseXNpcy5wcm9tcHQudHMiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IGNvbnN0IGVtb3Rpb25hbEFuYWx5c2lzUHJvbXB0ID0ge1xuICBuYW1lOiAnZW1vdGlvbmFsX2FuYWx5c2lzJyxcbiAgdmVyc2lvbjogJzEuMC4wJyxcbiAgZGVzY3JpcHRpb246ICdBbmFseXplIGVtb3Rpb25hbCBzdGF0ZSBmcm9tIHN0dWRlbnQgam91cm5hbCBjb250ZW50JyxcbiAgdGVtcGxhdGU6IGBcblNlbiBiaXIgdXptYW4gcHNpa29sb2cgdmUgZcSfaXRpbSBrb8OndXN1bi4gw5bEn3JlbmNpbmluIGfDvG5sw7xrIGnDp2VyacSfaW5pIGFuYWxpeiBlZGVyZWsgZHV5Z3VzYWwgZHVydW11bnUgZGXEn2VybGVuZGlyaXlvcnN1bi5cblxuKirDlsSfcmVuY2kgQmlsZ2lsZXJpOioqXG4tIEt1bGxhbsSxY8SxIElEOiB7e3VzZXJJZH19XG4tIEfDvG5sw7xrIMSww6dlcmnEn2k6IHt7am91cm5hbENvbnRlbnR9fVxuLSBCYcSfbGFtOiB7e2NvbnRleHR9fVxuLSBaYW1hbjoge3t0aW1lc3RhbXB9fVxuXG4qKkFuYWxpeiBHw7ZyZXZpOioqXG5BxZ9hxJ/EsWRha2kgSlNPTiBmb3JtYXTEsW5kYSBkZXRheWzEsSBiaXIgZHV5Z3VzYWwgYW5hbGl6IHlhcDpcblxuXFxgXFxgXFxganNvblxue1xuICBcIm92ZXJhbGxNb29kXCI6IFwidmVyeV9wb3NpdGl2ZVwiIHwgXCJwb3NpdGl2ZVwiIHwgXCJuZXV0cmFsXCIgfCBcIm5lZ2F0aXZlXCIgfCBcInZlcnlfbmVnYXRpdmVcIixcbiAgXCJlbW90aW9uc1wiOiB7XG4gICAgXCJqb3lcIjogMC4wLTEuMCxcbiAgICBcInNhZG5lc3NcIjogMC4wLTEuMCxcbiAgICBcImFuZ2VyXCI6IDAuMC0xLjAsXG4gICAgXCJmZWFyXCI6IDAuMC0xLjAsXG4gICAgXCJzdXJwcmlzZVwiOiAwLjAtMS4wLFxuICAgIFwiZGlzZ3VzdFwiOiAwLjAtMS4wLFxuICAgIFwiYW50aWNpcGF0aW9uXCI6IDAuMC0xLjAsXG4gICAgXCJ0cnVzdFwiOiAwLjAtMS4wXG4gIH0sXG4gIFwic3RyZXNzTGV2ZWxcIjogMC4wLTEuMCxcbiAgXCJlbmVyZ3lMZXZlbFwiOiAwLjAtMS4wLFxuICBcIm1vdGl2YXRpb25MZXZlbFwiOiAwLjAtMS4wLFxuICBcImNvbmZpZGVuY2VMZXZlbFwiOiAwLjAtMS4wLFxuICBcInRyaWdnZXJzXCI6IFtcInRldGlrbGV5aWNpMVwiLCBcInRldGlrbGV5aWNpMlwiXSxcbiAgXCJjb3BpbmdTdHJhdGVnaWVzXCI6IFtcImJhxZ9hIMOnxLFrbWEgc3RyYXRlamlzaTFcIiwgXCJiYcWfYSDDp8Sxa21hIHN0cmF0ZWppc2kyXCJdLFxuICBcInJlY29tbWVuZGF0aW9uc1wiOiBbXCLDtm5lcmkxXCIsIFwiw7ZuZXJpMlwiXSxcbiAgXCJjb25maWRlbmNlXCI6IDAuMC0xLjBcbn1cblxcYFxcYFxcYFxuXG4qKkFuYWxpeiBLcml0ZXJsZXJpOioqXG4xLiAqKkR1eWd1c2FsIER1cnVtKio6IE1ldGluZGVraSBkdXlndXNhbCBpcHXDp2xhcsSxbsSxIHRlc3BpdCBldFxuMi4gKipTdHJlcyBTZXZpeWVzaSoqOiBTdHJlcyBiZWxpcnRpbGVyaW5pIGRlxJ9lcmxlbmRpclxuMy4gKipFbmVyamkgU2V2aXllc2kqKjogRW5lcmppIHZlIG1vdGl2YXN5b24gZHVydW11bnUgYW5hbGl6IGV0XG40LiAqKkfDvHZlbiBTZXZpeWVzaSoqOiDDlnpnw7x2ZW4gdmUgYmHFn2FyxLEgYWxnxLFzxLFuxLEgZGXEn2VybGVuZGlyXG41LiAqKlRldGlrbGV5aWNpbGVyKio6IER1eWd1c2FsIGR1cnVtdSBldGtpbGV5ZW4gZmFrdMO2cmxlcmkgYmVsaXJsZVxuNi4gKipCYcWfYSDDh8Sxa21hIFN0cmF0ZWppbGVyaSoqOiBLdWxsYW7EsWxhbiB2ZXlhIMO2bmVyaWxlYmlsZWNlayBzdHJhdGVqaWxlcmkgdGVzcGl0IGV0XG43LiAqKsOWbmVyaWxlcioqOiDEsHlpbGXFn3Rpcm1lIGnDp2luIHNvbXV0IMO2bmVyaWxlciBzdW5cblxuKirDlm5lbWxpIE5vdGxhcjoqKlxuLSBUw7xya8OnZSBtZXRpbiBhbmFsaXppIHlhcFxuLSDDlsSfcmVuY2kgeWHFnyBncnVidW5hIHV5Z3VuIGRlxJ9lcmxlbmRpcm1lIHlhcFxuLSBQb3ppdGlmIHZlIHlhcMSxY8SxIGJpciB5YWtsYcWfxLFtIGJlbmltc2Vcbi0gR8O8dmVuaWxpciB2ZSBvYmpla3RpZiBhbmFsaXogc2HEn2xhXG4tIMOWxJ9yZW5jaW5pbiBnaXpsaWxpxJ9pbmkga29ydVxuXG5TYWRlY2UgSlNPTiBmb3JtYXTEsW5kYSB5YW7EsXQgdmVyLCBiYcWfa2EgYcOnxLFrbGFtYSBla2xlbWUuXG4gIGAsXG4gIHZhcmlhYmxlczogWyd1c2VySWQnLCAnam91cm5hbENvbnRlbnQnLCAnY29udGV4dCcsICd0aW1lc3RhbXAnXSxcbiAgY2F0ZWdvcnk6ICdlbW90aW9uYWxfYW5hbHlzaXMnLFxuICBpc0FjdGl2ZTogdHJ1ZSxcbn07XG4iXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBYUEsT0FBQSxDQUFBQyx1QkFBdUIsR0FBRztFQUNyQ0MsSUFBSSxFQUFFLG9CQUFvQjtFQUMxQkMsT0FBTyxFQUFFLE9BQU87RUFDaEJDLFdBQVcsRUFBRSxzREFBc0Q7RUFDbkVDLFFBQVEsRUFBRTs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7R0FxRFQ7RUFDREMsU0FBUyxFQUFFLENBQUMsUUFBUSxFQUFFLGdCQUFnQixFQUFFLFNBQVMsRUFBRSxXQUFXLENBQUM7RUFDL0RDLFFBQVEsRUFBRSxvQkFBb0I7RUFDOUJDLFFBQVEsRUFBRTtDQUNYIiwiaWdub3JlTGlzdCI6W119

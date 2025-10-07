@@ -1,0 +1,262 @@
+24574e9d1c3599c9f3241081be967fa3
+"use strict";
+
+/* istanbul ignore next */
+function cov_11dnisnvmf() {
+  var path = "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/common/decorators/csrf.decorator.ts";
+  var hash = "e09ff58e87c2fa826d47920c6ba345b11780108f";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/common/decorators/csrf.decorator.ts",
+    statementMap: {
+      "0": {
+        start: {
+          line: 2,
+          column: 0
+        },
+        end: {
+          line: 2,
+          column: 62
+        }
+      },
+      "1": {
+        start: {
+          line: 3,
+          column: 0
+        },
+        end: {
+          line: 3,
+          column: 100
+        }
+      },
+      "2": {
+        start: {
+          line: 4,
+          column: 17
+        },
+        end: {
+          line: 4,
+          column: 42
+        }
+      },
+      "3": {
+        start: {
+          line: 5,
+          column: 0
+        },
+        end: {
+          line: 5,
+          column: 40
+        }
+      },
+      "4": {
+        start: {
+          line: 6,
+          column: 0
+        },
+        end: {
+          line: 6,
+          column: 40
+        }
+      },
+      "5": {
+        start: {
+          line: 10,
+          column: 20
+        },
+        end: {
+          line: 10,
+          column: 80
+        }
+      },
+      "6": {
+        start: {
+          line: 10,
+          column: 26
+        },
+        end: {
+          line: 10,
+          column: 80
+        }
+      },
+      "7": {
+        start: {
+          line: 11,
+          column: 0
+        },
+        end: {
+          line: 11,
+          column: 34
+        }
+      },
+      "8": {
+        start: {
+          line: 15,
+          column: 21
+        },
+        end: {
+          line: 15,
+          column: 81
+        }
+      },
+      "9": {
+        start: {
+          line: 15,
+          column: 27
+        },
+        end: {
+          line: 15,
+          column: 81
+        }
+      },
+      "10": {
+        start: {
+          line: 16,
+          column: 0
+        },
+        end: {
+          line: 16,
+          column: 36
+        }
+      }
+    },
+    fnMap: {
+      "0": {
+        name: "(anonymous_0)",
+        decl: {
+          start: {
+            line: 10,
+            column: 20
+          },
+          end: {
+            line: 10,
+            column: 21
+          }
+        },
+        loc: {
+          start: {
+            line: 10,
+            column: 26
+          },
+          end: {
+            line: 10,
+            column: 80
+          }
+        },
+        line: 10
+      },
+      "1": {
+        name: "(anonymous_1)",
+        decl: {
+          start: {
+            line: 15,
+            column: 21
+          },
+          end: {
+            line: 15,
+            column: 22
+          }
+        },
+        loc: {
+          start: {
+            line: 15,
+            column: 27
+          },
+          end: {
+            line: 15,
+            column: 81
+          }
+        },
+        line: 15
+      }
+    },
+    branchMap: {},
+    s: {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0
+    },
+    f: {
+      "0": 0,
+      "1": 0
+    },
+    b: {},
+    inputSourceMap: {
+      file: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/common/decorators/csrf.decorator.ts",
+      mappings: ";;;AAAA,2CAA6C;AAEhC,QAAA,aAAa,GAAG,eAAe,CAAC;AAChC,QAAA,aAAa,GAAG,eAAe,CAAC;AAE7C;;GAEG;AACI,MAAM,WAAW,GAAG,GAAG,EAAE,CAAC,IAAA,oBAAW,EAAC,qBAAa,EAAE,IAAI,CAAC,CAAC;AAArD,QAAA,WAAW,eAA0C;AAElE;;GAEG;AACI,MAAM,YAAY,GAAG,GAAG,EAAE,CAAC,IAAA,oBAAW,EAAC,qBAAa,EAAE,IAAI,CAAC,CAAC;AAAtD,QAAA,YAAY,gBAA0C",
+      names: [],
+      sources: ["/Users/ceomerf/Downloads/okuz_ai-main/backend/src/common/decorators/csrf.decorator.ts"],
+      sourcesContent: ["import { SetMetadata } from '@nestjs/common';\n\nexport const CSRF_REQUIRED = 'csrf_required';\nexport const CSRF_OPTIONAL = 'csrf_optional';\n\n/**\n * CSRF korumas\u0131 gerektiren endpoint'ler i\xE7in decorator\n */\nexport const RequireCsrf = () => SetMetadata(CSRF_REQUIRED, true);\n\n/**\n * CSRF korumas\u0131 opsiyonel endpoint'ler i\xE7in decorator\n */\nexport const OptionalCsrf = () => SetMetadata(CSRF_OPTIONAL, true);\n"],
+      version: 3
+    },
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "e09ff58e87c2fa826d47920c6ba345b11780108f"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    // @ts-ignore
+    cov_11dnisnvmf = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_11dnisnvmf();
+cov_11dnisnvmf().s[0]++;
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+/* istanbul ignore next */
+cov_11dnisnvmf().s[1]++;
+exports.OptionalCsrf = exports.RequireCsrf = exports.CSRF_OPTIONAL = exports.CSRF_REQUIRED = void 0;
+const common_1 =
+/* istanbul ignore next */
+(cov_11dnisnvmf().s[2]++, require("@nestjs/common"));
+/* istanbul ignore next */
+cov_11dnisnvmf().s[3]++;
+exports.CSRF_REQUIRED = 'csrf_required';
+/* istanbul ignore next */
+cov_11dnisnvmf().s[4]++;
+exports.CSRF_OPTIONAL = 'csrf_optional';
+/**
+ * CSRF koruması gerektiren endpoint'ler için decorator
+ */
+/* istanbul ignore next */
+cov_11dnisnvmf().s[5]++;
+const RequireCsrf = () => {
+  /* istanbul ignore next */
+  cov_11dnisnvmf().f[0]++;
+  cov_11dnisnvmf().s[6]++;
+  return (0, common_1.SetMetadata)(exports.CSRF_REQUIRED, true);
+};
+/* istanbul ignore next */
+cov_11dnisnvmf().s[7]++;
+exports.RequireCsrf = RequireCsrf;
+/**
+ * CSRF koruması opsiyonel endpoint'ler için decorator
+ */
+/* istanbul ignore next */
+cov_11dnisnvmf().s[8]++;
+const OptionalCsrf = () => {
+  /* istanbul ignore next */
+  cov_11dnisnvmf().f[1]++;
+  cov_11dnisnvmf().s[9]++;
+  return (0, common_1.SetMetadata)(exports.CSRF_OPTIONAL, true);
+};
+/* istanbul ignore next */
+cov_11dnisnvmf().s[10]++;
+exports.OptionalCsrf = OptionalCsrf;
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJjb3ZfMTFkbmlzbnZtZiIsImFjdHVhbENvdmVyYWdlIiwicyIsImNvbW1vbl8xIiwicmVxdWlyZSIsImV4cG9ydHMiLCJDU1JGX1JFUVVJUkVEIiwiQ1NSRl9PUFRJT05BTCIsIlJlcXVpcmVDc3JmIiwiZiIsIlNldE1ldGFkYXRhIiwiT3B0aW9uYWxDc3JmIl0sInNvdXJjZXMiOlsiL1VzZXJzL2Nlb21lcmYvRG93bmxvYWRzL29rdXpfYWktbWFpbi9iYWNrZW5kL3NyYy9jb21tb24vZGVjb3JhdG9ycy9jc3JmLmRlY29yYXRvci50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBTZXRNZXRhZGF0YSB9IGZyb20gJ0BuZXN0anMvY29tbW9uJztcblxuZXhwb3J0IGNvbnN0IENTUkZfUkVRVUlSRUQgPSAnY3NyZl9yZXF1aXJlZCc7XG5leHBvcnQgY29uc3QgQ1NSRl9PUFRJT05BTCA9ICdjc3JmX29wdGlvbmFsJztcblxuLyoqXG4gKiBDU1JGIGtvcnVtYXPEsSBnZXJla3RpcmVuIGVuZHBvaW50J2xlciBpw6dpbiBkZWNvcmF0b3JcbiAqL1xuZXhwb3J0IGNvbnN0IFJlcXVpcmVDc3JmID0gKCkgPT4gU2V0TWV0YWRhdGEoQ1NSRl9SRVFVSVJFRCwgdHJ1ZSk7XG5cbi8qKlxuICogQ1NSRiBrb3J1bWFzxLEgb3BzaXlvbmVsIGVuZHBvaW50J2xlciBpw6dpbiBkZWNvcmF0b3JcbiAqL1xuZXhwb3J0IGNvbnN0IE9wdGlvbmFsQ3NyZiA9ICgpID0+IFNldE1ldGFkYXRhKENTUkZfT1BUSU9OQUwsIHRydWUpO1xuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7O0lBYWE7SUFBQUEsY0FBQSxZQUFBQSxDQUFBO01BQUEsT0FBQUMsY0FBQTtJQUFBO0VBQUE7RUFBQSxPQUFBQSxjQUFBO0FBQUE7QUFBQUQsY0FBQTtBQUFBQSxjQUFBLEdBQUFFLENBQUE7Ozs7Ozs7QUFiYixNQUFBQyxRQUFBO0FBQUE7QUFBQSxDQUFBSCxjQUFBLEdBQUFFLENBQUEsT0FBQUUsT0FBQTtBQUE2QztBQUFBSixjQUFBLEdBQUFFLENBQUE7QUFFaENHLE9BQUEsQ0FBQUMsYUFBYSxHQUFHLGVBQWU7QUFBQztBQUFBTixjQUFBLEdBQUFFLENBQUE7QUFDaENHLE9BQUEsQ0FBQUUsYUFBYSxHQUFHLGVBQWU7QUFFNUM7OztBQUFBO0FBQUFQLGNBQUEsR0FBQUUsQ0FBQTtBQUdPLE1BQU1NLFdBQVcsR0FBR0EsQ0FBQSxLQUFNO0VBQUE7RUFBQVIsY0FBQSxHQUFBUyxDQUFBO0VBQUFULGNBQUEsR0FBQUUsQ0FBQTtFQUFBLFdBQUFDLFFBQUEsQ0FBQU8sV0FBVyxFQUFDTCxPQUFBLENBQUFDLGFBQWEsRUFBRSxJQUFJLENBQUM7QUFBRCxDQUFDO0FBQUM7QUFBQU4sY0FBQSxHQUFBRSxDQUFBO0FBQXJERyxPQUFBLENBQUFHLFdBQVcsR0FBQUEsV0FBQTtBQUV4Qjs7O0FBQUE7QUFBQVIsY0FBQSxHQUFBRSxDQUFBO0FBR08sTUFBTVMsWUFBWSxHQUFHQSxDQUFBLEtBQU07RUFBQTtFQUFBWCxjQUFBLEdBQUFTLENBQUE7RUFBQVQsY0FBQSxHQUFBRSxDQUFBO0VBQUEsV0FBQUMsUUFBQSxDQUFBTyxXQUFXLEVBQUNMLE9BQUEsQ0FBQUUsYUFBYSxFQUFFLElBQUksQ0FBQztBQUFELENBQUM7QUFBQztBQUFBUCxjQUFBLEdBQUFFLENBQUE7QUFBdERHLE9BQUEsQ0FBQU0sWUFBWSxHQUFBQSxZQUFBIiwiaWdub3JlTGlzdCI6W119

@@ -148,46 +148,16 @@ class _MainLayoutState extends State<MainLayout> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: isActive
-                    ? BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFFF57C00)
-                                .withOpacity(0.2) // Turuncu active bg
-                            : const Color(0xFFF57C00).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      )
-                    : null,
-                child: Icon(
-                  icon,
-                  color: isActive
-                      ? (isDark
-                          ? const Color(0xFFF57C00) // Turuncu active icon
-                          : const Color(0xFFF57C00))
-                      : (isDark
-                          ? Colors.white70 // Beyaz inactive icon
-                          : Colors.grey[400]),
-                  size: 20,
-                ),
+              _NavigationIcon(
+                icon: icon,
+                isActive: isActive,
+                isDark: isDark,
               ),
               const SizedBox(height: 2),
-              Text(
-                label,
-                style: GoogleFonts.figtree(
-                  fontSize: 9,
-                  color: isActive
-                      ? (isDark
-                          ? const Color(0xFFF57C00) // Turuncu active text
-                          : const Color(0xFFF57C00))
-                      : (isDark
-                          ? Colors.white60 // Beyaz inactive text
-                          : Colors.grey[400]),
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
+              _NavigationLabel(
+                label: label,
+                isActive: isActive,
+                isDark: isDark,
               ),
             ],
           ),
@@ -241,6 +211,79 @@ class _MainLayoutState extends State<MainLayout> {
           size: 24,
         ),
       ),
+    );
+  }
+}
+
+// Optimized navigation icon widget - const constructor for better performance
+class _NavigationIcon extends StatelessWidget {
+  final IconData icon;
+  final bool isActive;
+  final bool isDark;
+
+  const _NavigationIcon({
+    required this.icon,
+    required this.isActive,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: isActive
+          ? BoxDecoration(
+              color: isDark
+                  ? const Color(0xFFF57C00).withOpacity(0.2)
+                  : const Color(0xFFF57C00).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            )
+          : null,
+      child: Icon(
+        icon,
+        color: isActive
+            ? (isDark
+                ? const Color(0xFFF57C00)
+                : const Color(0xFFF57C00))
+            : (isDark
+                ? Colors.white70
+                : Colors.grey[400]),
+        size: 20,
+      ),
+    );
+  }
+}
+
+// Optimized navigation label widget - const constructor for better performance
+class _NavigationLabel extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final bool isDark;
+
+  const _NavigationLabel({
+    required this.label,
+    required this.isActive,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: GoogleFonts.figtree(
+        fontSize: 9,
+        color: isActive
+            ? (isDark
+                ? const Color(0xFFF57C00)
+                : const Color(0xFFF57C00))
+            : (isDark
+                ? Colors.white60
+                : Colors.grey[400]),
+        fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
     );
   }
 }

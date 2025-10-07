@@ -74,6 +74,40 @@ export class ScheduleAdjustmentService {
     });
     return updated;
   }
+
+  /**
+   * Tatil durumunu kontrol et
+   */
+  async checkHolidayStatus(userId: string): Promise<any> {
+    try {
+      // Kullanıcının tatil durumunu kontrol et
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { 
+          id: true, 
+          name: true,
+          // Tatil durumu için gerekli alanlar
+        }
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Tatil durumu kontrolü (basit implementasyon)
+      const today = new Date();
+      const isHoliday = today.getDay() === 0 || today.getDay() === 6; // Hafta sonu kontrolü
+
+      return {
+        success: true,
+        isHoliday,
+        message: isHoliday ? 'Today is a holiday' : 'Today is a regular day',
+        user
+      };
+    } catch (error) {
+      throw new Error('Failed to check holiday status');
+    }
+  }
 }
 
 

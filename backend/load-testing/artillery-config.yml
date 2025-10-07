@@ -1,0 +1,293 @@
+config:
+  target: 'https://api.okuz-ai.com'
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 10
+      name: "Warm-up"
+    # Ramp-up phase
+    - duration: 300
+      arrivalRate: 50
+      name: "Ramp-up"
+    # Sustained load phase
+    - duration: 600
+      arrivalRate: 100
+      name: "Sustained load"
+    # Peak load phase
+    - duration: 300
+      arrivalRate: 200
+      name: "Peak load"
+    # Cool-down phase
+    - duration: 120
+      arrivalRate: 20
+      name: "Cool-down"
+  http:
+    timeout: 30
+    pool: 10
+  plugins:
+    metrics-by-endpoint: {}
+    publish-metrics:
+      - type: cloudwatch
+        region: us-east-1
+        namespace: OkuzAI/LoadTest
+  variables:
+    baseUrl: "https://api.okuz-ai.com"
+    authToken: "{{ $randomString() }}"
+    userId: "{{ $randomString() }}"
+    planId: "{{ $randomString() }}"
+    sessionId: "{{ $randomString() }}"
+
+scenarios:
+  - name: "Authentication Flow"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/v1/auth/register"
+          json:
+            email: "{{ $randomString() }}@example.com"
+            password: "TestPassword123!"
+            name: "{{ $randomString() }}"
+            role: "STUDENT"
+          capture:
+            - json: "$.data.accessToken"
+              as: "accessToken"
+          expect:
+            - statusCode: 201
+      - post:
+          url: "/api/v1/auth/login"
+          json:
+            email: "{{ $randomString() }}@example.com"
+            password: "TestPassword123!"
+          capture:
+            - json: "$.data.accessToken"
+              as: "accessToken"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/v1/auth/me"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+
+  - name: "Planning Flow"
+    weight: 25
+    flow:
+      - post:
+          url: "/api/v1/planning/plans"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          json:
+            title: "Test Plan {{ $randomString() }}"
+            description: "Test plan description"
+            subject: "Mathematics"
+            grade: 9
+            difficulty: 5
+            estimatedDuration: 120
+          capture:
+            - json: "$.data.id"
+              as: "planId"
+          expect:
+            - statusCode: 201
+      - get:
+          url: "/api/v1/planning/plans/{{ planId }}"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - put:
+          url: "/api/v1/planning/plans/{{ planId }}"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          json:
+            title: "Updated Test Plan {{ $randomString() }}"
+            description: "Updated test plan description"
+          expect:
+            - statusCode: 200
+      - delete:
+          url: "/api/v1/planning/plans/{{ planId }}"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+
+  - name: "AI Service Flow"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/v1/ai/generate"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          json:
+            prompt: "Generate a study plan for mathematics grade 9"
+            promptType: "study_plan"
+            model: "gpt-4"
+            temperature: 0.7
+            maxTokens: 1000
+          expect:
+            - statusCode: 200
+      - post:
+          url: "/api/v1/ai/analyze"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          json:
+            text: "I am struggling with algebra and need help with quadratic equations"
+            analysisType: "emotional"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/v1/ai/prompts"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+
+  - name: "Notification Flow"
+    weight: 15
+    flow:
+      - post:
+          url: "/api/v1/notifications/send"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          json:
+            type: "INFO"
+            title: "Test Notification"
+            message: "This is a test notification"
+            channels: ["push", "email"]
+            priority: "medium"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/v1/notifications"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - post:
+          url: "/api/v1/notifications/preferences"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          json:
+            channel: "push"
+            enabled: true
+            frequency: "immediate"
+          expect:
+            - statusCode: 200
+
+  - name: "Session Management Flow"
+    weight: 10
+    flow:
+      - post:
+          url: "/api/v1/planning/sessions"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          json:
+            planId: "{{ planId }}"
+            title: "Test Session {{ $randomString() }}"
+            description: "Test session description"
+            subject: "Mathematics"
+            duration: 60
+            difficulty: 5
+          capture:
+            - json: "$.data.id"
+              as: "sessionId"
+          expect:
+            - statusCode: 201
+      - put:
+          url: "/api/v1/planning/sessions/{{ sessionId }}"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          json:
+            status: "IN_PROGRESS"
+          expect:
+            - statusCode: 200
+      - put:
+          url: "/api/v1/planning/sessions/{{ sessionId }}"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          json:
+            status: "COMPLETED"
+            score: 85
+            notes: "Session completed successfully"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/v1/planning/sessions/{{ sessionId }}"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+
+  - name: "Health Check Flow"
+    weight: 5
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/v1/auth/health"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/v1/planning/health"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/v1/ai/health"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/v1/notifications/health"
+          expect:
+            - statusCode: 200
+
+# Custom functions for load testing
+functions:
+  generateRandomEmail:
+    - "{{ $randomString() }}@example.com"
+  
+  generateRandomName:
+    - "{{ $randomString() }}"
+  
+  generateRandomPlan:
+    - title: "{{ $randomString() }}"
+      description: "{{ $randomString() }}"
+      subject: "{{ $randomString() }}"
+      grade: "{{ $randomInt(1, 12) }}"
+      difficulty: "{{ $randomInt(1, 10) }}"
+      estimatedDuration: "{{ $randomInt(30, 300) }}"
+  
+  generateRandomSession:
+    - title: "{{ $randomString() }}"
+      description: "{{ $randomString() }}"
+      subject: "{{ $randomString() }}"
+      duration: "{{ $randomInt(15, 180) }}"
+      difficulty: "{{ $randomInt(1, 10) }}"
+
+# Custom metrics
+metrics:
+  - name: "Response Time"
+    type: "histogram"
+    unit: "milliseconds"
+  - name: "Error Rate"
+    type: "counter"
+    unit: "percent"
+  - name: "Throughput"
+    type: "counter"
+    unit: "requests per second"
+  - name: "Concurrent Users"
+    type: "gauge"
+    unit: "users"
+  - name: "Database Connections"
+    type: "gauge"
+    unit: "connections"
+  - name: "Redis Connections"
+    type: "gauge"
+    unit: "connections"
+  - name: "Memory Usage"
+    type: "gauge"
+    unit: "bytes"
+  - name: "CPU Usage"
+    type: "gauge"
+    unit: "percent"

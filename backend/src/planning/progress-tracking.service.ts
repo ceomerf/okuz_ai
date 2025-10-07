@@ -207,4 +207,54 @@ export class ProgressTrackingService {
     
     return recommendations;
   }
+
+  /**
+   * Task progress güncelle
+   */
+  async updateTaskProgress(data: { userId: string; taskId: string; progress: number; notes?: string }): Promise<any> {
+    try {
+      // Task progress'i güncelle
+      const updatedTask = await this.prisma.studySession.update({
+        where: { id: data.taskId },
+        data: {
+          performance: data.progress,
+          notes: data.notes,
+          updatedAt: new Date()
+        }
+      });
+
+      return {
+        success: true,
+        message: 'Task progress updated successfully',
+        task: updatedTask
+      };
+    } catch (error) {
+      throw new Error('Failed to update task progress');
+    }
+  }
+
+  /**
+   * Task progress güncelle (minutes parametresi ile)
+   */
+  async updateTaskProgressWithMinutes(data: { userId: string; taskId: string; minutes: number; notes?: string }): Promise<any> {
+    try {
+      // Task progress'i güncelle
+      const updatedTask = await this.prisma.studySession.update({
+        where: { id: data.taskId },
+        data: {
+          duration: data.minutes,
+          notes: data.notes,
+          updatedAt: new Date()
+        }
+      });
+
+      return {
+        success: true,
+        message: 'Task progress updated successfully',
+        task: updatedTask
+      };
+    } catch (error) {
+      throw new Error('Failed to update task progress');
+    }
+  }
 }

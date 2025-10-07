@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, Param, Put, Delete } from '@nestjs/common';
 import { InteractionService } from './interaction.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -6,6 +6,61 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 export class InteractionController {
   constructor(private readonly interactionService: InteractionService) {}
+
+  @Post()
+  async createInteraction(@Request() req: any, @Body() interactionData: any) {
+    return this.interactionService.createInteraction(interactionData);
+  }
+
+  @Get(':id')
+  async getInteraction(@Param('id') id: string) {
+    return this.interactionService.getInteraction(id);
+  }
+
+  @Get('user/:userId')
+  async getUserInteractions(@Param('userId') userId: string) {
+    return this.interactionService.getUserInteractions(userId);
+  }
+
+  @Get('type/:type')
+  async getInteractionsByType(@Param('type') type: string) {
+    return this.interactionService.getInteractionsByType(type);
+  }
+
+  @Put(':id')
+  async updateInteraction(@Param('id') id: string, @Body() updateData: any) {
+    return this.interactionService.updateInteraction(id, updateData);
+  }
+
+  @Delete(':id')
+  async deleteInteraction(@Param('id') id: string) {
+    return this.interactionService.deleteInteraction(id);
+  }
+
+  @Get('stats/:userId')
+  async getInteractionStats(@Param('userId') userId: string) {
+    return this.interactionService.getInteractionStats(userId);
+  }
+
+  @Get('behavior/:userId')
+  async getUserBehaviorPattern(@Param('userId') userId: string) {
+    return this.interactionService.getUserBehaviorPattern(userId);
+  }
+
+  @Get('journey/:userId')
+  async trackUserJourney(@Param('userId') userId: string) {
+    return this.interactionService.trackUserJourney(userId);
+  }
+
+  @Get('heatmap/:page')
+  async getHeatmapData(@Param('page') page: string) {
+    return this.interactionService.getHeatmapData(page);
+  }
+
+  @Get('engagement/:userId')
+  async getUserEngagement(@Param('userId') userId: string) {
+    return this.interactionService.getUserEngagement(userId);
+  }
 
   @Post('chat')
   async handleChat(@Request() req: any, @Body() body: { message: string; context?: string }) {

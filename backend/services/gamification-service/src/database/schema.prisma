@@ -1,0 +1,332 @@
+// Gamification Service Database Schema
+// This schema is specific to the Gamification Service and contains only gamification-related entities
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("GAMIFICATION_DATABASE_URL")
+}
+
+// User entity (minimal user data for gamification service)
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      UserRole @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  points      UserPoints[]
+  achievements UserAchievement[]
+  badges      UserBadge[]
+  leaderboard LeaderboardEntry[]
+  activities  UserActivity[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  PARENT
+  ADMIN
+}
+
+// User Points entity
+model UserPoints {
+  id          String   @id @default(cuid())
+  userId      String
+  points      Int      @default(0)
+  pointsType  PointsType
+  source      String   // e.g., "study_session", "quiz_completed", "streak"
+  description String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_points")
+}
+
+enum PointsType {
+  STUDY
+  QUIZ
+  STREAK
+  ACHIEVEMENT
+  BONUS
+  PENALTY
+}
+
+// Achievement entity
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  icon        String?
+  points      Int      @default(0)
+  category    AchievementCategory
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+enum AchievementCategory {
+  STUDY
+  STREAK
+  QUIZ
+  SOCIAL
+  SPECIAL
+}
+
+// User Achievement entity
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime @default(now())
+  isNotified    Boolean  @default(false)
+
+  // Relations
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+// Badge entity
+model Badge {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  icon        String?
+  color       String?
+  category    BadgeCategory
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userBadges UserBadge[]
+
+  @@map("badges")
+}
+
+enum BadgeCategory {
+  STUDY
+  STREAK
+  QUIZ
+  SOCIAL
+  SPECIAL
+}
+
+// User Badge entity
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeId   String
+  earnedAt  DateTime @default(now())
+  isActive  Boolean  @default(true)
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+// Leaderboard entity
+model LeaderboardEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  points    Int      @default(0)
+  rank      Int
+  period    LeaderboardPeriod
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, period])
+  @@map("leaderboard_entries")
+}
+
+enum LeaderboardPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  ALL_TIME
+}
+
+// User Activity entity
+model UserActivity {
+  id          String   @id @default(cuid())
+  userId      String
+  activityType ActivityType
+  description String
+  points      Int      @default(0)
+  metadata    Json?
+  createdAt   DateTime @default(now()
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_activities")
+}
+
+enum ActivityType {
+  STUDY_SESSION
+  QUIZ_COMPLETED
+  ACHIEVEMENT_EARNED
+  BADGE_EARNED
+  STREAK_MILESTONE
+  LEVEL_UP
+  SOCIAL_INTERACTION
+}
+
+// Streak entity
+model Streak {
+  id          String   @id @default(cuid())
+  userId    String
+  streakType StreakType
+  count     Int      @default(0)
+  lastDate  DateTime
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, streakType])
+  @@map("streaks")
+}
+
+enum StreakType {
+  DAILY_STUDY
+  WEEKLY_STUDY
+  QUIZ_STREAK
+  LOGIN_STREAK
+}
+
+// Level entity
+model Level {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  minPoints   Int
+  maxPoints   Int
+  icon        String?
+  color       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("levels")
+}
+
+// User Level entity
+model UserLevel {
+  id        String   @id @default(cuid())
+  userId    String
+  levelId   String
+  currentPoints Int @default(0)
+  levelUpAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, levelId])
+  @@map("user_levels")
+}
+
+// Quest entity
+model Quest {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  points      Int      @default(0)
+  questType   QuestType
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userQuests UserQuest[]
+
+  @@map("quests")
+}
+
+enum QuestType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  SPECIAL
+}
+
+// User Quest entity
+model UserQuest {
+  id        String   @id @default(cuid())
+  userId    String
+  questId   String
+  status    QuestStatus @default(ACTIVE)
+  progress  Int      @default(0)
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quest Quest @relation(fields: [questId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questId])
+  @@map("user_quests")
+}
+
+enum QuestStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+// Gamification Events entity (for event sourcing)
+model GamificationEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  eventType String
+  eventData Json
+  timestamp DateTime @default(now())
+
+  @@map("gamification_events")
+}
+
+// Gamification Statistics entity
+model GamificationStatistics {
+  id                    String   @id @default(cuid())
+  userId                String
+  totalPoints           Int      @default(0)
+  totalAchievements     Int      @default(0)
+  totalBadges           Int      @default(0)
+  currentLevel          Int      @default(1)
+  longestStreak         Int      @default(0)
+  currentStreak         Int      @default(0)
+  totalStudyTime        Int      @default(0) // in minutes
+  averageScore          Float    @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("gamification_statistics")
+}
