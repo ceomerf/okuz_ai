@@ -13,6 +13,7 @@ import {
 import { apiService } from '../../services/api';
 
 const SimpleDashboard: React.FC = () => {
+  const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,13 +29,66 @@ const SimpleDashboard: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('Dashboard verisi:', data);
+        setDashboardData(data);
       } else {
-        console.log('API henüz hazır değil, mock veri kullanılıyor');
+        console.log('API henüz hazır değil, gerçek durum gösteriliyor');
+        // Gerçek durumu göster - veri yoksa sıfır göster
+        setDashboardData({
+          overallHealth: {
+            score: 0,
+            status: 'critical',
+            trend: 'stable',
+            lastUpdated: new Date().toISOString()
+          },
+          criticalMetrics: {
+            users: { active: 0, status: 'critical' },
+            revenue: { current: 0, target: 0, status: 'critical' },
+            performance: { uptime: 0, status: 'critical' }
+          },
+          goals: [],
+          urgentIssues: [{
+            title: 'Sistem Başlatılıyor',
+            description: 'Backend servisleri henüz tam olarak çalışmıyor. Redis ve PostgreSQL bağlantıları kuruluyor.',
+            severity: 'high',
+            action: 'Servisleri kontrol edin',
+            timestamp: new Date().toISOString()
+          }],
+          quickActions: [
+            { buttonText: 'Servisleri Başlat', action: 'Servisleri başlat', endpoint: '/api/system/start' },
+            { buttonText: 'Durum Kontrolü', action: 'Sistem durumunu kontrol et', endpoint: '/api/system/status' }
+          ]
+        });
       }
       setError(null);
     } catch (err) {
-      console.log('API bağlantısı yok, mock veri kullanılıyor');
-      setError(null); // Hata gösterme, mock veri kullan
+      console.log('API bağlantısı yok, gerçek durum gösteriliyor');
+      setError(null);
+      // Bağlantı yoksa gerçek durumu göster
+      setDashboardData({
+        overallHealth: {
+          score: 0,
+          status: 'critical',
+          trend: 'stable',
+          lastUpdated: new Date().toISOString()
+        },
+        criticalMetrics: {
+          users: { active: 0, status: 'critical' },
+          revenue: { current: 0, target: 0, status: 'critical' },
+          performance: { uptime: 0, status: 'critical' }
+        },
+        goals: [],
+        urgentIssues: [{
+          title: 'Backend Bağlantı Hatası',
+          description: 'Backend API\'ye bağlanılamıyor. Sunucu durumunu kontrol edin.',
+          severity: 'high',
+          action: 'Backend servislerini başlatın',
+          timestamp: new Date().toISOString()
+        }],
+        quickActions: [
+          { buttonText: 'Backend Başlat', action: 'Backend servislerini başlat', endpoint: '/api/system/start' },
+          { buttonText: 'Durum Kontrolü', action: 'Sistem durumunu kontrol et', endpoint: '/api/system/status' }
+        ]
+      });
     } finally {
       setLoading(false);
     }
