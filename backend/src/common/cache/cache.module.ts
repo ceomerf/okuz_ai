@@ -9,9 +9,11 @@ import { CacheEvictInterceptor } from './cache-evict.interceptor';
 @Module({
   imports: [
     ConfigModule,
-    NestCacheModule.register({
-      ttl: 300, // 5 minutes
-      max: 100, // maximum number of items in cache
+    NestCacheModule.registerAsync({
+      useFactory: () => ({
+        ttl: 300, // 5 minutes
+        max: 100, // maximum number of items in cache
+      }),
     }),
   ],
   providers: [CacheService, CacheInterceptor, CacheEvictInterceptor],
