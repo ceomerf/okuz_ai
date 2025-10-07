@@ -1,3 +1,23 @@
+# Node / Nest
+node_modules/
+dist/
+.env
+.env.*
+
+# Coverage outputs
+coverage/
+backend/coverage/
+okuz_ai/coverage/
+
+# Logs
+*.log
+logs/
+
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+
 # Dependencies
 node_modules/
 npm-debug.log*
@@ -71,3 +91,10 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Global env ignore
+**/.env
+**/.env.*
+**/env
+**/env.*
+!**/env.example

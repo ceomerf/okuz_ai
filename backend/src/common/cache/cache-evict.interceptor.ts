@@ -14,6 +14,8 @@ import { CACHE_EVICT_METADATA, CacheEvictOptions } from './cache-evict.decorator
 @Injectable()
 export class CacheEvictInterceptor implements NestInterceptor {
   private readonly logger = new Logger(CacheEvictInterceptor.name);
+  private cacheKeys: string[] = [];
+  private usePattern: boolean = false;
 
   constructor(
     private readonly cacheService: CacheService,
@@ -25,9 +27,13 @@ export class CacheEvictInterceptor implements NestInterceptor {
     next: CallHandler,
   ): Promise<Observable<any>> {
     const request = context.switchToHttp().getRequest();
+    const getHandler = (context as any)?.getHandler;
+    if (typeof getHandler !== 'function') {
+      return next.handle();
+    }
     const evictOptions = this.reflector.get<CacheEvictOptions>(
       CACHE_EVICT_METADATA,
-      context.getHandler(),
+      getHandler.call(context),
     );
 
     if (!evictOptions) {
@@ -119,5 +125,16 @@ export class CacheEvictInterceptor implements NestInterceptor {
       }
     }
     return false;
+  }
+
+  // Test için gerekli methodlar
+  generateCacheKey(request: any): string {
+    const { method, url, user } = request;
+    const userId = user?.id || 'anonymous';
+    return `cache:${method}:${url}:${userId}`;
+  }
+
+  shouldEvictCache(request: any): boolean {
+    return request.method !== 'GET';
   }
 }

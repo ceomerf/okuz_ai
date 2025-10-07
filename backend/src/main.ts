@@ -1,86 +1,28 @@
-import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import helmet from 'helmet';
-// @ts-ignore
-import * as compression from 'compression';
+import compression from 'compression';
+import { SentryService } from './monitoring/sentry.service';
+import { Request, Response, NextFunction } from 'express';
+import { sanitizeLogsMiddleware } from './common/middleware';
+import { requestContextMiddleware } from './common/logging/request-context.middleware';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import rateLimit from 'express-rate-limit';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Güvenlik ve performans middleware'leri - ENTERPRISE GRADE
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'"],
-        fontSrc: ["'self'"],
-        objectSrc: ["'none'"],
-        mediaSrc: ["'self'"],
-        frameSrc: ["'none'"],
-      },
-    },
-    crossOriginEmbedderPolicy: false,
-    hsts: {
-      maxAge: 31536000,
-      includeSubDomains: true,
-      preload: true,
-    },
-  }));
-  
-  // compression import'u CJS olduğundan namespace import ile çağırıyoruz
-  app.use((compression as unknown as () => void)());
-
-  // CORS configuration (yalnızca izinli origin'ler) - ENTERPRISE GRADE
-  const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(',').filter(Boolean) || [];
-  
-  if (allowedOrigins.length === 0) {
-    throw new Error('CORS_ALLOWED_ORIGINS environment variable is required and must contain at least one origin');
-  }
-
-  app.enableCors({
-    origin: (origin, callback) => {
-      // Development ortamında localhost'a izin ver
-      if (process.env.NODE_ENV === 'development' && origin?.includes('localhost')) {
-        return callback(null, true);
-      }
-      
-      // Origin header yoksa reddet (production'da)
-      if (!origin) {
-        return callback(new Error('Not allowed by CORS - No origin header'), false);
-      }
-      
-      // Origin listede varsa izin ver
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      
-      // Origin listede yoksa reddet
-      return callback(new Error(`Not allowed by CORS - Origin: ${origin}`), false);
-    },
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Origin',
-      'X-Requested-With',
-      'Content-Type',
-      'Accept',
-      'Authorization',
-      'Cache-Control',
-      'Pragma'
-    ],
-    exposedHeaders: ['Authorization'],
-    credentials: true,
-    maxAge: 86400, // 24 hours
+  // Enable API versioning
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
   });
 
-  // Global validation pipe - ENTERPRISE GRADE
+  // Global validation pipe
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true,
@@ -88,71 +30,185 @@ async function bootstrap() {
     transformOptions: {
       enableImplicitConversion: true,
     },
-    validateCustomDecorators: true,
-    disableErrorMessages: process.env.NODE_ENV === 'production',
-    exceptionFactory: (errors) => {
-      const result = errors.map((error) => ({
-        property: error.property,
-        value: error.value,
-        constraints: error.constraints,
-      }));
-      return new Error(`Validation failed: ${JSON.stringify(result)}`);
-    },
   }));
 
+  // Security middleware
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
+
+  // Compression middleware
+  app.use(compression());
+
+  // Request context middleware
+  app.use(requestContextMiddleware);
+
+  // Rate limiting
+  app.use(rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+  }));
+
+  // CORS configuration
+  app.enableCors({
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Request-ID'],
+    credentials: true,
+  });
+
+  // Custom middleware for request sanitization
+  app.use(sanitizeLogsMiddleware);
+
   // Global exception filter
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // Swagger API documentation
   const config = new DocumentBuilder()
     .setTitle('Okuz AI API')
-    .setDescription('AI-powered learning platform API')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .addTag('Authentication', 'User authentication endpoints')
-    .addTag('Smart Tools', 'AI-powered learning tools')
-    .addTag('Gamification', 'Learning gamification system')
-    .addTag('Planning', 'Study planning and scheduling')
-    .addTag('Analysis', 'Performance and learning analysis')
-    .addTag('Health', 'Health check endpoints')
+    .setDescription(`
+      Okuz AI Backend API Documentation
+      
+      ## API Versions
+      - **v1**: Current stable version
+      - **v2**: Enhanced version with new features
+      - **v3**: Future version (in development)
+      
+      ## Authentication
+      Most endpoints require JWT authentication. Include the token in the Authorization header:
+      \`Authorization: Bearer <your-token>\`
+      
+      ## Rate Limiting
+      - General API: 100 requests per 15 minutes
+      - Smart Tools: 2-10 requests per minute (depending on tool)
+      
+      ## Versioning
+      API versions are specified in the URL path:
+      - \`/api/v1/users\` - Version 1
+      - \`/api/v2/users\` - Version 2
+      
+      ## Error Handling
+      All errors follow a consistent format:
+      \`\`\`json
+      {
+        "statusCode": 400,
+        "message": "Error description",
+        "timestamp": "2024-01-01T00:00:00.000Z",
+        "path": "/api/v1/endpoint"
+      }
+      \`\`\`
+    `)
+    .setVersion('2.0.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
+    .addApiKey(
+      {
+        type: 'apiKey',
+        name: 'X-API-Key',
+        in: 'header',
+        description: 'API Key for external services',
+      },
+      'API-Key',
+    )
+    .addTag('Auth', 'Authentication endpoints')
+    .addTag('Users', 'User management endpoints')
+    .addTag('Planning', 'Study planning endpoints')
+    .addTag('Smart Tools', 'AI-powered tools endpoints')
+    .addTag('Analysis', 'Analytics and reporting endpoints')
+    .addTag('Subscription', 'Subscription management endpoints')
+    .addTag('Webhook', 'Webhook endpoints for external services')
     .build();
-  
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document, {
-    customSiteTitle: 'Okuz AI API Documentation',
-    customfavIcon: '/favicon.ico',
-    customCssUrl: '/swagger-ui-custom.css',
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
+
+  const document = SwaggerModule.createDocument(app, config, {
+    operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
   });
 
-  // Reverse proxy arkasında doğru client IP ve forwarded header'ları kullanmak için
-  app.set('trust proxy', 1);
-
-  // Rate limiting middleware - ENTERPRISE GRADE
-  const rateLimit = require('express-rate-limit');
-  app.use(rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 dakika
-    max: 100, // IP başına maksimum 100 istek
-    message: {
-      error: 'Too many requests from this IP, please try again later.',
-      retryAfter: '15 minutes'
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      docExpansion: 'none',
+      filter: true,
+      showRequestHeaders: true,
+      tryItOutEnabled: true,
     },
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: (req: any) => {
-      // Health check endpoint'lerini skip et
-      return req.path === '/health' || req.path === '/health/detailed';
-    }
-  }));
+    customSiteTitle: 'Okuz AI API Documentation',
+    customfavIcon: '/favicon.ico',
+    customCss: `
+      .swagger-ui .topbar { display: none }
+      .swagger-ui .info .title { color: #3b82f6; }
+    `,
+  });
 
-  const port = process.env.PORT || 3002; // Port 3002'ye değiştirdik
+  // Health check endpoint
+  app.getHttpAdapter().get('/health', (req: Request, res: Response) => {
+    res.status(200).json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      version: process.env.npm_package_version || '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+    });
+  });
+
+  // API version info endpoint
+  app.getHttpAdapter().get('/api/versions', (req: Request, res: Response) => {
+    res.status(200).json({
+      versions: [
+        {
+          version: 'v1',
+          status: 'stable',
+          deprecationDate: null,
+          sunsetDate: null,
+        },
+        {
+          version: 'v2',
+          status: 'stable',
+          deprecationDate: null,
+          sunsetDate: null,
+        },
+        {
+          version: 'v3',
+          status: 'beta',
+          deprecationDate: null,
+          sunsetDate: null,
+        },
+      ],
+      current: 'v2',
+      latest: 'v2',
+    });
+  });
+
+  const port = process.env.PORT || 3000;
   await app.listen(port);
-  
-  console.log(`🚀 Okuz AI Backend is running on: http://localhost:${port}`);
-  console.log(`📚 API Documentation available at: http://localhost:${port}/api`);
-  console.log(`💾 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+  console.log(`🚀 Okuz AI Backend is running on port ${port}`);
+  console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
+  console.log(`🔍 Health Check: http://localhost:${port}/health`);
+  console.log(`📊 API Versions: http://localhost:${port}/api/versions`);
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('❌ Failed to start application:', error);
+  process.exit(1);
+});

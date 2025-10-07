@@ -1,0 +1,194 @@
+version: '3.8'
+
+services:
+  # API Gateway (Development)
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile.dev
+    container_name: okuz-api-gateway-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - PLANNING_SERVICE_URL=http://planning-service:3002
+      - AI_SERVICE_URL=http://ai-service:3003
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3004
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=dev-jwt-secret
+      - CORS_ORIGIN=*
+    volumes:
+      - ./api-gateway:/app
+      - /app/node_modules
+    depends_on:
+      - redis
+    networks:
+      - okuz-dev-network
+    restart: unless-stopped
+    command: npm run start:dev
+
+  # Auth Service (Development)
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile.dev
+    container_name: okuz-auth-service-dev
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/okuz_dev
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=dev-jwt-secret
+      - JWT_EXPIRES_IN=1h
+      - BCRYPT_ROUNDS=10
+      - CORS_ORIGIN=*
+    volumes:
+      - ./services/auth-service:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - okuz-dev-network
+    restart: unless-stopped
+    command: npm run start:dev
+
+  # Planning Service (Development)
+  planning-service:
+    build:
+      context: ./services/planning-service
+      dockerfile: Dockerfile.dev
+    container_name: okuz-planning-service-dev
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/okuz_dev
+      - REDIS_URL=redis://redis:6379
+      - AI_SERVICE_URL=http://ai-service:3003
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3004
+      - JWT_SECRET=dev-jwt-secret
+      - CORS_ORIGIN=*
+    volumes:
+      - ./services/planning-service:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - okuz-dev-network
+    restart: unless-stopped
+    command: npm run start:dev
+
+  # AI Service (Development)
+  ai-service:
+    build:
+      context: ./services/ai-service
+      dockerfile: Dockerfile.dev
+    container_name: okuz-ai-service-dev
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/okuz_dev
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=gpt-4
+      - OPENAI_TEMPERATURE=0.7
+      - OPENAI_MAX_TOKENS=1000
+      - JWT_SECRET=dev-jwt-secret
+      - CORS_ORIGIN=*
+    volumes:
+      - ./services/ai-service:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - okuz-dev-network
+    restart: unless-stopped
+    command: npm run start:dev
+
+  # Notification Service (Development)
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile.dev
+    container_name: okuz-notification-service-dev
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/okuz_dev
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=dev-jwt-secret
+      - CORS_ORIGIN=*
+    volumes:
+      - ./services/notification-service:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - okuz-dev-network
+    restart: unless-stopped
+    command: npm run start:dev
+
+  # Database (Development)
+  postgres:
+    image: postgres:15-alpine
+    container_name: okuz-postgres-dev
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=okuz_dev
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/init-db-dev.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - okuz-dev-network
+    restart: unless-stopped
+
+  # Redis (Development)
+  redis:
+    image: redis:7-alpine
+    container_name: okuz-redis-dev
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - okuz-dev-network
+    restart: unless-stopped
+
+  # Nginx (Development)
+  nginx:
+    image: nginx:alpine
+    container_name: okuz-nginx-dev
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api-gateway
+    networks:
+      - okuz-dev-network
+    restart: unless-stopped
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+
+networks:
+  okuz-dev-network:
+    driver: bridge

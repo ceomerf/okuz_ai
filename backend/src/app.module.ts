@@ -8,7 +8,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './common/prisma/prisma.module';
 // import { GeminiModule } from './services/gemini.module'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 import { QueueModule } from './services/queue.module';
-import { CacheModule } from './services/cache.module';
+import { CacheModule as CommonCacheModule } from './common/cache/cache.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { StudentsModule } from './students/students.module';
@@ -25,6 +25,13 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SolverModule } from './services/solver.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { CoachingModule } from './coaching/coaching.module';
+import { ParentReportsModule } from './parent-reports/parent-reports.module';
+import { AICoachModule } from './ai-coach/ai-coach.module';
+import { NotificationSettingsModule } from './notification-settings/notification-settings.module';
+import { ReferralModule } from './referral/referral.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -79,7 +86,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     // GeminiModule, // DEVRE DIŞI - OPENAI KULLANILIYOR
     // OpenAIModule, // OpenAI modülü eklenebilir
     QueueModule,
-    CacheModule,
+    CommonCacheModule,
     AuthModule,
     UsersModule,
     StudentsModule,
@@ -96,8 +103,17 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     RealtimeModule,
     SolverModule,
     MonitoringModule,
+    // Sprint 1: Koç paneli ve veli raporları
+    CoachingModule,
+    ParentReportsModule,
+    AICoachModule,
+    NotificationSettingsModule,
+    ReferralModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

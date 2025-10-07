@@ -1,0 +1,343 @@
+name: 🔄 Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      rollback_type:
+        description: 'Rollback type'
+        required: true
+        default: 'previous'
+        type: choice
+        options:
+          - previous
+          - specific_tag
+          - canary
+      specific_tag:
+        description: 'Specific tag to rollback to (if specific_tag selected)'
+        required: false
+        type: string
+      reason:
+        description: 'Reason for rollback'
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ===========================================
+  # ROLLBACK VALIDATION
+  # ===========================================
+  
+  validate-rollback:
+    name: 🔍 Validate Rollback
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🏷️ Get available tags
+        id: get-tags
+        run: |
+          echo "Available tags:"
+          git tag --sort=-version:refname | head -10
+          
+          # Check if specific tag exists
+          if [ "${{ github.event.inputs.rollback_type }}" = "specific_tag" ]; then
+            if git rev-parse "${{ github.event.inputs.specific_tag }}" >/dev/null 2>&1; then
+              echo "✅ Tag ${{ github.event.inputs.specific_tag }} exists"
+            else
+              echo "❌ Tag ${{ github.event.inputs.specific_tag }} does not exist"
+              exit 1
+            fi
+          fi
+
+      - name: 📊 Get current deployment info
+        run: |
+          echo "Rollback Details:"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Rollback Type: ${{ github.event.inputs.rollback_type }}"
+          echo "Reason: ${{ github.event.inputs.reason }}"
+          if [ "${{ github.event.inputs.rollback_type }}" = "specific_tag" ]; then
+            echo "Specific Tag: ${{ github.event.inputs.specific_tag }}"
+          fi
+
+  # ===========================================
+  # STAGING ROLLBACK
+  # ===========================================
+  
+  rollback-staging:
+    name: 🔄 Rollback Staging
+    runs-on: ubuntu-latest
+    needs: validate-rollback
+    if: github.event.inputs.environment == 'staging'
+    environment: staging
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: 🔐 Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: 📊 Get current deployment status
+        run: |
+          echo "Current staging deployment status:"
+          kubectl get deployments -n okuz-ai-staging
+          kubectl get pods -n okuz-ai-staging
+          kubectl rollout history deployment/api-gateway -n okuz-ai-staging
+          kubectl rollout history deployment/planning-service -n okuz-ai-staging
+          kubectl rollout history deployment/smart-tools-service -n okuz-ai-staging
+          kubectl rollout history deployment/gamification-service -n okuz-ai-staging
+          kubectl rollout history deployment/notification-service -n okuz-ai-staging
+          kubectl rollout history deployment/auth-service -n okuz-ai-staging
+
+      - name: 🔄 Rollback to previous version
+        if: github.event.inputs.rollback_type == 'previous'
+        run: |
+          echo "Rolling back to previous version..."
+          kubectl rollout undo deployment/api-gateway -n okuz-ai-staging
+          kubectl rollout undo deployment/planning-service -n okuz-ai-staging
+          kubectl rollout undo deployment/smart-tools-service -n okuz-ai-staging
+          kubectl rollout undo deployment/gamification-service -n okuz-ai-staging
+          kubectl rollout undo deployment/notification-service -n okuz-ai-staging
+          kubectl rollout undo deployment/auth-service -n okuz-ai-staging
+
+      - name: 🔄 Rollback to specific tag
+        if: github.event.inputs.rollback_type == 'specific_tag'
+        run: |
+          echo "Rolling back to specific tag: ${{ github.event.inputs.specific_tag }}"
+          
+          # Update image tags to specific version
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api-gateway:${{ github.event.inputs.specific_tag }}|g" k8s/staging/api-gateway.yaml
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/planning-service:${{ github.event.inputs.specific_tag }}|g" k8s/staging/planning-service.yaml
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/smart-tools-service:${{ github.event.inputs.specific_tag }}|g" k8s/staging/smart-tools-service.yaml
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gamification-service:${{ github.event.inputs.specific_tag }}|g" k8s/staging/gamification-service.yaml
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/notification-service:${{ github.event.inputs.specific_tag }}|g" k8s/staging/notification-service.yaml
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/auth-service:${{ github.event.inputs.specific_tag }}|g" k8s/staging/auth-service.yaml
+          
+          # Apply the rollback
+          kubectl apply -f k8s/staging/api-gateway.yaml
+          kubectl apply -f k8s/staging/planning-service.yaml
+          kubectl apply -f k8s/staging/smart-tools-service.yaml
+          kubectl apply -f k8s/staging/gamification-service.yaml
+          kubectl apply -f k8s/staging/notification-service.yaml
+          kubectl apply -f k8s/staging/auth-service.yaml
+
+      - name: 🔄 Canary rollback
+        if: github.event.inputs.rollback_type == 'canary'
+        run: |
+          echo "Performing canary rollback..."
+          
+          # Scale down canary deployment
+          kubectl scale deployment api-gateway-canary --replicas=0 -n okuz-ai-staging
+          kubectl scale deployment planning-service-canary --replicas=0 -n okuz-ai-staging
+          kubectl scale deployment smart-tools-service-canary --replicas=0 -n okuz-ai-staging
+          kubectl scale deployment gamification-service-canary --replicas=0 -n okuz-ai-staging
+          kubectl scale deployment notification-service-canary --replicas=0 -n okuz-ai-staging
+          kubectl scale deployment auth-service-canary --replicas=0 -n okuz-ai-staging
+          
+          # Scale up stable deployment
+          kubectl scale deployment api-gateway --replicas=3 -n okuz-ai-staging
+          kubectl scale deployment planning-service --replicas=3 -n okuz-ai-staging
+          kubectl scale deployment smart-tools-service --replicas=3 -n okuz-ai-staging
+          kubectl scale deployment gamification-service --replicas=3 -n okuz-ai-staging
+          kubectl scale deployment notification-service --replicas=3 -n okuz-ai-staging
+          kubectl scale deployment auth-service --replicas=3 -n okuz-ai-staging
+
+      - name: ⏳ Wait for rollback
+        run: |
+          echo "Waiting for rollback to complete..."
+          kubectl rollout status deployment/api-gateway -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/planning-service -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/smart-tools-service -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/gamification-service -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/notification-service -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/auth-service -n okuz-ai-staging --timeout=300s
+
+      - name: 🏥 Health check after rollback
+        run: |
+          echo "Testing rollback health check..."
+          kubectl get pods -n okuz-ai-staging
+          kubectl get services -n okuz-ai-staging
+          
+          # Wait for services to be ready
+          sleep 30
+          
+          # Test health endpoints
+          kubectl port-forward -n okuz-ai-staging service/api-gateway 8080:80 &
+          sleep 10
+          curl -f http://localhost:8080/health || echo "Health check failed"
+
+      - name: 📊 Notify rollback completion
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        if: always()
+
+  # ===========================================
+  # PRODUCTION ROLLBACK
+  # ===========================================
+  
+  rollback-production:
+    name: 🔄 Rollback Production
+    runs-on: ubuntu-latest
+    needs: validate-rollback
+    if: github.event.inputs.environment == 'production'
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: 🔐 Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: 📊 Get current deployment status
+        run: |
+          echo "Current production deployment status:"
+          kubectl get deployments -n okuz-ai-production
+          kubectl get pods -n okuz-ai-production
+          kubectl rollout history deployment/api-gateway -n okuz-ai-production
+          kubectl rollout history deployment/planning-service -n okuz-ai-production
+          kubectl rollout history deployment/smart-tools-service -n okuz-ai-production
+          kubectl rollout history deployment/gamification-service -n okuz-ai-production
+          kubectl rollout history deployment/notification-service -n okuz-ai-production
+          kubectl rollout history deployment/auth-service -n okuz-ai-production
+
+      - name: 🔄 Rollback to previous version
+        if: github.event.inputs.rollback_type == 'previous'
+        run: |
+          echo "Rolling back to previous version..."
+          kubectl rollout undo deployment/api-gateway -n okuz-ai-production
+          kubectl rollout undo deployment/planning-service -n okuz-ai-production
+          kubectl rollout undo deployment/smart-tools-service -n okuz-ai-production
+          kubectl rollout undo deployment/gamification-service -n okuz-ai-production
+          kubectl rollout undo deployment/notification-service -n okuz-ai-production
+          kubectl rollout undo deployment/auth-service -n okuz-ai-production
+
+      - name: 🔄 Rollback to specific tag
+        if: github.event.inputs.rollback_type == 'specific_tag'
+        run: |
+          echo "Rolling back to specific tag: ${{ github.event.inputs.specific_tag }}"
+          
+          # Update image tags to specific version
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api-gateway:${{ github.event.inputs.specific_tag }}|g" k8s/production/api-gateway.yaml
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/planning-service:${{ github.event.inputs.specific_tag }}|g" k8s/production/planning-service.yaml
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/smart-tools-service:${{ github.event.inputs.specific_tag }}|g" k8s/production/smart-tools-service.yaml
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gamification-service:${{ github.event.inputs.specific_tag }}|g" k8s/production/gamification-service.yaml
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/notification-service:${{ github.event.inputs.specific_tag }}|g" k8s/production/notification-service.yaml
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/auth-service:${{ github.event.inputs.specific_tag }}|g" k8s/production/auth-service.yaml
+          
+          # Apply the rollback
+          kubectl apply -f k8s/production/api-gateway.yaml
+          kubectl apply -f k8s/production/planning-service.yaml
+          kubectl apply -f k8s/production/smart-tools-service.yaml
+          kubectl apply -f k8s/production/gamification-service.yaml
+          kubectl apply -f k8s/production/notification-service.yaml
+          kubectl apply -f k8s/production/auth-service.yaml
+
+      - name: 🔄 Canary rollback
+        if: github.event.inputs.rollback_type == 'canary'
+        run: |
+          echo "Performing canary rollback..."
+          
+          # Scale down canary deployment
+          kubectl scale deployment api-gateway-canary --replicas=0 -n okuz-ai-production
+          kubectl scale deployment planning-service-canary --replicas=0 -n okuz-ai-production
+          kubectl scale deployment smart-tools-service-canary --replicas=0 -n okuz-ai-production
+          kubectl scale deployment gamification-service-canary --replicas=0 -n okuz-ai-production
+          kubectl scale deployment notification-service-canary --replicas=0 -n okuz-ai-production
+          kubectl scale deployment auth-service-canary --replicas=0 -n okuz-ai-production
+          
+          # Scale up stable deployment
+          kubectl scale deployment api-gateway --replicas=5 -n okuz-ai-production
+          kubectl scale deployment planning-service --replicas=5 -n okuz-ai-production
+          kubectl scale deployment smart-tools-service --replicas=5 -n okuz-ai-production
+          kubectl scale deployment gamification-service --replicas=5 -n okuz-ai-production
+          kubectl scale deployment notification-service --replicas=5 -n okuz-ai-production
+          kubectl scale deployment auth-service --replicas=5 -n okuz-ai-production
+
+      - name: ⏳ Wait for rollback
+        run: |
+          echo "Waiting for rollback to complete..."
+          kubectl rollout status deployment/api-gateway -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/planning-service -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/smart-tools-service -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/gamification-service -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/notification-service -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/auth-service -n okuz-ai-production --timeout=300s
+
+      - name: 🏥 Health check after rollback
+        run: |
+          echo "Testing rollback health check..."
+          kubectl get pods -n okuz-ai-production
+          kubectl get services -n okuz-ai-production
+          
+          # Wait for services to be ready
+          sleep 30
+          
+          # Test health endpoints
+          kubectl port-forward -n okuz-ai-production service/api-gateway 8080:80 &
+          sleep 10
+          curl -f http://localhost:8080/health || echo "Health check failed"
+
+      - name: 📊 Notify rollback completion
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        if: always()
+
+  # ===========================================
+  # POST-ROLLBACK VERIFICATION
+  # ===========================================
+  
+  verify-rollback:
+    name: ✅ Verify Rollback
+    runs-on: ubuntu-latest
+    needs: [rollback-staging, rollback-production]
+    if: always()
+    
+    steps:
+      - name: 📊 Rollback Summary
+        run: |
+          echo "Rollback Summary:"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Rollback Type: ${{ github.event.inputs.rollback_type }}"
+          echo "Reason: ${{ github.event.inputs.reason }}"
+          if [ "${{ github.event.inputs.rollback_type }}" = "specific_tag" ]; then
+            echo "Specific Tag: ${{ github.event.inputs.specific_tag }}"
+          fi
+          echo "Status: ${{ needs.rollback-staging.result || needs.rollback-production.result }}"

@@ -204,6 +204,30 @@ export class PlanValidationService {
       errors.push('En fazla 10 ders seçilebilir');
     }
 
+    // Yük dengesi: günlük toplam 6 saati aşmasın
+    const sessions = Array.isArray((planData as any)?.sessions) ? (planData as any).sessions : [];
+    const perDay: Record<string, number> = {};
+    sessions.forEach((s: any) => {
+      const day = (s.day || 'unknown').toString().toLowerCase();
+      perDay[day] = (perDay[day] || 0) + (s.duration || s.durationInMinutes || 0);
+    });
+    Object.entries(perDay).forEach(([day, total]) => {
+      if (total > 6 * 60) {
+        errors.push(`Günlük toplam süre çok yüksek (${day}: ${total} dk)`);
+      }
+    });
+
+    // Basit tekrar/önşart uyarısı: aynı gün aynı konu aşırı tekrar
+    const topicSeq = sessions.map((s: any) => `${s.subject}::${s.topic}::${(s.day || '').toString().toLowerCase()}`);
+    const seen = new Set<string>();
+    for (const key of topicSeq) {
+      if (seen.has(key)) {
+        errors.push('Aynı gün aynı konu aşırı tekrar içeriyor');
+        break;
+      }
+      seen.add(key);
+    }
+
     return {
       isValid: errors.length === 0,
       errors,

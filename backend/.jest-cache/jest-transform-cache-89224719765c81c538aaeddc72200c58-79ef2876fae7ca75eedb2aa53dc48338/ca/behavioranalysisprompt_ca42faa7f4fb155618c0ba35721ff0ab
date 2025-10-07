@@ -1,0 +1,213 @@
+965b1c95aeba6196348ce42a2a869a95
+"use strict";
+
+/* istanbul ignore next */
+function cov_8vwxlnpis() {
+  var path = "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/ai/prompts/behavior-analysis.prompt.ts";
+  var hash = "691370d99728adaa3db40b78aed0ab543188a4f8";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/ai/prompts/behavior-analysis.prompt.ts",
+    statementMap: {
+      "0": {
+        start: {
+          line: 2,
+          column: 0
+        },
+        end: {
+          line: 2,
+          column: 62
+        }
+      },
+      "1": {
+        start: {
+          line: 3,
+          column: 0
+        },
+        end: {
+          line: 3,
+          column: 40
+        }
+      },
+      "2": {
+        start: {
+          line: 4,
+          column: 0
+        },
+        end: {
+          line: 129,
+          column: 2
+        }
+      }
+    },
+    fnMap: {},
+    branchMap: {},
+    s: {
+      "0": 0,
+      "1": 0,
+      "2": 0
+    },
+    f: {},
+    b: {},
+    inputSourceMap: {
+      file: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/ai/prompts/behavior-analysis.prompt.ts",
+      mappings: ";;;AAAa,QAAA,sBAAsB,GAAG;IACpC,IAAI,EAAE,mBAAmB;IACzB,OAAO,EAAE,OAAO;IAChB,WAAW,EAAE,8CAA8C;IAC3D,QAAQ,EAAE;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;GAqHT;IACD,SAAS,EAAE,CAAC,QAAQ,EAAE,QAAQ,EAAE,WAAW,EAAE,SAAS,EAAE,cAAc,EAAE,WAAW,CAAC;IACpF,QAAQ,EAAE,mBAAmB;IAC7B,QAAQ,EAAE,IAAI;CACf,CAAC",
+      names: [],
+      sources: ["/Users/ceomerf/Downloads/okuz_ai-main/backend/src/ai/prompts/behavior-analysis.prompt.ts"],
+      sourcesContent: ["export const behaviorAnalysisPrompt = {\n  name: 'behavior_analysis',\n  version: '1.0.0',\n  description: 'Comprehensive behavior analysis for students',\n  template: `\nSen bir uzman davran\u0131\u015F analisti ve e\u011Fitim psikologusun. \xD6\u011Frencinin davran\u0131\u015F verilerini analiz ederek kapsaml\u0131 bir davran\u0131\u015F analizi yap\u0131yorsun.\n\n**\xD6\u011Frenci Bilgileri:**\n- Kullan\u0131c\u0131 ID: {{userId}}\n- Analiz D\xF6nemi: {{period}}\n- Ba\u015Flang\u0131\xE7 Tarihi: {{startDate}}\n- Biti\u015F Tarihi: {{endDate}}\n- Davran\u0131\u015F Verileri: {{behaviorData}}\n- Zaman: {{timestamp}}\n\n**Analiz G\xF6revi:**\nA\u015Fa\u011F\u0131daki JSON format\u0131nda kapsaml\u0131 bir davran\u0131\u015F analizi yap:\n\n\\`\\`\\`json\n{\n  \"insightType\": \"pattern\" | \"trend\" | \"anomaly\" | \"correlation\" | \"prediction\",\n  \"title\": \"Analiz Ba\u015Fl\u0131\u011F\u0131\",\n  \"description\": \"Detayl\u0131 analiz a\xE7\u0131klamas\u0131\",\n  \"patterns\": [\n    {\n      \"name\": \"Desen Ad\u0131\",\n      \"type\": \"study\" | \"emotional\" | \"social\" | \"wellness\" | \"goal\" | \"motivation\",\n      \"frequency\": 0.0-1.0,\n      \"consistency\": 0.0-1.0,\n      \"intensity\": 0.0-1.0,\n      \"triggers\": [\"tetikleyici1\", \"tetikleyici2\"],\n      \"outcomes\": [\"sonu\xE71\", \"sonu\xE72\"],\n      \"positiveImpact\": 0.0-1.0,\n      \"negativeImpact\": 0.0-1.0,\n      \"recommendations\": [\"\xF6neri1\", \"\xF6neri2\"]\n    }\n  ],\n  \"trends\": [\n    {\n      \"name\": \"Trend Ad\u0131\",\n      \"direction\": \"improving\" | \"stable\" | \"declining\",\n      \"magnitude\": 0.0-1.0,\n      \"significance\": 0.0-1.0,\n      \"description\": \"Trend a\xE7\u0131klamas\u0131\"\n    }\n  ],\n  \"anomalies\": [\n    {\n      \"name\": \"Anomali Ad\u0131\",\n      \"type\": \"outlier\" | \"sudden_change\" | \"unexpected_pattern\",\n      \"severity\": \"low\" | \"medium\" | \"high\" | \"critical\",\n      \"description\": \"Anomali a\xE7\u0131klamas\u0131\",\n      \"recommendations\": [\"\xF6neri1\", \"\xF6neri2\"]\n    }\n  ],\n  \"correlations\": [\n    {\n      \"factor1\": \"Fakt\xF6r 1\",\n      \"factor2\": \"Fakt\xF6r 2\",\n      \"strength\": 0.0-1.0,\n      \"direction\": \"positive\" | \"negative\",\n      \"significance\": 0.0-1.0,\n      \"description\": \"Korelasyon a\xE7\u0131klamas\u0131\"\n    }\n  ],\n  \"predictions\": [\n    {\n      \"name\": \"Tahmin Ad\u0131\",\n      \"type\": \"performance\" | \"emotional\" | \"motivation\" | \"engagement\" | \"risk\",\n      \"value\": 0.0-1.0,\n      \"confidence\": 0.0-1.0,\n      \"timeframe\": \"1_week\" | \"1_month\" | \"3_months\",\n      \"factors\": [\"fakt\xF6r1\", \"fakt\xF6r2\"],\n      \"description\": \"Tahmin a\xE7\u0131klamas\u0131\"\n    }\n  ],\n  \"significance\": 0.0-1.0,\n  \"actionable\": true | false,\n  \"recommendations\": [\"\xF6neri1\", \"\xF6neri2\", \"\xF6neri3\"],\n  \"expectedImpact\": 0.0-1.0,\n  \"confidence\": 0.0-1.0,\n  \"metadata\": {\n    \"analysisMethod\": \"AI_behavioral_analysis\",\n    \"dataQuality\": 0.0-1.0,\n    \"completeness\": 0.0-1.0,\n    \"reliability\": 0.0-1.0\n  }\n}\n\\`\\`\\`\n\n**Analiz Kriterleri:**\n1. **Desen Tespiti**: Tekrarlayan davran\u0131\u015F desenlerini tespit et\n2. **Trend Analizi**: Zaman i\xE7indeki de\u011Fi\u015Fimleri analiz et\n3. **Anomali Tespiti**: Ola\u011Fand\u0131\u015F\u0131 durumlar\u0131 belirle\n4. **Korelasyon Analizi**: Fakt\xF6rler aras\u0131 ili\u015Fkileri tespit et\n5. **Tahmin Yapma**: Gelecekteki davran\u0131\u015Flar\u0131 tahmin et\n6. **\xD6neri Geli\u015Ftirme**: \u0130yile\u015Ftirme \xF6nerileri sun\n\n**Davran\u0131\u015F Kategorileri:**\n- **Study**: \xD6\u011Frenme davran\u0131\u015Flar\u0131\n- **Emotional**: Duygusal davran\u0131\u015Flar\n- **Social**: Sosyal etkile\u015Fimler\n- **Wellness**: Sa\u011Fl\u0131k ve iyilik hali\n- **Goal**: Hedef belirleme ve takip\n- **Motivation**: Motivasyon durumu\n\n**Analiz Y\xF6ntemleri:**\n- **Pattern**: Desen analizi\n- **Trend**: Trend analizi\n- **Anomaly**: Anomali tespiti\n- **Correlation**: Korelasyon analizi\n- **Prediction**: Tahmin yapma\n\n**\xD6nemli Notlar:**\n- T\xFCrk\xE7e analiz yap\n- Objektif ve bilimsel yakla\u015F\u0131m benimse\n- \xD6\u011Frencinin gizlili\u011Fini koru\n- Pozitif ve yap\u0131c\u0131 \xF6neriler sun\n- E\u011Fitim de\u011Feri olan analiz yap\n\nSadece JSON format\u0131nda yan\u0131t ver, ba\u015Fka a\xE7\u0131klama ekleme.\n  `,\n  variables: ['userId', 'period', 'startDate', 'endDate', 'behaviorData', 'timestamp'],\n  category: 'behavior_analysis',\n  isActive: true,\n};\n"],
+      version: 3
+    },
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "691370d99728adaa3db40b78aed0ab543188a4f8"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    // @ts-ignore
+    cov_8vwxlnpis = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_8vwxlnpis();
+cov_8vwxlnpis().s[0]++;
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+/* istanbul ignore next */
+cov_8vwxlnpis().s[1]++;
+exports.behaviorAnalysisPrompt = void 0;
+/* istanbul ignore next */
+cov_8vwxlnpis().s[2]++;
+exports.behaviorAnalysisPrompt = {
+  name: 'behavior_analysis',
+  version: '1.0.0',
+  description: 'Comprehensive behavior analysis for students',
+  template: `
+Sen bir uzman davranış analisti ve eğitim psikologusun. Öğrencinin davranış verilerini analiz ederek kapsamlı bir davranış analizi yapıyorsun.
+
+**Öğrenci Bilgileri:**
+- Kullanıcı ID: {{userId}}
+- Analiz Dönemi: {{period}}
+- Başlangıç Tarihi: {{startDate}}
+- Bitiş Tarihi: {{endDate}}
+- Davranış Verileri: {{behaviorData}}
+- Zaman: {{timestamp}}
+
+**Analiz Görevi:**
+Aşağıdaki JSON formatında kapsamlı bir davranış analizi yap:
+
+\`\`\`json
+{
+  "insightType": "pattern" | "trend" | "anomaly" | "correlation" | "prediction",
+  "title": "Analiz Başlığı",
+  "description": "Detaylı analiz açıklaması",
+  "patterns": [
+    {
+      "name": "Desen Adı",
+      "type": "study" | "emotional" | "social" | "wellness" | "goal" | "motivation",
+      "frequency": 0.0-1.0,
+      "consistency": 0.0-1.0,
+      "intensity": 0.0-1.0,
+      "triggers": ["tetikleyici1", "tetikleyici2"],
+      "outcomes": ["sonuç1", "sonuç2"],
+      "positiveImpact": 0.0-1.0,
+      "negativeImpact": 0.0-1.0,
+      "recommendations": ["öneri1", "öneri2"]
+    }
+  ],
+  "trends": [
+    {
+      "name": "Trend Adı",
+      "direction": "improving" | "stable" | "declining",
+      "magnitude": 0.0-1.0,
+      "significance": 0.0-1.0,
+      "description": "Trend açıklaması"
+    }
+  ],
+  "anomalies": [
+    {
+      "name": "Anomali Adı",
+      "type": "outlier" | "sudden_change" | "unexpected_pattern",
+      "severity": "low" | "medium" | "high" | "critical",
+      "description": "Anomali açıklaması",
+      "recommendations": ["öneri1", "öneri2"]
+    }
+  ],
+  "correlations": [
+    {
+      "factor1": "Faktör 1",
+      "factor2": "Faktör 2",
+      "strength": 0.0-1.0,
+      "direction": "positive" | "negative",
+      "significance": 0.0-1.0,
+      "description": "Korelasyon açıklaması"
+    }
+  ],
+  "predictions": [
+    {
+      "name": "Tahmin Adı",
+      "type": "performance" | "emotional" | "motivation" | "engagement" | "risk",
+      "value": 0.0-1.0,
+      "confidence": 0.0-1.0,
+      "timeframe": "1_week" | "1_month" | "3_months",
+      "factors": ["faktör1", "faktör2"],
+      "description": "Tahmin açıklaması"
+    }
+  ],
+  "significance": 0.0-1.0,
+  "actionable": true | false,
+  "recommendations": ["öneri1", "öneri2", "öneri3"],
+  "expectedImpact": 0.0-1.0,
+  "confidence": 0.0-1.0,
+  "metadata": {
+    "analysisMethod": "AI_behavioral_analysis",
+    "dataQuality": 0.0-1.0,
+    "completeness": 0.0-1.0,
+    "reliability": 0.0-1.0
+  }
+}
+\`\`\`
+
+**Analiz Kriterleri:**
+1. **Desen Tespiti**: Tekrarlayan davranış desenlerini tespit et
+2. **Trend Analizi**: Zaman içindeki değişimleri analiz et
+3. **Anomali Tespiti**: Olağandışı durumları belirle
+4. **Korelasyon Analizi**: Faktörler arası ilişkileri tespit et
+5. **Tahmin Yapma**: Gelecekteki davranışları tahmin et
+6. **Öneri Geliştirme**: İyileştirme önerileri sun
+
+**Davranış Kategorileri:**
+- **Study**: Öğrenme davranışları
+- **Emotional**: Duygusal davranışlar
+- **Social**: Sosyal etkileşimler
+- **Wellness**: Sağlık ve iyilik hali
+- **Goal**: Hedef belirleme ve takip
+- **Motivation**: Motivasyon durumu
+
+**Analiz Yöntemleri:**
+- **Pattern**: Desen analizi
+- **Trend**: Trend analizi
+- **Anomaly**: Anomali tespiti
+- **Correlation**: Korelasyon analizi
+- **Prediction**: Tahmin yapma
+
+**Önemli Notlar:**
+- Türkçe analiz yap
+- Objektif ve bilimsel yaklaşım benimse
+- Öğrencinin gizliliğini koru
+- Pozitif ve yapıcı öneriler sun
+- Eğitim değeri olan analiz yap
+
+Sadece JSON formatında yanıt ver, başka açıklama ekleme.
+  `,
+  variables: ['userId', 'period', 'startDate', 'endDate', 'behaviorData', 'timestamp'],
+  category: 'behavior_analysis',
+  isActive: true
+};
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJleHBvcnRzIiwiYmVoYXZpb3JBbmFseXNpc1Byb21wdCIsIm5hbWUiLCJ2ZXJzaW9uIiwiZGVzY3JpcHRpb24iLCJ0ZW1wbGF0ZSIsInZhcmlhYmxlcyIsImNhdGVnb3J5IiwiaXNBY3RpdmUiXSwic291cmNlcyI6WyIvVXNlcnMvY2VvbWVyZi9Eb3dubG9hZHMvb2t1el9haS1tYWluL2JhY2tlbmQvc3JjL2FpL3Byb21wdHMvYmVoYXZpb3ItYW5hbHlzaXMucHJvbXB0LnRzIl0sInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCBjb25zdCBiZWhhdmlvckFuYWx5c2lzUHJvbXB0ID0ge1xuICBuYW1lOiAnYmVoYXZpb3JfYW5hbHlzaXMnLFxuICB2ZXJzaW9uOiAnMS4wLjAnLFxuICBkZXNjcmlwdGlvbjogJ0NvbXByZWhlbnNpdmUgYmVoYXZpb3IgYW5hbHlzaXMgZm9yIHN0dWRlbnRzJyxcbiAgdGVtcGxhdGU6IGBcblNlbiBiaXIgdXptYW4gZGF2cmFuxLHFnyBhbmFsaXN0aSB2ZSBlxJ9pdGltIHBzaWtvbG9ndXN1bi4gw5bEn3JlbmNpbmluIGRhdnJhbsSxxZ8gdmVyaWxlcmluaSBhbmFsaXogZWRlcmVrIGthcHNhbWzEsSBiaXIgZGF2cmFuxLHFnyBhbmFsaXppIHlhcMSxeW9yc3VuLlxuXG4qKsOWxJ9yZW5jaSBCaWxnaWxlcmk6Kipcbi0gS3VsbGFuxLFjxLEgSUQ6IHt7dXNlcklkfX1cbi0gQW5hbGl6IETDtm5lbWk6IHt7cGVyaW9kfX1cbi0gQmHFn2xhbmfEscOnIFRhcmloaToge3tzdGFydERhdGV9fVxuLSBCaXRpxZ8gVGFyaWhpOiB7e2VuZERhdGV9fVxuLSBEYXZyYW7EscWfIFZlcmlsZXJpOiB7e2JlaGF2aW9yRGF0YX19XG4tIFphbWFuOiB7e3RpbWVzdGFtcH19XG5cbioqQW5hbGl6IEfDtnJldmk6KipcbkHFn2HEn8SxZGFraSBKU09OIGZvcm1hdMSxbmRhIGthcHNhbWzEsSBiaXIgZGF2cmFuxLHFnyBhbmFsaXppIHlhcDpcblxuXFxgXFxgXFxganNvblxue1xuICBcImluc2lnaHRUeXBlXCI6IFwicGF0dGVyblwiIHwgXCJ0cmVuZFwiIHwgXCJhbm9tYWx5XCIgfCBcImNvcnJlbGF0aW9uXCIgfCBcInByZWRpY3Rpb25cIixcbiAgXCJ0aXRsZVwiOiBcIkFuYWxpeiBCYcWfbMSxxJ/EsVwiLFxuICBcImRlc2NyaXB0aW9uXCI6IFwiRGV0YXlsxLEgYW5hbGl6IGHDp8Sxa2xhbWFzxLFcIixcbiAgXCJwYXR0ZXJuc1wiOiBbXG4gICAge1xuICAgICAgXCJuYW1lXCI6IFwiRGVzZW4gQWTEsVwiLFxuICAgICAgXCJ0eXBlXCI6IFwic3R1ZHlcIiB8IFwiZW1vdGlvbmFsXCIgfCBcInNvY2lhbFwiIHwgXCJ3ZWxsbmVzc1wiIHwgXCJnb2FsXCIgfCBcIm1vdGl2YXRpb25cIixcbiAgICAgIFwiZnJlcXVlbmN5XCI6IDAuMC0xLjAsXG4gICAgICBcImNvbnNpc3RlbmN5XCI6IDAuMC0xLjAsXG4gICAgICBcImludGVuc2l0eVwiOiAwLjAtMS4wLFxuICAgICAgXCJ0cmlnZ2Vyc1wiOiBbXCJ0ZXRpa2xleWljaTFcIiwgXCJ0ZXRpa2xleWljaTJcIl0sXG4gICAgICBcIm91dGNvbWVzXCI6IFtcInNvbnXDpzFcIiwgXCJzb251w6cyXCJdLFxuICAgICAgXCJwb3NpdGl2ZUltcGFjdFwiOiAwLjAtMS4wLFxuICAgICAgXCJuZWdhdGl2ZUltcGFjdFwiOiAwLjAtMS4wLFxuICAgICAgXCJyZWNvbW1lbmRhdGlvbnNcIjogW1wiw7ZuZXJpMVwiLCBcIsO2bmVyaTJcIl1cbiAgICB9XG4gIF0sXG4gIFwidHJlbmRzXCI6IFtcbiAgICB7XG4gICAgICBcIm5hbWVcIjogXCJUcmVuZCBBZMSxXCIsXG4gICAgICBcImRpcmVjdGlvblwiOiBcImltcHJvdmluZ1wiIHwgXCJzdGFibGVcIiB8IFwiZGVjbGluaW5nXCIsXG4gICAgICBcIm1hZ25pdHVkZVwiOiAwLjAtMS4wLFxuICAgICAgXCJzaWduaWZpY2FuY2VcIjogMC4wLTEuMCxcbiAgICAgIFwiZGVzY3JpcHRpb25cIjogXCJUcmVuZCBhw6fEsWtsYW1hc8SxXCJcbiAgICB9XG4gIF0sXG4gIFwiYW5vbWFsaWVzXCI6IFtcbiAgICB7XG4gICAgICBcIm5hbWVcIjogXCJBbm9tYWxpIEFkxLFcIixcbiAgICAgIFwidHlwZVwiOiBcIm91dGxpZXJcIiB8IFwic3VkZGVuX2NoYW5nZVwiIHwgXCJ1bmV4cGVjdGVkX3BhdHRlcm5cIixcbiAgICAgIFwic2V2ZXJpdHlcIjogXCJsb3dcIiB8IFwibWVkaXVtXCIgfCBcImhpZ2hcIiB8IFwiY3JpdGljYWxcIixcbiAgICAgIFwiZGVzY3JpcHRpb25cIjogXCJBbm9tYWxpIGHDp8Sxa2xhbWFzxLFcIixcbiAgICAgIFwicmVjb21tZW5kYXRpb25zXCI6IFtcIsO2bmVyaTFcIiwgXCLDtm5lcmkyXCJdXG4gICAgfVxuICBdLFxuICBcImNvcnJlbGF0aW9uc1wiOiBbXG4gICAge1xuICAgICAgXCJmYWN0b3IxXCI6IFwiRmFrdMO2ciAxXCIsXG4gICAgICBcImZhY3RvcjJcIjogXCJGYWt0w7ZyIDJcIixcbiAgICAgIFwic3RyZW5ndGhcIjogMC4wLTEuMCxcbiAgICAgIFwiZGlyZWN0aW9uXCI6IFwicG9zaXRpdmVcIiB8IFwibmVnYXRpdmVcIixcbiAgICAgIFwic2lnbmlmaWNhbmNlXCI6IDAuMC0xLjAsXG4gICAgICBcImRlc2NyaXB0aW9uXCI6IFwiS29yZWxhc3lvbiBhw6fEsWtsYW1hc8SxXCJcbiAgICB9XG4gIF0sXG4gIFwicHJlZGljdGlvbnNcIjogW1xuICAgIHtcbiAgICAgIFwibmFtZVwiOiBcIlRhaG1pbiBBZMSxXCIsXG4gICAgICBcInR5cGVcIjogXCJwZXJmb3JtYW5jZVwiIHwgXCJlbW90aW9uYWxcIiB8IFwibW90aXZhdGlvblwiIHwgXCJlbmdhZ2VtZW50XCIgfCBcInJpc2tcIixcbiAgICAgIFwidmFsdWVcIjogMC4wLTEuMCxcbiAgICAgIFwiY29uZmlkZW5jZVwiOiAwLjAtMS4wLFxuICAgICAgXCJ0aW1lZnJhbWVcIjogXCIxX3dlZWtcIiB8IFwiMV9tb250aFwiIHwgXCIzX21vbnRoc1wiLFxuICAgICAgXCJmYWN0b3JzXCI6IFtcImZha3TDtnIxXCIsIFwiZmFrdMO2cjJcIl0sXG4gICAgICBcImRlc2NyaXB0aW9uXCI6IFwiVGFobWluIGHDp8Sxa2xhbWFzxLFcIlxuICAgIH1cbiAgXSxcbiAgXCJzaWduaWZpY2FuY2VcIjogMC4wLTEuMCxcbiAgXCJhY3Rpb25hYmxlXCI6IHRydWUgfCBmYWxzZSxcbiAgXCJyZWNvbW1lbmRhdGlvbnNcIjogW1wiw7ZuZXJpMVwiLCBcIsO2bmVyaTJcIiwgXCLDtm5lcmkzXCJdLFxuICBcImV4cGVjdGVkSW1wYWN0XCI6IDAuMC0xLjAsXG4gIFwiY29uZmlkZW5jZVwiOiAwLjAtMS4wLFxuICBcIm1ldGFkYXRhXCI6IHtcbiAgICBcImFuYWx5c2lzTWV0aG9kXCI6IFwiQUlfYmVoYXZpb3JhbF9hbmFseXNpc1wiLFxuICAgIFwiZGF0YVF1YWxpdHlcIjogMC4wLTEuMCxcbiAgICBcImNvbXBsZXRlbmVzc1wiOiAwLjAtMS4wLFxuICAgIFwicmVsaWFiaWxpdHlcIjogMC4wLTEuMFxuICB9XG59XG5cXGBcXGBcXGBcblxuKipBbmFsaXogS3JpdGVybGVyaToqKlxuMS4gKipEZXNlbiBUZXNwaXRpKio6IFRla3JhcmxheWFuIGRhdnJhbsSxxZ8gZGVzZW5sZXJpbmkgdGVzcGl0IGV0XG4yLiAqKlRyZW5kIEFuYWxpemkqKjogWmFtYW4gacOnaW5kZWtpIGRlxJ9pxZ9pbWxlcmkgYW5hbGl6IGV0XG4zLiAqKkFub21hbGkgVGVzcGl0aSoqOiBPbGHEn2FuZMSxxZ/EsSBkdXJ1bWxhcsSxIGJlbGlybGVcbjQuICoqS29yZWxhc3lvbiBBbmFsaXppKio6IEZha3TDtnJsZXIgYXJhc8SxIGlsacWfa2lsZXJpIHRlc3BpdCBldFxuNS4gKipUYWhtaW4gWWFwbWEqKjogR2VsZWNla3Rla2kgZGF2cmFuxLHFn2xhcsSxIHRhaG1pbiBldFxuNi4gKirDlm5lcmkgR2VsacWfdGlybWUqKjogxLB5aWxlxZ90aXJtZSDDtm5lcmlsZXJpIHN1blxuXG4qKkRhdnJhbsSxxZ8gS2F0ZWdvcmlsZXJpOioqXG4tICoqU3R1ZHkqKjogw5bEn3Jlbm1lIGRhdnJhbsSxxZ9sYXLEsVxuLSAqKkVtb3Rpb25hbCoqOiBEdXlndXNhbCBkYXZyYW7EscWfbGFyXG4tICoqU29jaWFsKio6IFNvc3lhbCBldGtpbGXFn2ltbGVyXG4tICoqV2VsbG5lc3MqKjogU2HEn2zEsWsgdmUgaXlpbGlrIGhhbGlcbi0gKipHb2FsKio6IEhlZGVmIGJlbGlybGVtZSB2ZSB0YWtpcFxuLSAqKk1vdGl2YXRpb24qKjogTW90aXZhc3lvbiBkdXJ1bXVcblxuKipBbmFsaXogWcO2bnRlbWxlcmk6Kipcbi0gKipQYXR0ZXJuKio6IERlc2VuIGFuYWxpemlcbi0gKipUcmVuZCoqOiBUcmVuZCBhbmFsaXppXG4tICoqQW5vbWFseSoqOiBBbm9tYWxpIHRlc3BpdGlcbi0gKipDb3JyZWxhdGlvbioqOiBLb3JlbGFzeW9uIGFuYWxpemlcbi0gKipQcmVkaWN0aW9uKio6IFRhaG1pbiB5YXBtYVxuXG4qKsOWbmVtbGkgTm90bGFyOioqXG4tIFTDvHJrw6dlIGFuYWxpeiB5YXBcbi0gT2JqZWt0aWYgdmUgYmlsaW1zZWwgeWFrbGHFn8SxbSBiZW5pbXNlXG4tIMOWxJ9yZW5jaW5pbiBnaXpsaWxpxJ9pbmkga29ydVxuLSBQb3ppdGlmIHZlIHlhcMSxY8SxIMO2bmVyaWxlciBzdW5cbi0gRcSfaXRpbSBkZcSfZXJpIG9sYW4gYW5hbGl6IHlhcFxuXG5TYWRlY2UgSlNPTiBmb3JtYXTEsW5kYSB5YW7EsXQgdmVyLCBiYcWfa2EgYcOnxLFrbGFtYSBla2xlbWUuXG4gIGAsXG4gIHZhcmlhYmxlczogWyd1c2VySWQnLCAncGVyaW9kJywgJ3N0YXJ0RGF0ZScsICdlbmREYXRlJywgJ2JlaGF2aW9yRGF0YScsICd0aW1lc3RhbXAnXSxcbiAgY2F0ZWdvcnk6ICdiZWhhdmlvcl9hbmFseXNpcycsXG4gIGlzQWN0aXZlOiB0cnVlLFxufTtcbiJdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OztBQUFhQSxPQUFBLENBQUFDLHNCQUFzQixHQUFHO0VBQ3BDQyxJQUFJLEVBQUUsbUJBQW1CO0VBQ3pCQyxPQUFPLEVBQUUsT0FBTztFQUNoQkMsV0FBVyxFQUFFLDhDQUE4QztFQUMzREMsUUFBUSxFQUFFOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7R0FxSFQ7RUFDREMsU0FBUyxFQUFFLENBQUMsUUFBUSxFQUFFLFFBQVEsRUFBRSxXQUFXLEVBQUUsU0FBUyxFQUFFLGNBQWMsRUFBRSxXQUFXLENBQUM7RUFDcEZDLFFBQVEsRUFBRSxtQkFBbUI7RUFDN0JDLFFBQVEsRUFBRTtDQUNYIiwiaWdub3JlTGlzdCI6W119

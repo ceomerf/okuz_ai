@@ -1,0 +1,262 @@
+// Smart Tools Service Database Schema
+// This schema is specific to the Smart Tools Service and contains only smart tools-related entities
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("SMART_TOOLS_DATABASE_URL")
+}
+
+// User entity (minimal user data for smart tools service)
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      UserRole @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  chatHistory    ChatHistory[]
+  sosQuestions   SosQuestion[]
+  summaries      Summary[]
+  flashcards     Flashcard[]
+  conceptMaps     ConceptMap[]
+  quizzes        Quiz[]
+  learningPaths  LearningPath[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  PARENT
+  ADMIN
+}
+
+// Chat History entity
+model ChatHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String
+  response  String
+  context   String?
+  toolType  ToolType
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("chat_history")
+}
+
+enum ToolType {
+  QUICK_CHAT
+  SOS_QUESTION
+  SUMMARY_GENERATOR
+  FLASHCARDS
+  CONCEPT_MAP
+  QUIZ_GENERATOR
+  LEARNING_PATH
+}
+
+// SOS Question entity
+model SosQuestion {
+  id          String   @id @default(cuid())
+  userId      String
+  question    String
+  answer      String
+  subject     String
+  grade       Int
+  difficulty  DifficultyLevel @default(MEDIUM)
+  isResolved  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sos_questions")
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+  EXPERT
+}
+
+// Summary entity
+model Summary {
+  id          String   @id @default(cuid())
+  userId      String
+  sourceText  String
+  summary     String
+  format      SummaryFormat
+  length      SummaryLength
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("summaries")
+}
+
+enum SummaryFormat {
+  PARAGRAPH
+  BULLET
+  OUTLINE
+  MINDMAP
+}
+
+enum SummaryLength {
+  SHORT
+  MEDIUM
+  LONG
+}
+
+// Flashcard entity
+model Flashcard {
+  id        String   @id @default(cuid())
+  userId    String
+  topic     String
+  subject   String
+  grade     Int
+  difficulty DifficultyLevel @default(MEDIUM)
+  cards     Json     // Array of flashcard objects
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("flashcards")
+}
+
+// Concept Map entity
+model ConceptMap {
+  id        String   @id @default(cuid())
+  userId    String
+  topic     String
+  subject   String
+  grade     String
+  mapData   Json     // Concept map structure
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("concept_maps")
+}
+
+// Quiz entity
+model Quiz {
+  id          String   @id @default(cuid())
+  userId      String
+  topic       String
+  subject     String
+  grade       Int
+  difficulty  DifficultyLevel @default(MEDIUM)
+  questions   Json     // Array of question objects
+  timeLimit   Int?     // in minutes
+  isCompleted Boolean  @default(false)
+  score       Float?
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("quizzes")
+}
+
+// Learning Path entity
+model LearningPath {
+  id          String   @id @default(cuid())
+  userId      String
+  topic       String
+  subject     String
+  level       String
+  goals       String[]
+  pathData    Json     // Learning path structure
+  isCompleted Boolean  @default(false)
+  progress    Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("learning_paths")
+}
+
+// AI Request entity (for tracking AI requests)
+model AIRequest {
+  id          String   @id @default(cuid())
+  userId      String
+  requestType String
+  input       String
+  output      String
+  model       String
+  tokens      Int?
+  cost        Float?
+  processingTime Int? // in milliseconds
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_requests")
+}
+
+// Tool Usage entity (for analytics)
+model ToolUsage {
+  id        String   @id @default(cuid())
+  userId    String
+  toolType  ToolType
+  usageCount Int     @default(1)
+  lastUsed  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, toolType])
+  @@map("tool_usage")
+}
+
+// Smart Tools Events entity (for event sourcing)
+model SmartToolsEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  eventType String
+  eventData Json
+  timestamp DateTime @default(now()
+
+  @@map("smart_tools_events")
+}
+
+// Smart Tools Statistics entity
+model SmartToolsStatistics {
+  id                    String   @id @default(cuid())
+  userId                String
+  totalChats            Int      @default(0)
+  totalSosQuestions     Int      @default(0)
+  totalSummaries        Int      @default(0)
+  totalFlashcards       Int      @default(0)
+  totalConceptMaps      Int      @default(0)
+  totalQuizzes          Int      @default(0)
+  totalLearningPaths    Int      @default(0)
+  averageResponseTime   Float    @default(0) // in milliseconds
+  totalTokensUsed       Int      @default(0)
+  totalCost             Float    @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("smart_tools_statistics")
+}

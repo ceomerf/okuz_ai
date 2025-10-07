@@ -7,10 +7,12 @@ export interface CacheEvictOptions {
   pattern?: string;
   allEntries?: boolean;
   beforeInvocation?: boolean;
+  ttl?: number;
 }
 
-export const CacheEvict = (options: CacheEvictOptions) => {
-  return SetMetadata(CACHE_EVICT_METADATA, options);
+export const CacheEvict = (options: CacheEvictOptions | string) => {
+  const opts = typeof options === 'string' ? { key: options } : options;
+  return SetMetadata(CACHE_EVICT_METADATA, opts);
 };
 
 // Convenience decorators

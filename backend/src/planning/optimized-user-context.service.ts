@@ -70,7 +70,7 @@ export class OptimizedUserContextService {
             endDate: true,
             isActive: true,
             createdAt: true,
-            sessions: {
+            studySessions: {
               select: {
                 id: true,
                 subject: true,

@@ -1,0 +1,374 @@
+groups:
+  - name: okuz-api-alerts
+    rules:
+      # High Error Rate Alert
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors per second for the last 5 minutes"
+          runbook_url: "https://docs.okuz.ai/runbooks/high-error-rate"
+
+      # High Response Time Alert
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 3m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }} seconds"
+          runbook_url: "https://docs.okuz.ai/runbooks/high-response-time"
+
+      # Database Connection Issues
+      - alert: DatabaseConnectionIssues
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database connection lost"
+          description: "PostgreSQL database is not responding"
+          runbook_url: "https://docs.okuz.ai/runbooks/database-connection"
+
+      # Redis Connection Issues
+      - alert: RedisConnectionIssues
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: cache
+        annotations:
+          summary: "Redis connection lost"
+          description: "Redis cache is not responding"
+          runbook_url: "https://docs.okuz.ai/runbooks/redis-connection"
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.okuz.ai/runbooks/high-memory-usage"
+
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}%"
+          runbook_url: "https://docs.okuz.ai/runbooks/high-cpu-usage"
+
+      # Disk Space Low
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
+        for: 2m
+        labels:
+          severity: critical
+          service: system
+        annotations:
+          summary: "Disk space is low"
+          description: "Disk space is {{ $value | humanizePercentage }} available"
+          runbook_url: "https://docs.okuz.ai/runbooks/disk-space-low"
+
+      # WebSocket Connection Issues
+      - alert: WebSocketConnectionIssues
+        expr: websocket_connections_active < 1
+        for: 2m
+        labels:
+          severity: warning
+          service: websocket
+        annotations:
+          summary: "No active WebSocket connections"
+          description: "No active WebSocket connections detected"
+          runbook_url: "https://docs.okuz.ai/runbooks/websocket-connections"
+
+      # AI Service Errors
+      - alert: AIServiceErrors
+        expr: rate(ai_requests_failed_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: ai
+        annotations:
+          summary: "AI service errors detected"
+          description: "AI service error rate is {{ $value }} errors per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/ai-service-errors"
+
+      # Email Service Errors
+      - alert: EmailServiceErrors
+        expr: rate(emails_failed_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: email
+        annotations:
+          summary: "Email service errors detected"
+          description: "Email service error rate is {{ $value }} errors per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/email-service-errors"
+
+      # Push Notification Errors
+      - alert: PushNotificationErrors
+        expr: rate(push_notifications_failed_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: push
+        annotations:
+          summary: "Push notification errors detected"
+          description: "Push notification error rate is {{ $value }} errors per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/push-notification-errors"
+
+      # Rate Limiting Triggered
+      - alert: RateLimitingTriggered
+        expr: rate(rate_limit_exceeded_total[5m]) > 0.5
+        for: 1m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "Rate limiting frequently triggered"
+          description: "Rate limiting is triggered {{ $value }} times per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/rate-limiting"
+
+      # Authentication Failures
+      - alert: AuthenticationFailures
+        expr: rate(auth_failures_total[5m]) > 0.2
+        for: 2m
+        labels:
+          severity: warning
+          service: auth
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failure rate is {{ $value }} failures per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/authentication-failures"
+
+      # Database Query Performance
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, rate(database_query_duration_seconds_bucket[5m])) > 1
+        for: 3m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "95th percentile database query time is {{ $value }} seconds"
+          runbook_url: "https://docs.okuz.ai/runbooks/slow-database-queries"
+
+      # Cache Hit Rate Low
+      - alert: LowCacheHitRate
+        expr: rate(cache_hits_total[5m]) / (rate(cache_hits_total[5m]) + rate(cache_misses_total[5m])) < 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: cache
+        annotations:
+          summary: "Low cache hit rate"
+          description: "Cache hit rate is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.okuz.ai/runbooks/low-cache-hit-rate"
+
+      # Queue Processing Issues
+      - alert: QueueProcessingIssues
+        expr: rate(queue_jobs_failed_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: queue
+        annotations:
+          summary: "Queue processing issues detected"
+          description: "Queue job failure rate is {{ $value }} failures per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/queue-processing"
+
+      # Service Down
+      - alert: ServiceDown
+        expr: up{job="okuz-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "Service is down"
+          description: "Okuz API service is not responding"
+          runbook_url: "https://docs.okuz.ai/runbooks/service-down"
+
+      # High Request Volume
+      - alert: HighRequestVolume
+        expr: rate(http_requests_total[5m]) > 1000
+        for: 2m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "High request volume detected"
+          description: "Request rate is {{ $value }} requests per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/high-request-volume"
+
+      # SSL Certificate Expiry
+      - alert: SSLCertificateExpiry
+        expr: (ssl_certificate_expiry_timestamp - time()) / 86400 < 30
+        for: 0m
+        labels:
+          severity: warning
+          service: ssl
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate expires in {{ $value }} days"
+          runbook_url: "https://docs.okuz.ai/runbooks/ssl-certificate-expiry"
+
+      # Database Connection Pool Exhausted
+      - alert: DatabaseConnectionPoolExhausted
+        expr: database_connections_active / database_connections_max > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Database connection pool is {{ $value | humanizePercentage }} full"
+          runbook_url: "https://docs.okuz.ai/runbooks/database-connection-pool"
+
+      # Redis Memory Usage High
+      - alert: RedisMemoryUsageHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 3m
+        labels:
+          severity: warning
+          service: cache
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.okuz.ai/runbooks/redis-memory-usage"
+
+      # API Key Usage Exceeded
+      - alert: APIKeyUsageExceeded
+        expr: api_key_usage_percentage > 90
+        for: 1m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "API key usage exceeded"
+          description: "API key usage is {{ $value }}%"
+          runbook_url: "https://docs.okuz.ai/runbooks/api-key-usage"
+
+      # WebSocket Connection Drops
+      - alert: WebSocketConnectionDrops
+        expr: rate(websocket_connections_closed_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          service: websocket
+        annotations:
+          summary: "High WebSocket connection drop rate"
+          description: "WebSocket connections are dropping at {{ $value }} per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/websocket-connection-drops"
+
+      # AI Token Usage High
+      - alert: AITokenUsageHigh
+        expr: rate(ai_tokens_used_total[5m]) > 10000
+        for: 2m
+        labels:
+          severity: warning
+          service: ai
+        annotations:
+          summary: "High AI token usage detected"
+          description: "AI token usage is {{ $value }} tokens per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/ai-token-usage"
+
+      # Email Queue Backlog
+      - alert: EmailQueueBacklog
+        expr: email_queue_size > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: email
+        annotations:
+          summary: "Email queue backlog detected"
+          description: "Email queue has {{ $value }} pending emails"
+          runbook_url: "https://docs.okuz.ai/runbooks/email-queue-backlog"
+
+      # Push Notification Queue Backlog
+      - alert: PushNotificationQueueBacklog
+        expr: push_notification_queue_size > 500
+        for: 5m
+        labels:
+          severity: warning
+          service: push
+        annotations:
+          summary: "Push notification queue backlog detected"
+          description: "Push notification queue has {{ $value }} pending notifications"
+          runbook_url: "https://docs.okuz.ai/runbooks/push-notification-queue-backlog"
+
+      # Database Lock Contention
+      - alert: DatabaseLockContention
+        expr: rate(database_locks_waiting_total[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Database lock contention detected"
+          description: "Database lock contention rate is {{ $value }} locks per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/database-lock-contention"
+
+      # API Response Size Large
+      - alert: LargeAPIResponseSize
+        expr: histogram_quantile(0.95, rate(http_response_size_bytes_bucket[5m])) > 1048576
+        for: 3m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "Large API response sizes detected"
+          description: "95th percentile response size is {{ $value | humanizeBytes }}"
+          runbook_url: "https://docs.okuz.ai/runbooks/large-api-response-size"
+
+      # JWT Token Expiry Issues
+      - alert: JWTTokenExpiryIssues
+        expr: rate(jwt_token_expired_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: auth
+        annotations:
+          summary: "High JWT token expiry rate"
+          description: "JWT token expiry rate is {{ $value }} expiries per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/jwt-token-expiry"
+
+      # File Upload Errors
+      - alert: FileUploadErrors
+        expr: rate(file_upload_errors_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: upload
+        annotations:
+          summary: "File upload errors detected"
+          description: "File upload error rate is {{ $value }} errors per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/file-upload-errors"
+
+      # External API Failures
+      - alert: ExternalAPIFailures
+        expr: rate(external_api_failures_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: external
+        annotations:
+          summary: "External API failures detected"
+          description: "External API failure rate is {{ $value }} failures per second"
+          runbook_url: "https://docs.okuz.ai/runbooks/external-api-failures"

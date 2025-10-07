@@ -1,0 +1,132 @@
+groups:
+- name: okuz-ai-critical
+  rules:
+  - alert: HighErrorRate
+    expr: rate(http_requests_total{job="okuz-ai-backend",status=~"5.."}[5m]) / rate(http_requests_total{job="okuz-ai-backend"}[5m]) * 100 > 5
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High error rate detected"
+      description: "Error rate is {{ $value }}% for the last 5 minutes"
+
+  - alert: ServiceDown
+    expr: up{job="okuz-ai-backend"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Okuz AI Backend service is down"
+      description: "The backend service has been down for more than 1 minute"
+
+  - alert: HighResponseTime
+    expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="okuz-ai-backend"}[5m])) > 2
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High response time detected"
+      description: "95th percentile response time is {{ $value }}s, which is above the 2s threshold"
+
+  - alert: DatabaseConnectionPoolExhausted
+    expr: database_connections_active{job="okuz-ai-backend"} > 90
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Database connection pool nearly exhausted"
+      description: "Active database connections: {{ $value }}/100"
+
+  - alert: MemoryUsageHigh
+    expr: process_resident_memory_bytes{job="okuz-ai-backend"} / 1024 / 1024 > 1000
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High memory usage detected"
+      description: "Memory usage is {{ $value }}MB, above the 1GB threshold"
+
+  - alert: CPUUsageHigh
+    expr: rate(process_cpu_seconds_total{job="okuz-ai-backend"}[5m]) * 100 > 90
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High CPU usage detected"
+      description: "CPU usage is {{ $value }}%, above the 90% threshold"
+
+- name: okuz-ai-warning
+  rules:
+  - alert: PlanGenerationSlow
+    expr: histogram_quantile(0.95, rate(plan_generation_duration_seconds_bucket{job="okuz-ai-backend"}[5m])) > 5
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Plan generation is slow"
+      description: "95th percentile plan generation time is {{ $value }}s, above the 5s threshold"
+
+  - alert: SubscriptionDrop
+    expr: active_subscriptions_gauge{job="okuz-ai-backend"} < 100
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Unexpected drop in active subscriptions"
+      description: "Active subscriptions dropped to {{ $value }}, below expected threshold"
+
+  - alert: CacheHitRateLow
+    expr: redis_keyspace_hits{job="okuz-ai-backend"} / (redis_keyspace_hits{job="okuz-ai-backend"} + redis_keyspace_misses{job="okuz-ai-backend"}) * 100 < 70
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Low cache hit rate"
+      description: "Cache hit rate is {{ $value }}%, below the 70% threshold"
+
+  - alert: HighSmartToolUsage
+    expr: rate(smart_tool_usage_total{job="okuz-ai-backend"}[5m]) > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High smart tool usage detected"
+      description: "Smart tool usage rate is {{ $value }} requests/minute, indicating potential abuse"
+
+  - alert: DiskSpaceLow
+    expr: node_filesystem_avail_bytes{job="okuz-ai-backend"} / node_filesystem_size_bytes{job="okuz-ai-backend"} * 100 < 20
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Low disk space"
+      description: "Available disk space is {{ $value }}%, below the 20% threshold"
+
+  - alert: OpenFileDescriptorsHigh
+    expr: process_open_fds{job="okuz-ai-backend"} > 1500
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High number of open file descriptors"
+      description: "Open file descriptors: {{ $value }}, above the 1500 threshold"
+
+- name: okuz-ai-business
+  rules:
+  - alert: NoPlanGeneration
+    expr: rate(plan_generation_success_total{job="okuz-ai-backend"}[1h]) == 0
+    for: 30m
+    labels:
+      severity: warning
+    annotations:
+      summary: "No plan generation activity"
+      description: "No plans have been generated in the last hour"
+
+  - alert: SmartToolFailureRate
+    expr: rate(smart_tool_usage_total{job="okuz-ai-backend",status="error"}[5m]) / rate(smart_tool_usage_total{job="okuz-ai-backend"}[5m]) * 100 > 10
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High smart tool failure rate"
+      description: "Smart tool failure rate is {{ $value }}%, above the 10% threshold"

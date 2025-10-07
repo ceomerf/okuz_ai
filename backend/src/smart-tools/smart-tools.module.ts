@@ -1,14 +1,20 @@
 import { Module } from '@nestjs/common';
 import { SmartToolsController } from './smart-tools.controller';
 import { SmartToolsService } from './smart-tools.service';
+import { QuestionSolverService } from './question-solver.service';
+import { ContentGeneratorService } from './content-generator.service';
 import { PrismaModule } from '../common/prisma/prisma.module';
-// import { GeminiModule } from '../services/gemini.module'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 import { OpenAIService } from '../services/openai.service';
 
 @Module({
-  imports: [PrismaModule], // GeminiModule kaldırıldı - OPENAI KULLANILIYOR
+  imports: [PrismaModule],
   controllers: [SmartToolsController],
-  providers: [SmartToolsService, OpenAIService],
+  providers: [
+    SmartToolsService,
+    QuestionSolverService,
+    ContentGeneratorService,
+    OpenAIService,
+  ],
   exports: [SmartToolsService],
 })
 export class SmartToolsModule {} 

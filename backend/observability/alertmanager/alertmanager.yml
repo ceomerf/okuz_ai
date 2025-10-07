@@ -1,0 +1,79 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@okuz-ai.com'
+  smtp_auth_username: 'alerts@okuz-ai.com'
+  smtp_auth_password: 'your-smtp-password'
+
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'web.hook'
+  routes:
+  - match:
+      severity: critical
+    receiver: 'critical-alerts'
+  - match:
+      severity: warning
+    receiver: 'warning-alerts'
+
+receivers:
+- name: 'web.hook'
+  webhook_configs:
+  - url: 'http://localhost:5001/'
+
+- name: 'critical-alerts'
+  slack_configs:
+  - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+    channel: '#alerts-critical'
+    title: '🚨 Critical Alert: {{ .GroupLabels.alertname }}'
+    text: |
+      *Alert:* {{ .GroupLabels.alertname }}
+      *Instance:* {{ .GroupLabels.instance }}
+      *Severity:* {{ .GroupLabels.severity }}
+      *Description:* {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
+      *Time:* {{ range .Alerts }}{{ .StartsAt }}{{ end }}
+  email_configs:
+  - to: 'devops@okuz-ai.com'
+    subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+    body: |
+      Critical alert triggered:
+      
+      Alert: {{ .GroupLabels.alertname }}
+      Instance: {{ .GroupLabels.instance }}
+      Severity: {{ .GroupLabels.severity }}
+      
+      Description: {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
+      Time: {{ range .Alerts }}{{ .StartsAt }}{{ end }}
+
+- name: 'warning-alerts'
+  slack_configs:
+  - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+    channel: '#alerts-warning'
+    title: '⚠️ Warning Alert: {{ .GroupLabels.alertname }}'
+    text: |
+      *Alert:* {{ .GroupLabels.alertname }}
+      *Instance:* {{ .GroupLabels.instance }}
+      *Severity:* {{ .GroupLabels.severity }}
+      *Description:* {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
+      *Time:* {{ range .Alerts }}{{ .StartsAt }}{{ end }}
+  email_configs:
+  - to: 'devops@okuz-ai.com'
+    subject: '⚠️ WARNING: {{ .GroupLabels.alertname }}'
+    body: |
+      Warning alert triggered:
+      
+      Alert: {{ .GroupLabels.alertname }}
+      Instance: {{ .GroupLabels.instance }}
+      Severity: {{ .GroupLabels.severity }}
+      
+      Description: {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
+      Time: {{ range .Alerts }}{{ .StartsAt }}{{ end }}
+
+inhibit_rules:
+- source_match:
+    severity: 'critical'
+  target_match:
+    severity: 'warning'
+  equal: ['alertname', 'instance']

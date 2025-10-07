@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: okuz-ai-config
+  namespace: okuz-ai
+data:
+  # Application Configuration
+  NODE_ENV: "production"
+  PORT: "3000"
+  
+  # Database Configuration
+  DATABASE_URL: "postgresql://postgres:password@postgres-cluster:5432/okuz_ai"
+  DATABASE_POOL_SIZE: "20"
+  DATABASE_TIMEOUT: "30000"
+  
+  # Redis Configuration
+  REDIS_URL: "redis://redis-cluster:6379"
+  REDIS_PASSWORD: "redis_password"
+  REDIS_TLS_ENABLED: "true"
+  
+  # JWT Configuration
+  JWT_SECRET: "${JWT_SECRET}"
+  JWT_EXPIRES_IN: "1h"
+  JWT_REFRESH_EXPIRES_IN: "7d"
+  
+  # OpenAI Configuration
+  OPENAI_API_KEY: "${OPENAI_API_KEY}"
+  OPENAI_MODEL: "gpt-4"
+  OPENAI_TEMPERATURE: "0.7"
+  OPENAI_MAX_TOKENS: "1000"
+  
+  # Rate Limiting
+  THROTTLE_TTL: "60"
+  THROTTLE_LIMIT: "100"
+  
+  # Caching
+  CACHE_TTL: "300"
+  CACHE_MAX: "1000"
+  
+  # CORS
+  CORS_ORIGIN: "*"
+  
+  # Logging
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  
+  # Monitoring
+  METRICS_ENABLED: "true"
+  HEALTH_CHECK_ENABLED: "true"
+  
+  # Sharding Configuration
+  SHARD_COUNT: "8"
+  REPLICATION_FACTOR: "2"
+  REBALANCING_THRESHOLD: "0.8"
+  
+  # Redis Cluster Configuration
+  REDIS_CLUSTER_NODES: "6"
+  REDIS_CLUSTER_SHARDS: "3"
+  REDIS_CLUSTER_REPLICATION: "2"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: okuz-ai-secrets
+  namespace: okuz-ai
+data:
+  # Database Secrets
+  POSTGRES_DB: "${POSTGRES_DB}"
+  POSTGRES_USER: "${POSTGRES_USER}"
+  POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+  
+  # Redis Secrets
+  REDIS_PASSWORD: "${REDIS_PASSWORD}"
+  
+  # JWT Secrets
+  JWT_SECRET: "${JWT_SECRET}"
+  JWT_REFRESH_SECRET: "${JWT_REFRESH_SECRET}"
+  
+  # OpenAI Secrets
+  OPENAI_API_KEY: "${OPENAI_API_KEY}"
+  
+  # SMTP Secrets
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_USER: "your_email@gmail.com"
+  SMTP_PASS: "your_email_password"
+  
+  # FCM Secrets
+  FCM_SERVER_KEY: "your_fcm_server_key_here"
+  
+  # Twilio Secrets
+  TWILIO_ACCOUNT_SID: "your_twilio_account_sid"
+  TWILIO_AUTH_TOKEN: "your_twilio_auth_token"
+  
+  # Sentry Secrets
+  SENTRY_DSN: "your_sentry_dsn_here"
+  
+  # Grafana Secrets
+  GRAFANA_PASSWORD: "your_grafana_password"

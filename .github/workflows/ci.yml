@@ -1,3 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install deps
+        run: npm ci --workspace backend || (cd backend && npm ci)
+      - name: Lint
+        run: npm run -w backend lint || (cd backend && npm run lint)
+      - name: Test
+        env:
+          API_BASE_URL: http://localhost:3002
+          SKIP_DB: 1
+        run: npm run -w backend test || (cd backend && npm run test)
+      - name: Build
+        run: npm run -w backend build || (cd backend && npm run build)
+
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: okuz_ai_test
+        ports: [ '5433:5432' ]
+        options: >-
+          --health-cmd="pg_isready -U postgres" --health-interval=10s --health-timeout=5s --health-retries=5
+      redis:
+        image: redis:7
+        ports: [ '6379:6379' ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: Generate Prisma
+        working-directory: backend
+        run: npx prisma generate
+      - name: Migrate Test DB
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5433/okuz_ai_test
+        run: npx prisma migrate deploy
+      - name: Lint
+        working-directory: backend
+        run: npm run lint
+      - name: Unit & Integration Tests (coverage gate)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5433/okuz_ai_test
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+          CORS_ALLOWED_ORIGINS: http://localhost:3000
+          JWT_SECRET: testtesttesttesttesttesttesttest
+          JWT_REFRESH_SECRET: testtesttesttesttesttesttesttest
+          OPENAI_API_KEY: testtesttesttest
+        run: npm run test:ci
+      - name: Build
+        working-directory: backend
+        run: npm run build
+
 name: CI/CD Pipeline
 
 on:

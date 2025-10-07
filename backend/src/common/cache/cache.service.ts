@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Redis from 'ioredis';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const Redis = require('ioredis');
 
 @Injectable()
 export class CacheService {
   private readonly logger = new Logger(CacheService.name);
-  private redis: Redis;
+  private redis: any;
 
   constructor(private readonly configService: ConfigService) {
     this.redis = new Redis({
@@ -21,7 +22,7 @@ export class CacheService {
       commandTimeout: 5000,
     });
 
-    this.redis.on('error', (err) => {
+    this.redis.on('error', (err: any) => {
       this.logger.error('Redis connection error:', err);
     });
 
@@ -72,7 +73,7 @@ export class CacheService {
     try {
       // Redis automatically handles TTL, but we can add manual cleanup
       const keys = await this.redis.keys('*');
-      const expiredKeys = [];
+      const expiredKeys: string[] = [];
       
       for (const key of keys) {
         const ttl = await this.redis.ttl(key);
@@ -97,7 +98,7 @@ export class CacheService {
       const lines = info.split('\r\n');
       const memoryInfo: any = {};
       
-      lines.forEach(line => {
+      lines.forEach((line: string) => {
         if (line.includes(':')) {
           const [key, value] = line.split(':');
           memoryInfo[key] = value;
@@ -216,4 +217,85 @@ export class CacheService {
   async disconnect(): Promise<void> {
     await this.redis.disconnect();
   }
+
+  // Eksik method'ları ekleyelim
+  async delete(key: string): Promise<void> {
+    try {
+      await this.redis.del(key);
+    } catch (error) {
+      this.logger.error(`Cache delete error for key ${key}:`, error);
+    }
+  }
+
+  async getStats(): Promise<any> {
+    try {
+      const info = await this.redis.info('memory');
+      const keyspace = await this.redis.info('keyspace');
+      
+      return {
+        memory: this.parseMemoryInfo(info),
+        keyspace: this.parseKeyspaceInfo(keyspace),
+        uptime: await this.redis.info('server').then((info: string) => this.parseUptime(info))
+      };
+    } catch (error) {
+      this.logger.error('Cache stats error:', error);
+      return {
+        memory: { used: 0, total: 0 },
+        keyspace: {},
+        uptime: 0
+      };
+    }
+  }
+
+  private parseMemoryInfo(info: string): any {
+    const lines = info.split('\r\n');
+    const memory: any = {};
+    
+    lines.forEach((line: string) => {
+      if (line.includes(':')) {
+        const [key, value] = line.split(':');
+        if (key.startsWith('used_memory') || key.startsWith('maxmemory')) {
+          memory[key] = parseInt(value) || 0;
+        }
+      }
+    });
+    
+    return memory;
+  }
+
+  private parseKeyspaceInfo(info: string): any {
+    const lines = info.split('\r\n');
+    const keyspace: any = {};
+    
+    lines.forEach((line: string) => {
+      if (line.startsWith('db')) {
+        const [db, stats] = line.split(':');
+        keyspace[db] = stats;
+      }
+    });
+    
+    return keyspace;
+  }
+
+  private parseUptime(info: string): number {
+    const lines = info.split('\r\n');
+    for (const line of lines) {
+      if (line.startsWith('uptime_in_seconds:')) {
+        return parseInt(line.split(':')[1]) || 0;
+      }
+    }
+    return 0;
+  }
+
+  async invalidatePattern(pattern: string): Promise<void> {
+    try {
+      const keys = await this.redis.keys(pattern);
+      if (keys.length > 0) {
+        await this.redis.del(...keys);
+      }
+    } catch (error) {
+      this.logger.error('Failed to invalidate pattern:', error);
+    }
+  }
+
 }

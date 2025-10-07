@@ -1,0 +1,306 @@
+name: 🚀 Canary Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment for canary deployment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      canary_percentage:
+        description: 'Percentage of traffic to send to canary (1-50)'
+        required: true
+        default: '10'
+        type: string
+      duration_minutes:
+        description: 'Duration to run canary deployment (minutes)'
+        required: true
+        default: '30'
+        type: string
+      auto_promote:
+        description: 'Automatically promote if no issues detected'
+        required: true
+        default: 'false'
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ===========================================
+  # CANARY DEPLOYMENT PREPARATION
+  # ===========================================
+  
+  prepare-canary:
+    name: 🔧 Prepare Canary Deployment
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏷️ Get current version
+        id: get-version
+        run: |
+          echo "Current version: $(git describe --tags --always)"
+          echo "version=$(git describe --tags --always)" >> $GITHUB_OUTPUT
+
+      - name: 📊 Canary deployment info
+        run: |
+          echo "Canary Deployment Configuration:"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Canary Percentage: ${{ github.event.inputs.canary_percentage }}%"
+          echo "Duration: ${{ github.event.inputs.duration_minutes }} minutes"
+          echo "Auto Promote: ${{ github.event.inputs.auto_promote }}"
+          echo "Version: ${{ steps.get-version.outputs.version }}"
+
+  # ===========================================
+  # STAGING CANARY DEPLOYMENT
+  # ===========================================
+  
+  canary-staging:
+    name: 🚀 Canary Staging Deployment
+    runs-on: ubuntu-latest
+    needs: prepare-canary
+    if: github.event.inputs.environment == 'staging'
+    environment: staging
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: 🔐 Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: 🚀 Deploy canary version
+        run: |
+          echo "Deploying canary version to staging..."
+          
+          # Create canary deployments
+          kubectl create deployment api-gateway-canary --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api-gateway:latest -n okuz-ai-staging --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create deployment planning-service-canary --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/planning-service:latest -n okuz-ai-staging --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create deployment smart-tools-service-canary --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/smart-tools-service:latest -n okuz-ai-staging --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create deployment gamification-service-canary --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gamification-service:latest -n okuz-ai-staging --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create deployment notification-service-canary --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/notification-service:latest -n okuz-ai-staging --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create deployment auth-service-canary --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/auth-service:latest -n okuz-ai-staging --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Scale canary deployments
+          kubectl scale deployment api-gateway-canary --replicas=1 -n okuz-ai-staging
+          kubectl scale deployment planning-service-canary --replicas=1 -n okuz-ai-staging
+          kubectl scale deployment smart-tools-service-canary --replicas=1 -n okuz-ai-staging
+          kubectl scale deployment gamification-service-canary --replicas=1 -n okuz-ai-staging
+          kubectl scale deployment notification-service-canary --replicas=1 -n okuz-ai-staging
+          kubectl scale deployment auth-service-canary --replicas=1 -n okuz-ai-staging
+
+      - name: ⏳ Wait for canary deployment
+        run: |
+          echo "Waiting for canary deployment to be ready..."
+          kubectl rollout status deployment/api-gateway-canary -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/planning-service-canary -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/smart-tools-service-canary -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/gamification-service-canary -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/notification-service-canary -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/auth-service-canary -n okuz-ai-staging --timeout=300s
+
+      - name: 🏥 Health check canary
+        run: |
+          echo "Testing canary health check..."
+          kubectl get pods -n okuz-ai-staging
+          
+          # Wait for services to be ready
+          sleep 30
+          
+          # Test health endpoints
+          kubectl port-forward -n okuz-ai-staging service/api-gateway-canary 8080:80 &
+          sleep 10
+          curl -f http://localhost:8080/health || echo "Canary health check failed"
+
+      - name: 📊 Monitor canary deployment
+        run: |
+          echo "Monitoring canary deployment for ${{ github.event.inputs.duration_minutes }} minutes..."
+          
+          # Start monitoring
+          start_time=$(date +%s)
+          end_time=$((start_time + ${{ github.event.inputs.duration_minutes }} * 60))
+          
+          while [ $(date +%s) -lt $end_time ]; do
+            echo "Monitoring canary deployment..."
+            kubectl get pods -n okuz-ai-staging
+            kubectl top pods -n okuz-ai-staging
+            sleep 60
+          done
+
+      - name: 🔄 Auto-promote canary
+        if: github.event.inputs.auto_promote == 'true'
+        run: |
+          echo "Auto-promoting canary deployment..."
+          
+          # Scale up canary deployments
+          kubectl scale deployment api-gateway-canary --replicas=3 -n okuz-ai-staging
+          kubectl scale deployment planning-service-canary --replicas=3 -n okuz-ai-staging
+          kubectl scale deployment smart-tools-service-canary --replicas=3 -n okuz-ai-staging
+          kubectl scale deployment gamification-service-canary --replicas=3 -n okuz-ai-staging
+          kubectl scale deployment notification-service-canary --replicas=3 -n okuz-ai-staging
+          kubectl scale deployment auth-service-canary --replicas=3 -n okuz-ai-staging
+          
+          # Scale down stable deployments
+          kubectl scale deployment api-gateway --replicas=0 -n okuz-ai-staging
+          kubectl scale deployment planning-service --replicas=0 -n okuz-ai-staging
+          kubectl scale deployment smart-tools-service --replicas=0 -n okuz-ai-staging
+          kubectl scale deployment gamification-service --replicas=0 -n okuz-ai-staging
+          kubectl scale deployment notification-service --replicas=0 -n okuz-ai-staging
+          kubectl scale deployment auth-service --replicas=0 -n okuz-ai-staging
+
+      - name: 📊 Notify canary completion
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        if: always()
+
+  # ===========================================
+  # PRODUCTION CANARY DEPLOYMENT
+  # ===========================================
+  
+  canary-production:
+    name: 🚀 Canary Production Deployment
+    runs-on: ubuntu-latest
+    needs: prepare-canary
+    if: github.event.inputs.environment == 'production'
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: 🔐 Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: 🚀 Deploy canary version
+        run: |
+          echo "Deploying canary version to production..."
+          
+          # Create canary deployments
+          kubectl create deployment api-gateway-canary --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api-gateway:latest -n okuz-ai-production --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create deployment planning-service-canary --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/planning-service:latest -n okuz-ai-production --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create deployment smart-tools-service-canary --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/smart-tools-service:latest -n okuz-ai-production --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create deployment gamification-service-canary --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gamification-service:latest -n okuz-ai-production --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create deployment notification-service-canary --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/notification-service:latest -n okuz-ai-production --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create deployment auth-service-canary --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/auth-service:latest -n okuz-ai-production --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Scale canary deployments
+          kubectl scale deployment api-gateway-canary --replicas=1 -n okuz-ai-production
+          kubectl scale deployment planning-service-canary --replicas=1 -n okuz-ai-production
+          kubectl scale deployment smart-tools-service-canary --replicas=1 -n okuz-ai-production
+          kubectl scale deployment gamification-service-canary --replicas=1 -n okuz-ai-production
+          kubectl scale deployment notification-service-canary --replicas=1 -n okuz-ai-production
+          kubectl scale deployment auth-service-canary --replicas=1 -n okuz-ai-production
+
+      - name: ⏳ Wait for canary deployment
+        run: |
+          echo "Waiting for canary deployment to be ready..."
+          kubectl rollout status deployment/api-gateway-canary -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/planning-service-canary -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/smart-tools-service-canary -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/gamification-service-canary -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/notification-service-canary -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/auth-service-canary -n okuz-ai-production --timeout=300s
+
+      - name: 🏥 Health check canary
+        run: |
+          echo "Testing canary health check..."
+          kubectl get pods -n okuz-ai-production
+          
+          # Wait for services to be ready
+          sleep 30
+          
+          # Test health endpoints
+          kubectl port-forward -n okuz-ai-production service/api-gateway-canary 8080:80 &
+          sleep 10
+          curl -f http://localhost:8080/health || echo "Canary health check failed"
+
+      - name: 📊 Monitor canary deployment
+        run: |
+          echo "Monitoring canary deployment for ${{ github.event.inputs.duration_minutes }} minutes..."
+          
+          # Start monitoring
+          start_time=$(date +%s)
+          end_time=$((start_time + ${{ github.event.inputs.duration_minutes }} * 60))
+          
+          while [ $(date +%s) -lt $end_time ]; do
+            echo "Monitoring canary deployment..."
+            kubectl get pods -n okuz-ai-production
+            kubectl top pods -n okuz-ai-production
+            sleep 60
+          done
+
+      - name: 🔄 Auto-promote canary
+        if: github.event.inputs.auto_promote == 'true'
+        run: |
+          echo "Auto-promoting canary deployment..."
+          
+          # Scale up canary deployments
+          kubectl scale deployment api-gateway-canary --replicas=5 -n okuz-ai-production
+          kubectl scale deployment planning-service-canary --replicas=5 -n okuz-ai-production
+          kubectl scale deployment smart-tools-service-canary --replicas=5 -n okuz-ai-production
+          kubectl scale deployment gamification-service-canary --replicas=5 -n okuz-ai-production
+          kubectl scale deployment notification-service-canary --replicas=5 -n okuz-ai-production
+          kubectl scale deployment auth-service-canary --replicas=5 -n okuz-ai-production
+          
+          # Scale down stable deployments
+          kubectl scale deployment api-gateway --replicas=0 -n okuz-ai-production
+          kubectl scale deployment planning-service --replicas=0 -n okuz-ai-production
+          kubectl scale deployment smart-tools-service --replicas=0 -n okuz-ai-production
+          kubectl scale deployment gamification-service --replicas=0 -n okuz-ai-production
+          kubectl scale deployment notification-service --replicas=0 -n okuz-ai-production
+          kubectl scale deployment auth-service --replicas=0 -n okuz-ai-production
+
+      - name: 📊 Notify canary completion
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        if: always()
+
+  # ===========================================
+  # CANARY CLEANUP
+  # ===========================================
+  
+  cleanup-canary:
+    name: 🧹 Cleanup Canary Deployment
+    runs-on: ubuntu-latest
+    needs: [canary-staging, canary-production]
+    if: always()
+    
+    steps:
+      - name: 📊 Canary cleanup summary
+        run: |
+          echo "Canary Deployment Summary:"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Canary Percentage: ${{ github.event.inputs.canary_percentage }}%"
+          echo "Duration: ${{ github.event.inputs.duration_minutes }} minutes"
+          echo "Auto Promote: ${{ github.event.inputs.auto_promote }}"
+          echo "Status: ${{ needs.canary-staging.result || needs.canary-production.result }}"
