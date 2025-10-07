@@ -49,7 +49,7 @@ export class StudentsService {
         where: { id },
         include: {
           plans: true,
-          sessions: true,
+          studySessions: true,
           exams: true
         }
       });
@@ -77,7 +77,7 @@ export class StudentsService {
         where: { id },
         include: {
           plans: true,
-          sessions: true,
+          studySessions: true,
           exams: true
         }
       });

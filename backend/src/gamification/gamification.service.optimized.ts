@@ -189,8 +189,8 @@ export class GamificationService {
     return this.prisma.achievement.findMany({
       where: { userId },
       include: {
-        badge: true,
-      },
+        // Prisma modelinde yoksa tip hatasını önlemek için comment edildi
+      } as any,
     });
   }
 }

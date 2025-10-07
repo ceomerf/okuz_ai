@@ -3,10 +3,10 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
-  extractTokenFromHeader(authHeader: string) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null;
-    }
-    return authHeader.substring(7);
+  protected extractTokenFromHeader(authHeader?: string): string | null {
+    if (!authHeader) return null;
+    const [type, token] = authHeader.split(' ');
+    if (type?.toLowerCase() !== 'bearer' || !token) return null;
+    return token;
   }
 }

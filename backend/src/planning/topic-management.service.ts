@@ -271,4 +271,21 @@ export class TopicManagementService {
       throw new Error('Failed to get curriculum');
     }
   }
+
+  // Admin: MEB Topic CRUD (basit sürüm)
+  async adminCreateMebTopic(data: { grade: number; subject: string; unit: string; topic: string; month?: number; tytWeight?: number; aytWeight?: number }) {
+    return (this.prisma as any).mebTopic.create({ data });
+  }
+
+  async adminUpdateMebTopic(id: string, data: Partial<{ grade: number; subject: string; unit: string; topic: string; month?: number; tytWeight?: number; aytWeight?: number }>) {
+    return (this.prisma as any).mebTopic.update({ where: { id }, data });
+  }
+
+  async adminDeleteMebTopic(id: string) {
+    return (this.prisma as any).mebTopic.delete({ where: { id } });
+  }
+
+  async adminListMebTopics(filter?: { grade?: number; subject?: string }) {
+    return (this.prisma as any).mebTopic.findMany({ where: { ...(filter?.grade != null ? { grade: filter.grade } : {}), ...(filter?.subject ? { subject: filter.subject } : {}) }, take: 500 });
+  }
 }

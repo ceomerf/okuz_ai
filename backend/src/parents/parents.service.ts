@@ -70,7 +70,7 @@ export class ParentsService {
         where: { id: childId },
         include: {
           plans: true,
-          sessions: true
+          studySessions: true
         }
       });
       return { 

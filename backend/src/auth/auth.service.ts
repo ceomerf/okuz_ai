@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, ConflictException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { SubscriptionService } from '../subscription/subscription.service';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../common/cache/cache.service';
 import { Optional } from '@nestjs/common';
@@ -153,11 +153,11 @@ export class AuthService {
         },
       };
     } catch (error: any) {
-      console.error('❌ Registration error:', error.message);
+      console.error('❌ Registration error:', error instanceof Error ? error.message : "Unknown error");
       if (error instanceof ConflictException) {
         throw error;
       }
-      throw new Error('Registration failed: ' + error.message);
+      throw new Error('Registration failed: ' + (error instanceof Error ? error.message : "Unknown error"));
     }
   }
 

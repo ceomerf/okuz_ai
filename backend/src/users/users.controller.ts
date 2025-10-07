@@ -1,14 +1,20 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Put, Delete, Param } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, Put, Delete, Param, Query, BadRequestException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('api/users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  async getUsers() {
-    return this.usersService.getAllUsers();
+  async getUsers(@Query('limit') limit?: string, @Query('offset') offset?: string) {
+    const l = Math.min(parseInt(limit || '20', 10), 100);
+    const o = Math.max(parseInt(offset || '0', 10), 0);
+    if (Number.isNaN(l) || Number.isNaN(o)) {
+      throw new BadRequestException('Invalid pagination params');
+    }
+    return this.usersService.getAllUsers({ limit: l, offset: o, select: { id: true, email: true, name: true, role: true, createdAt: true } });
   }
 
   @Post()
@@ -38,8 +44,13 @@ export class UsersController {
   }
 
   @Get('all')
-  async getAllUsers() {
-    return this.usersService.getAllUsers();
+  async getAllUsers(@Query('limit') limit?: string, @Query('offset') offset?: string) {
+    const l = Math.min(parseInt(limit || '50', 10), 100);
+    const o = Math.max(parseInt(offset || '0', 10), 0);
+    if (Number.isNaN(l) || Number.isNaN(o)) {
+      throw new BadRequestException('Invalid pagination params');
+    }
+    return this.usersService.getAllUsers({ limit: l, offset: o, select: { id: true, email: true, name: true, role: true, createdAt: true } });
   }
 
   @Post('student-profile')

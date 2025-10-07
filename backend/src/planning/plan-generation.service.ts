@@ -75,15 +75,18 @@ export class PlanGenerationService {
 		return { plan, sessions };
 	}
 
-	private generateSampleSessions(data: any): any[] {
+  private generateSampleSessions(data: any): any[] {
 		const sessions = [];
 		const subjects = data.subjects || ['Matematik', 'Türkçe'];
-		const totalSessions = Math.min(data.availableTime || 20, 30);
+    // 7 gün zorunluluğu weekly modda; aksi halde planDurationDays kullanılacak
+    const planDays = Number(data.planDurationDays) > 0 ? Number(data.planDurationDays) : (String(data.planType || '').toLowerCase() === 'weekly' ? 7 : 3);
+    const sessionsPerDay = 2;
+    const totalSessions = planDays * sessionsPerDay;
 
 		for (let i = 0; i < totalSessions; i++) {
 			const subject = subjects[i % subjects.length];
-			const startTime = new Date();
-			startTime.setDate(startTime.getDate() + i);
+      const startTime = new Date();
+      startTime.setDate(startTime.getDate() + Math.floor(i / sessionsPerDay));
 
 			sessions.push({
 				subject,
@@ -99,7 +102,7 @@ export class PlanGenerationService {
 	}
 
 	// ---- Taşınan yardımcılar ----
-	filterSubjectsForGradeAndTrack(subjects: string[], grade: number, track: string): string[] {
+  filterSubjectsForGradeAndTrack(subjects: string[], grade: number, track: string): string[] {
 		if (!Array.isArray(subjects) || subjects.length === 0) return [];
 		if (grade < 11) return subjects;
 		const norm = (v: string) => String(v || '').toLowerCase();
@@ -124,8 +127,8 @@ export class PlanGenerationService {
 		return filtered.length > 0 ? filtered : subjects;
 	}
 
-	buildScheduleFromTopics(topicList: string[], planData: { planDurationDays?: number; subjects: string[]; userId?: string }): any {
-		const planDurationDays = Number((planData as any)?.planDurationDays) > 0 ? Number((planData as any).planDurationDays) : 3;
+  buildScheduleFromTopics(topicList: string[], planData: { planDurationDays?: number; subjects: string[]; userId?: string }): any {
+    const planDurationDays = Number((planData as any)?.planDurationDays) > 0 ? Number((planData as any).planDurationDays) : 7;
 		const sessionsPerDay = 2;
 		const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 

@@ -1,0 +1,234 @@
+### Sprint 1 API Testleri
+
+### 1. Koç Paneli Testleri
+
+# Koçun öğrenci listesini getir
+GET http://localhost:3000/coaching/students
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Öğrenci detayını getir
+GET http://localhost:3000/coaching/students/student-id-here
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Koç notu ekle
+POST http://localhost:3000/coaching/students/student-id-here/notes
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "title": "Matematik performansı",
+  "content": "Öğrenci matematik konularında iyi ilerleme gösteriyor.",
+  "type": "PRAISE",
+  "priority": "NORMAL"
+}
+
+###
+
+# Öğrenci uyum skorunu güncelle
+PUT http://localhost:3000/coaching/students/student-id-here/compliance
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "date": "2024-01-15",
+  "planComplianceScore": 85,
+  "sessionCompletionRate": 0.9,
+  "timeSpentVsPlanned": 1.1,
+  "coachRating": 4,
+  "coachComment": "Çok iyi performans gösterdi"
+}
+
+###
+
+# Koç performans özeti
+GET http://localhost:3000/coaching/performance
+Authorization: Bearer YOUR_JWT_TOKEN
+
+### 2. Veli Rapor Testleri
+
+# Veli dashboard
+GET http://localhost:3000/parent-reports/dashboard
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Haftalık rapor
+GET http://localhost:3000/parent-reports/weekly-report/student-id-here?weekStart=2024-01-15
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Günlük ısı haritası
+GET http://localhost:3000/parent-reports/heatmap/student-id-here?startDate=2024-01-01&endDate=2024-01-31
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Ders bazlı ilerleme
+GET http://localhost:3000/parent-reports/subject-progress/student-id-here?weekStart=2024-01-15
+Authorization: Bearer YOUR_JWT_TOKEN
+
+### 3. AI Koç Testleri
+
+# Günlük AI önerisi
+GET http://localhost:3000/ai-coach/daily-recommendation?date=2024-01-15
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Günlük öneri oluştur
+POST http://localhost:3000/ai-coach/daily-recommendation
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "date": "2024-01-15"
+}
+
+###
+
+# Gün sonu değerlendirmesi
+POST http://localhost:3000/ai-coach/daily-score
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "date": "2024-01-15",
+  "completedSessions": 3,
+  "plannedSessions": 4,
+  "studyTime": 180,
+  "plannedTime": 200,
+  "performance": [85, 90, 78]
+}
+
+###
+
+# Haftalık AI özeti
+GET http://localhost:3000/ai-coach/weekly-summary?weekStart=2024-01-15
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Motivasyonel mesaj
+POST http://localhost:3000/ai-coach/motivational-message
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "recentPerformance": 85,
+  "streak": 5,
+  "goals": ["Matematik", "Fizik"]
+}
+
+### 4. Bildirim Ayarları Testleri
+
+# Bildirim ayarlarını getir
+GET http://localhost:3000/notification-settings
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Bildirim ayarlarını güncelle
+PUT http://localhost:3000/notification-settings
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "quietHoursStart": "22:00",
+  "quietHoursEnd": "08:00",
+  "enableStudyReminders": true,
+  "enableAchievementAlerts": true,
+  "defaultSnoozeMinutes": 30
+}
+
+###
+
+# Bildirimi snooze et
+POST http://localhost:3000/notification-settings/snooze/notification-id-here
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "snoozeMinutes": 60
+}
+
+###
+
+# Tüm bildirimleri snooze et
+POST http://localhost:3000/notification-settings/snooze-all
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "snoozeMinutes": 120
+}
+
+###
+
+# Aktif snooze'ları getir
+GET http://localhost:3000/notification-settings/snoozes
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Bildirim geçmişi
+GET http://localhost:3000/notification-settings/history?limit=20
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Bildirim istatistikleri
+GET http://localhost:3000/notification-settings/stats?days=30
+Authorization: Bearer YOUR_JWT_TOKEN
+
+### 5. Referans Sistemi Testleri
+
+# Referans kodu oluştur
+POST http://localhost:3000/referral/codes
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "maxUses": 10,
+  "bonusType": "TRIAL_EXTENSION",
+  "bonusValue": 7
+}
+
+###
+
+# Kullanıcının referans kodlarını getir
+GET http://localhost:3000/referral/codes
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Referans kodu kullan
+POST http://localhost:3000/referral/use
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "code": "ABC12345"
+}
+
+###
+
+# Referans istatistikleri
+GET http://localhost:3000/referral/stats
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Referans kodu arama
+GET http://localhost:3000/referral/search/ABC12345
+Authorization: Bearer YOUR_JWT_TOKEN
+
+###
+
+# Referans kodu deaktive et
+DELETE http://localhost:3000/referral/codes/code-id-here
+Authorization: Bearer YOUR_JWT_TOKEN

@@ -1,0 +1,11 @@
+# SSH Bağlantı Konfigürasyonu
+# Kullanım: ssh mezosunucu
+
+Host mezosunucu
+    HostName 37.60.224.91
+    User root
+    Port 22
+    IdentityFile ~/.ssh/okuz_key
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel QUIET

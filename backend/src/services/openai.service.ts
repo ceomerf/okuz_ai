@@ -69,8 +69,8 @@ export class OpenAIService {
         throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content || '';
+      const data: any = await response.json();
+      const content = (data as any).choices?.[0]?.message?.content || '';
 
       // Cache'e kaydet
       if (userId && content) {
@@ -86,9 +86,10 @@ export class OpenAIService {
 
       return content;
 
-    } catch (error: any) {
-      console.error('OpenAI API Error:', error);
-      throw new Error(`OpenAI API failed: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('OpenAI API Error:', message);
+      throw new Error(`OpenAI API failed: ${message}`);
     }
   }
 

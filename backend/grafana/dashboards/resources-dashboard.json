@@ -1,0 +1,244 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Okuz AI - Kaynak Kullanımı Dashboard",
+    "tags": ["okuz-ai", "resources", "system"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "CPU Kullanımı",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(process_cpu_seconds_total{job=\"okuz-ai-backend\"}[5m]) * 100",
+            "legendFormat": "CPU Usage %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 70},
+                {"color": "red", "value": 90}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Memory Kullanımı",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes{job=\"okuz-ai-backend\"} / 1024 / 1024",
+            "legendFormat": "Memory Usage (MB)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "MB",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 500},
+                {"color": "red", "value": 1000}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Veritabanı Bağlantı Sayısı",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "database_connections_active{job=\"okuz-ai-backend\"}",
+            "legendFormat": "Active Connections"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 80},
+                {"color": "red", "value": 100}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Redis Bağlantı Durumu",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "redis_connected{job=\"okuz-ai-backend\"}",
+            "legendFormat": "Redis Connected"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Cache Hit Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "redis_keyspace_hits{job=\"okuz-ai-backend\"} / (redis_keyspace_hits{job=\"okuz-ai-backend\"} + redis_keyspace_misses{job=\"okuz-ai-backend\"}) * 100",
+            "legendFormat": "Cache Hit Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 70},
+                {"color": "green", "value": 90}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Disk Kullanımı",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "node_filesystem_avail_bytes{job=\"okuz-ai-backend\"} / node_filesystem_size_bytes{job=\"okuz-ai-backend\"} * 100",
+            "legendFormat": "Available Disk %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 20},
+                {"color": "green", "value": 50}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "Network I/O",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(node_network_receive_bytes_total{job=\"okuz-ai-backend\"}[5m])",
+            "legendFormat": "Network In"
+          },
+          {
+            "expr": "rate(node_network_transmit_bytes_total{job=\"okuz-ai-backend\"}[5m])",
+            "legendFormat": "Network Out"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "Bps"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Sistem Yükü",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "node_load1{job=\"okuz-ai-backend\"}",
+            "legendFormat": "1m Load"
+          },
+          {
+            "expr": "node_load5{job=\"okuz-ai-backend\"}",
+            "legendFormat": "5m Load"
+          },
+          {
+            "expr": "node_load15{job=\"okuz-ai-backend\"}",
+            "legendFormat": "15m Load"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 9,
+        "title": "Açık Dosya Tanımlayıcıları",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "process_open_fds{job=\"okuz-ai-backend\"}",
+            "legendFormat": "Open File Descriptors"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 1000},
+                {"color": "red", "value": 2000}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

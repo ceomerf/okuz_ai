@@ -1,0 +1,374 @@
+8aa000b9418dc9248be7565dbdabc8f1
+"use strict";
+
+// GEMINI SERVİSİ DEVRE DIŞI - OPENAI KULLANILIYOR
+/*
+import { Injectable, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { MetricsService } from '../monitoring/metrics.service';
+import { PrismaService } from '../common/prisma/prisma.service';
+import { CacheService } from './cache.service';
+import * as crypto from 'crypto';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const CircuitBreaker: any = require('opossum');
+
+@Injectable()
+export class GeminiService {
+  private genAI: GoogleGenerativeAI;
+  private model: any;
+  private breaker: any;
+
+  constructor(private readonly configService: ConfigService, private readonly metrics: MetricsService, private readonly prisma: PrismaService, private readonly cache: CacheService) {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is required');
+    }
+    this.genAI = new GoogleGenerativeAI(apiKey);
+    const preferredModel = this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash';
+    this.model = this.genAI.getGenerativeModel({ model: preferredModel });
+
+    const breakerOptions = {
+      timeout: 15000,
+      errorThresholdPercentage: 50,
+      resetTimeout: 30000,
+    } as any;
+    this.breaker = new CircuitBreaker(async (args: { prompt: string }) => {
+      const { prompt } = args;
+      return this.model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }]}],
+      });
+    }, breakerOptions);
+  }
+
+  async generateContent(prompt: string, opts?: { userId?: string; endpoint?: string; cacheTtlSeconds?: number; modelOverride?: string }): Promise<string> {
+    const MAX_RETRIES = 3;
+    const modelName = opts?.modelOverride || this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash';
+    const endpoint = opts?.endpoint || 'generateContent';
+    const userId = opts?.userId;
+    const cacheTtlSeconds = typeof opts?.cacheTtlSeconds === 'number' ? opts?.cacheTtlSeconds : 3600;
+
+    // Kota kontrolü (varsa)
+    if (userId) {
+      const usage = await (this.prisma as any).userUsageControl?.findUnique?.({ where: { userId } }).catch(() => null);
+      if (usage && usage.monthlyTokenUsed >= usage.monthlyTokenLimit) {
+        throw new ForbiddenException(`User ${userId} exceeded monthly token limit`);
+      }
+    }
+
+    // Cache kontrolü
+    const promptHash = crypto.createHash('sha256').update(`${modelName}::${endpoint}::${prompt}`).digest('hex');
+    const cacheKey = `gemini:cache:${modelName}:${promptHash}`;
+    const cached = await this.cache.get<string>(cacheKey);
+    if (cached) {
+      this.metrics.recordCacheHit(cacheKey, true);
+      return cached;
+    } else {
+      this.metrics.recordCacheHit(cacheKey, false);
+    }
+    const start = Date.now();
+    // plan_type belirle (abonelik durumuna göre)
+    const planType = userId
+      ? (await (this.prisma as any).user.findUnique?.({ where: { id: userId }, select: { subscriptionStatus: true } }).catch(() => null))?.subscriptionStatus?.toLowerCase?.() || undefined
+      : undefined;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const result = await this.breaker.fire({ prompt });
+        const response = await result.response;
+        const text = response.text();
+        const usage = (response as any)?.usageMetadata || {};
+        const totalTokens = Number(usage.totalTokenCount || usage.totalTokens || 0);
+        const duration = Date.now() - start;
+        this.metrics.recordGeminiUsage(userId, planType, modelName, endpoint, totalTokens);
+        this.metrics.recordGeminiCallDuration(userId, planType, modelName, endpoint, duration, true);
+        this.metrics.recordGeminiRequest('success', endpoint, modelName);
+
+        // Kota sayaç artışı
+        if (userId && totalTokens > 0) {
+          await (this.prisma as any).userUsageControl?.upsert?.({
+            where: { userId },
+            create: { userId, monthlyTokenUsed: totalTokens },
+            update: { monthlyTokenUsed: { increment: totalTokens } },
+          }).catch(() => null);
+        }
+
+        // Sonucu cache'e yaz
+        await this.cache.set(cacheKey, text, cacheTtlSeconds);
+        return text;
+      } catch (error) {
+        console.error(`Gemini API Error (Attempt ${attempt}/${MAX_RETRIES}):`, (error as any)?.message || error);
+        if (attempt === MAX_RETRIES) {
+          const duration = Date.now() - start;
+          this.metrics.recordGeminiCallDuration(userId, planType, modelName, endpoint, duration, false);
+          this.metrics.recordGeminiRequest('error', endpoint, modelName);
+        }
+        
+        if (attempt === MAX_RETRIES) {
+          // Son denemede de başarısız olursa fallback'e geç
+          try {
+            const fallback = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+            const result = await fallback.generateContent({
+              contents: [{ role: 'user', parts: [{ text: prompt }]}],
+            });
+            const response = await result.response;
+            const text = response.text();
+            const usage = (response as any)?.usageMetadata || {};
+            const totalTokens = Number(usage.totalTokenCount || usage.totalTokens || 0);
+            const duration = Date.now() - start;
+            this.metrics.recordGeminiUsage(userId, planType, 'gemini-1.5-flash', endpoint, totalTokens);
+            this.metrics.recordGeminiCallDuration(userId, planType, 'gemini-1.5-flash', endpoint, duration, true);
+            this.metrics.recordGeminiRequest('success', endpoint, 'gemini-1.5-flash');
+            if (userId && totalTokens > 0) {
+              await (this.prisma as any).userUsageControl?.upsert?.({
+                where: { userId },
+                create: { userId, monthlyTokenUsed: totalTokens },
+                update: { monthlyTokenUsed: { increment: totalTokens } },
+              }).catch(() => null);
+            }
+            return text;
+          } catch (err2) {
+            console.error('Gemini API Error (fallback model):', (err2 as any)?.message || err2);
+            return 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
+          }
+        }
+        
+        // Bir sonraki deneme için kısa bir süre bekle
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+    
+    return 'AI servisi tüm denemelere rağmen yanıt vermedi.';
+  }
+
+  async generateContentStream(prompt: string): Promise<AsyncGenerator<string>> {
+    try {
+      const modelName = this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash';
+      const endpoint = 'generateContentStream';
+      const start = Date.now();
+      const result = await this.model.generateContentStream(prompt);
+      
+      return (async function* () {
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          if (chunkText) {
+            yield chunkText;
+          }
+        }
+      })();
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Gemini Stream API Error:', error);
+      }
+      return (async function* () {
+        yield 'AI servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
+      })();
+    }
+  }
+
+  async generateStructuredContent(prompt: string, schema?: any): Promise<any> {
+    try {
+      const structuredPrompt = schema
+        ? `${prompt}\n\nLütfen yanıtı şu JSON formatında ver: ${JSON.stringify(schema)}`
+        : prompt;
+      
+      const content = await this.generateContent(structuredPrompt);
+      
+      // JSON parse'ı dene
+      try {
+        return JSON.parse(content);
+      } catch {
+        return { content, structured: false };
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Structured Content Error:', error);
+      }
+      return { error: 'Yapılandırılmış içerik oluşturulamadı' };
+    }
+  }
+
+  // Function Calling: Gemini'nin tool/function çağrılarını kullanarak yapılandırılmış argümanları döndür.
+  // toolName: çağrılacak fonksiyon adı, parametersSchema: JSON Schema (OpenAPI/JSON Schema benzeri), prompt: kullanıcı talimatı
+  async generateFunctionCall(toolName: string, parametersSchema: any, prompt: string): Promise<any> {
+    const MAX_RETRIES = 3;
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const functionDeclarations = [{
+          name: toolName,
+          description: 'Save generated study plan into backend in a structured format',
+          parameters: parametersSchema,
+        }];
+
+        const model = this.genAI.getGenerativeModel({
+          model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',
+        });
+        const result = await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }]}],
+          tools: [{ functionDeclarations }],
+          toolConfig: { functionCall: { name: toolName } },
+        } as any);
+
+        const response: any = await result.response;
+        const candidates: any[] = (response as any)?.candidates || [];
+        const parts: any[] = candidates[0]?.content?.parts || [];
+        const fnCall = parts.find((p: any) => p.functionCall);
+        if (fnCall && fnCall.functionCall && fnCall.functionCall.args) {
+          return fnCall.functionCall.args;
+        }
+        // Bazı sürümlerde functionCalls response.promptFeedback veya usageMetadata dışında dönebilir
+        // Emniyetli geri dönüş: text parse etmeyi deneme (son çare)
+        const fallbackText = response.text?.() || '';
+        try { return JSON.parse(fallbackText); } catch { return { error: 'NoFunctionCall' }; }
+      } catch (error) {
+        console.error(`Gemini Function Calling Error (Attempt ${attempt}/${MAX_RETRIES}):`, (error as any)?.message || error);
+        
+        if (attempt === MAX_RETRIES) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('Gemini Function Calling Error:', error);
+          }
+          return { error: 'FunctionCallFailed' };
+        }
+        
+        // Bir sonraki deneme için kısa bir süre bekle
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+    
+    return { error: 'FunctionCallFailed' };
+  }
+
+  async generateEducationalContent(topic: string, level: string, type: string): Promise<any> {
+    const prompt = `
+    ${topic} konusu hakkında ${level} seviyesinde ${type} türünde eğitim içeriği oluştur.
+    
+    İçerik şunları içermeli:
+    1. Konunun açıklaması
+    2. Önemli kavramlar
+    3. Örnekler
+    4. Pratik alıştırmalar
+    5. Değerlendirme soruları
+    
+    JSON formatında yapılandırılmış bir yanıt ver.
+    `;
+
+    return this.generateStructuredContent(prompt);
+  }
+
+  async analyzeStudentResponse(question: string, studentAnswer: string, correctAnswer: string): Promise<any> {
+    const prompt = `
+    Bir öğrencinin cevabını analiz et:
+    
+    Soru: ${question}
+    Öğrenci Cevabı: ${studentAnswer}
+    Doğru Cevap: ${correctAnswer}
+    
+    Analiz et:
+    1. Cevap doğru mu?
+    2. Varsa kavramsal hatalar
+    3. Güçlü yönler
+    4. Gelişim önerileri
+    5. Ek çalışma konuları
+    
+    JSON formatında detaylı analiz ver.
+    `;
+
+    return this.generateStructuredContent(prompt);
+  }
+
+  async generateQuestions(topic: string, difficulty: string, count: number): Promise<any> {
+    const prompt = `
+    ${topic} konusu hakkında ${difficulty} zorluk seviyesinde ${count} adet çoktan seçmeli soru oluştur.
+    
+    Her soru için:
+    - Soru metni
+    - 4 seçenek (A, B, C, D)
+    - Doğru cevap
+    - Açıklama
+    
+    JSON formatında sorular listesi ver.
+    `;
+
+    return this.generateStructuredContent(prompt);
+  }
+
+  async createLearningPath(goals: string[], currentLevel: string, preferences: any): Promise<any> {
+    const prompt = `
+    Şu hedefler için öğrenme yolu oluştur:
+    Hedefler: ${goals.join(', ')}
+    Mevcut Seviye: ${currentLevel}
+    Tercihler: ${JSON.stringify(preferences)}
+    
+    Öğrenme yolu şunları içermeli:
+    1. Adım adım ilerleme planı
+    2. Her adım için kaynak önerileri
+    3. Değerlendirme kriterleri
+    4. Tahmini süre
+    5. Kilometre taşları
+    
+    JSON formatında detaylı öğrenme yolu ver.
+    `;
+
+    return this.generateStructuredContent(prompt);
+  }
+
+  async provideMentalSupport(issue: string, context: string): Promise<string> {
+    const prompt = `
+    Bir öğrenci şu konuda destek istiyor:
+    
+    Sorun: ${issue}
+    Bağlam: ${context}
+    
+    Empatik ve destekleyici bir yaklaşımla:
+    1. Sorunu anla ve normalleştir
+    2. Pratik çözüm önerileri ver
+    3. Motivasyonel mesajlar ekle
+    4. Gerektiğinde profesyonel yardım öner
+    
+    Destekleyici ve yapıcı bir yanıt ver.
+    `;
+
+    return this.generateContent(prompt);
+  }
+}
+*/
+/* istanbul ignore next */
+function cov_1x8w23qrz3() {
+  var path = "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/services/gemini.service.ts";
+  var hash = "9b7f84dad9e9abe82beb385261e03eca85f31721";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/services/gemini.service.ts",
+    statementMap: {},
+    fnMap: {},
+    branchMap: {},
+    s: {},
+    f: {},
+    b: {},
+    inputSourceMap: {
+      file: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/services/gemini.service.ts",
+      mappings: ";AAAA,kDAAkD;AAClD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAyUE",
+      names: [],
+      sources: ["/Users/ceomerf/Downloads/okuz_ai-main/backend/src/services/gemini.service.ts"],
+      sourcesContent: ["// GEMINI SERV\u0130S\u0130 DEVRE DI\u015EI - OPENAI KULLANILIYOR\n/*\nimport { Injectable, ForbiddenException } from '@nestjs/common';\nimport { ConfigService } from '@nestjs/config';\nimport { GoogleGenerativeAI } from '@google/generative-ai';\nimport { MetricsService } from '../monitoring/metrics.service';\nimport { PrismaService } from '../common/prisma/prisma.service';\nimport { CacheService } from './cache.service';\nimport * as crypto from 'crypto';\n// eslint-disable-next-line @typescript-eslint/no-var-requires\nconst CircuitBreaker: any = require('opossum');\n\n@Injectable()\nexport class GeminiService {\n  private genAI: GoogleGenerativeAI;\n  private model: any;\n  private breaker: any;\n\n  constructor(private readonly configService: ConfigService, private readonly metrics: MetricsService, private readonly prisma: PrismaService, private readonly cache: CacheService) {\n    const apiKey = this.configService.get<string>('GEMINI_API_KEY');\n    if (!apiKey) {\n      throw new Error('GEMINI_API_KEY environment variable is required');\n    }\n    this.genAI = new GoogleGenerativeAI(apiKey);\n    const preferredModel = this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash';\n    this.model = this.genAI.getGenerativeModel({ model: preferredModel });\n\n    const breakerOptions = {\n      timeout: 15000,\n      errorThresholdPercentage: 50,\n      resetTimeout: 30000,\n    } as any;\n    this.breaker = new CircuitBreaker(async (args: { prompt: string }) => {\n      const { prompt } = args;\n      return this.model.generateContent({\n        contents: [{ role: 'user', parts: [{ text: prompt }]}],\n      });\n    }, breakerOptions);\n  }\n\n  async generateContent(prompt: string, opts?: { userId?: string; endpoint?: string; cacheTtlSeconds?: number; modelOverride?: string }): Promise<string> {\n    const MAX_RETRIES = 3;\n    const modelName = opts?.modelOverride || this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash';\n    const endpoint = opts?.endpoint || 'generateContent';\n    const userId = opts?.userId;\n    const cacheTtlSeconds = typeof opts?.cacheTtlSeconds === 'number' ? opts?.cacheTtlSeconds : 3600;\n\n    // Kota kontrol\xFC (varsa)\n    if (userId) {\n      const usage = await (this.prisma as any).userUsageControl?.findUnique?.({ where: { userId } }).catch(() => null);\n      if (usage && usage.monthlyTokenUsed >= usage.monthlyTokenLimit) {\n        throw new ForbiddenException(`User ${userId} exceeded monthly token limit`);\n      }\n    }\n\n    // Cache kontrol\xFC\n    const promptHash = crypto.createHash('sha256').update(`${modelName}::${endpoint}::${prompt}`).digest('hex');\n    const cacheKey = `gemini:cache:${modelName}:${promptHash}`;\n    const cached = await this.cache.get<string>(cacheKey);\n    if (cached) {\n      this.metrics.recordCacheHit(cacheKey, true);\n      return cached;\n    } else {\n      this.metrics.recordCacheHit(cacheKey, false);\n    }\n    const start = Date.now();\n    // plan_type belirle (abonelik durumuna g\xF6re)\n    const planType = userId\n      ? (await (this.prisma as any).user.findUnique?.({ where: { id: userId }, select: { subscriptionStatus: true } }).catch(() => null))?.subscriptionStatus?.toLowerCase?.() || undefined\n      : undefined;\n    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {\n      try {\n        const result = await this.breaker.fire({ prompt });\n        const response = await result.response;\n        const text = response.text();\n        const usage = (response as any)?.usageMetadata || {};\n        const totalTokens = Number(usage.totalTokenCount || usage.totalTokens || 0);\n        const duration = Date.now() - start;\n        this.metrics.recordGeminiUsage(userId, planType, modelName, endpoint, totalTokens);\n        this.metrics.recordGeminiCallDuration(userId, planType, modelName, endpoint, duration, true);\n        this.metrics.recordGeminiRequest('success', endpoint, modelName);\n\n        // Kota saya\xE7 art\u0131\u015F\u0131\n        if (userId && totalTokens > 0) {\n          await (this.prisma as any).userUsageControl?.upsert?.({\n            where: { userId },\n            create: { userId, monthlyTokenUsed: totalTokens },\n            update: { monthlyTokenUsed: { increment: totalTokens } },\n          }).catch(() => null);\n        }\n\n        // Sonucu cache'e yaz\n        await this.cache.set(cacheKey, text, cacheTtlSeconds);\n        return text;\n      } catch (error) {\n        console.error(`Gemini API Error (Attempt ${attempt}/${MAX_RETRIES}):`, (error as any)?.message || error);\n        if (attempt === MAX_RETRIES) {\n          const duration = Date.now() - start;\n          this.metrics.recordGeminiCallDuration(userId, planType, modelName, endpoint, duration, false);\n          this.metrics.recordGeminiRequest('error', endpoint, modelName);\n        }\n        \n        if (attempt === MAX_RETRIES) {\n          // Son denemede de ba\u015Far\u0131s\u0131z olursa fallback'e ge\xE7\n          try {\n            const fallback = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });\n            const result = await fallback.generateContent({\n              contents: [{ role: 'user', parts: [{ text: prompt }]}],\n            });\n            const response = await result.response;\n            const text = response.text();\n            const usage = (response as any)?.usageMetadata || {};\n            const totalTokens = Number(usage.totalTokenCount || usage.totalTokens || 0);\n            const duration = Date.now() - start;\n            this.metrics.recordGeminiUsage(userId, planType, 'gemini-1.5-flash', endpoint, totalTokens);\n            this.metrics.recordGeminiCallDuration(userId, planType, 'gemini-1.5-flash', endpoint, duration, true);\n            this.metrics.recordGeminiRequest('success', endpoint, 'gemini-1.5-flash');\n            if (userId && totalTokens > 0) {\n              await (this.prisma as any).userUsageControl?.upsert?.({\n                where: { userId },\n                create: { userId, monthlyTokenUsed: totalTokens },\n                update: { monthlyTokenUsed: { increment: totalTokens } },\n              }).catch(() => null);\n            }\n            return text;\n          } catch (err2) {\n            console.error('Gemini API Error (fallback model):', (err2 as any)?.message || err2);\n            return 'AI servisi \u015Fu anda kullan\u0131lam\u0131yor. L\xFCtfen daha sonra tekrar deneyin.';\n          }\n        }\n        \n        // Bir sonraki deneme i\xE7in k\u0131sa bir s\xFCre bekle\n        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));\n      }\n    }\n    \n    return 'AI servisi t\xFCm denemelere ra\u011Fmen yan\u0131t vermedi.';\n  }\n\n  async generateContentStream(prompt: string): Promise<AsyncGenerator<string>> {\n    try {\n      const modelName = this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash';\n      const endpoint = 'generateContentStream';\n      const start = Date.now();\n      const result = await this.model.generateContentStream(prompt);\n      \n      return (async function* () {\n        for await (const chunk of result.stream) {\n          const chunkText = chunk.text();\n          if (chunkText) {\n            yield chunkText;\n          }\n        }\n      })();\n    } catch (error) {\n      if (process.env.NODE_ENV !== 'production') {\n        console.error('Gemini Stream API Error:', error);\n      }\n      return (async function* () {\n        yield 'AI servisi \u015Fu anda kullan\u0131lam\u0131yor. L\xFCtfen daha sonra tekrar deneyin.';\n      })();\n    }\n  }\n\n  async generateStructuredContent(prompt: string, schema?: any): Promise<any> {\n    try {\n      const structuredPrompt = schema \n        ? `${prompt}\\n\\nL\xFCtfen yan\u0131t\u0131 \u015Fu JSON format\u0131nda ver: ${JSON.stringify(schema)}`\n        : prompt;\n      \n      const content = await this.generateContent(structuredPrompt);\n      \n      // JSON parse'\u0131 dene\n      try {\n        return JSON.parse(content);\n      } catch {\n        return { content, structured: false };\n      }\n    } catch (error) {\n      if (process.env.NODE_ENV !== 'production') {\n        console.error('Structured Content Error:', error);\n      }\n      return { error: 'Yap\u0131land\u0131r\u0131lm\u0131\u015F i\xE7erik olu\u015Fturulamad\u0131' };\n    }\n  }\n\n  // Function Calling: Gemini'nin tool/function \xE7a\u011Fr\u0131lar\u0131n\u0131 kullanarak yap\u0131land\u0131r\u0131lm\u0131\u015F arg\xFCmanlar\u0131 d\xF6nd\xFCr.\n  // toolName: \xE7a\u011Fr\u0131lacak fonksiyon ad\u0131, parametersSchema: JSON Schema (OpenAPI/JSON Schema benzeri), prompt: kullan\u0131c\u0131 talimat\u0131\n  async generateFunctionCall(toolName: string, parametersSchema: any, prompt: string): Promise<any> {\n    const MAX_RETRIES = 3;\n    \n    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {\n      try {\n        const functionDeclarations = [{\n          name: toolName,\n          description: 'Save generated study plan into backend in a structured format',\n          parameters: parametersSchema,\n        }];\n\n        const model = this.genAI.getGenerativeModel({\n          model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-flash',\n        });\n        const result = await model.generateContent({\n          contents: [{ role: 'user', parts: [{ text: prompt }]}],\n          tools: [{ functionDeclarations }],\n          toolConfig: { functionCall: { name: toolName } },\n        } as any);\n\n        const response: any = await result.response;\n        const candidates: any[] = (response as any)?.candidates || [];\n        const parts: any[] = candidates[0]?.content?.parts || [];\n        const fnCall = parts.find((p: any) => p.functionCall);\n        if (fnCall && fnCall.functionCall && fnCall.functionCall.args) {\n          return fnCall.functionCall.args;\n        }\n        // Baz\u0131 s\xFCr\xFCmlerde functionCalls response.promptFeedback veya usageMetadata d\u0131\u015F\u0131nda d\xF6nebilir\n        // Emniyetli geri d\xF6n\xFC\u015F: text parse etmeyi deneme (son \xE7are)\n        const fallbackText = response.text?.() || '';\n        try { return JSON.parse(fallbackText); } catch { return { error: 'NoFunctionCall' }; }\n      } catch (error) {\n        console.error(`Gemini Function Calling Error (Attempt ${attempt}/${MAX_RETRIES}):`, (error as any)?.message || error);\n        \n        if (attempt === MAX_RETRIES) {\n          if (process.env.NODE_ENV !== 'production') {\n            console.error('Gemini Function Calling Error:', error);\n          }\n          return { error: 'FunctionCallFailed' };\n        }\n        \n        // Bir sonraki deneme i\xE7in k\u0131sa bir s\xFCre bekle\n        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));\n      }\n    }\n    \n    return { error: 'FunctionCallFailed' };\n  }\n\n  async generateEducationalContent(topic: string, level: string, type: string): Promise<any> {\n    const prompt = `\n    ${topic} konusu hakk\u0131nda ${level} seviyesinde ${type} t\xFCr\xFCnde e\u011Fitim i\xE7eri\u011Fi olu\u015Ftur.\n    \n    \u0130\xE7erik \u015Funlar\u0131 i\xE7ermeli:\n    1. Konunun a\xE7\u0131klamas\u0131\n    2. \xD6nemli kavramlar\n    3. \xD6rnekler\n    4. Pratik al\u0131\u015Ft\u0131rmalar\n    5. De\u011Ferlendirme sorular\u0131\n    \n    JSON format\u0131nda yap\u0131land\u0131r\u0131lm\u0131\u015F bir yan\u0131t ver.\n    `;\n\n    return this.generateStructuredContent(prompt);\n  }\n\n  async analyzeStudentResponse(question: string, studentAnswer: string, correctAnswer: string): Promise<any> {\n    const prompt = `\n    Bir \xF6\u011Frencinin cevab\u0131n\u0131 analiz et:\n    \n    Soru: ${question}\n    \xD6\u011Frenci Cevab\u0131: ${studentAnswer}\n    Do\u011Fru Cevap: ${correctAnswer}\n    \n    Analiz et:\n    1. Cevap do\u011Fru mu?\n    2. Varsa kavramsal hatalar\n    3. G\xFC\xE7l\xFC y\xF6nler\n    4. Geli\u015Fim \xF6nerileri\n    5. Ek \xE7al\u0131\u015Fma konular\u0131\n    \n    JSON format\u0131nda detayl\u0131 analiz ver.\n    `;\n\n    return this.generateStructuredContent(prompt);\n  }\n\n  async generateQuestions(topic: string, difficulty: string, count: number): Promise<any> {\n    const prompt = `\n    ${topic} konusu hakk\u0131nda ${difficulty} zorluk seviyesinde ${count} adet \xE7oktan se\xE7meli soru olu\u015Ftur.\n    \n    Her soru i\xE7in:\n    - Soru metni\n    - 4 se\xE7enek (A, B, C, D)\n    - Do\u011Fru cevap\n    - A\xE7\u0131klama\n    \n    JSON format\u0131nda sorular listesi ver.\n    `;\n\n    return this.generateStructuredContent(prompt);\n  }\n\n  async createLearningPath(goals: string[], currentLevel: string, preferences: any): Promise<any> {\n    const prompt = `\n    \u015Eu hedefler i\xE7in \xF6\u011Frenme yolu olu\u015Ftur:\n    Hedefler: ${goals.join(', ')}\n    Mevcut Seviye: ${currentLevel}\n    Tercihler: ${JSON.stringify(preferences)}\n    \n    \xD6\u011Frenme yolu \u015Funlar\u0131 i\xE7ermeli:\n    1. Ad\u0131m ad\u0131m ilerleme plan\u0131\n    2. Her ad\u0131m i\xE7in kaynak \xF6nerileri\n    3. De\u011Ferlendirme kriterleri\n    4. Tahmini s\xFCre\n    5. Kilometre ta\u015Flar\u0131\n    \n    JSON format\u0131nda detayl\u0131 \xF6\u011Frenme yolu ver.\n    `;\n\n    return this.generateStructuredContent(prompt);\n  }\n\n  async provideMentalSupport(issue: string, context: string): Promise<string> {\n    const prompt = `\n    Bir \xF6\u011Frenci \u015Fu konuda destek istiyor:\n    \n    Sorun: ${issue}\n    Ba\u011Flam: ${context}\n    \n    Empatik ve destekleyici bir yakla\u015F\u0131mla:\n    1. Sorunu anla ve normalle\u015Ftir\n    2. Pratik \xE7\xF6z\xFCm \xF6nerileri ver\n    3. Motivasyonel mesajlar ekle\n    4. Gerekti\u011Finde profesyonel yard\u0131m \xF6ner\n    \n    Destekleyici ve yap\u0131c\u0131 bir yan\u0131t ver.\n    `;\n\n    return this.generateContent(prompt);\n  }\n}\n*/\n"],
+      version: 3
+    },
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "9b7f84dad9e9abe82beb385261e03eca85f31721"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    // @ts-ignore
+    cov_1x8w23qrz3 = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_1x8w23qrz3();
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJjb3ZfMXg4dzIzcXJ6MyIsInBhdGgiLCJoYXNoIiwiZ2xvYmFsIiwiRnVuY3Rpb24iLCJnY3YiLCJjb3ZlcmFnZURhdGEiLCJzdGF0ZW1lbnRNYXAiLCJmbk1hcCIsImJyYW5jaE1hcCIsInMiLCJmIiwiYiIsImlucHV0U291cmNlTWFwIiwiZmlsZSIsIm1hcHBpbmdzIiwibmFtZXMiLCJzb3VyY2VzIiwic291cmNlc0NvbnRlbnQiLCJ2ZXJzaW9uIiwiX2NvdmVyYWdlU2NoZW1hIiwiY292ZXJhZ2UiLCJhY3R1YWxDb3ZlcmFnZSJdLCJzb3VyY2VzIjpbIi9Vc2Vycy9jZW9tZXJmL0Rvd25sb2Fkcy9va3V6X2FpLW1haW4vYmFja2VuZC9zcmMvc2VydmljZXMvZ2VtaW5pLnNlcnZpY2UudHMiXSwic291cmNlc0NvbnRlbnQiOlsiLy8gR0VNSU5JIFNFUlbEsFPEsCBERVZSRSBEScWeSSAtIE9QRU5BSSBLVUxMQU5JTElZT1Jcbi8qXG5pbXBvcnQgeyBJbmplY3RhYmxlLCBGb3JiaWRkZW5FeGNlcHRpb24gfSBmcm9tICdAbmVzdGpzL2NvbW1vbic7XG5pbXBvcnQgeyBDb25maWdTZXJ2aWNlIH0gZnJvbSAnQG5lc3Rqcy9jb25maWcnO1xuaW1wb3J0IHsgR29vZ2xlR2VuZXJhdGl2ZUFJIH0gZnJvbSAnQGdvb2dsZS9nZW5lcmF0aXZlLWFpJztcbmltcG9ydCB7IE1ldHJpY3NTZXJ2aWNlIH0gZnJvbSAnLi4vbW9uaXRvcmluZy9tZXRyaWNzLnNlcnZpY2UnO1xuaW1wb3J0IHsgUHJpc21hU2VydmljZSB9IGZyb20gJy4uL2NvbW1vbi9wcmlzbWEvcHJpc21hLnNlcnZpY2UnO1xuaW1wb3J0IHsgQ2FjaGVTZXJ2aWNlIH0gZnJvbSAnLi9jYWNoZS5zZXJ2aWNlJztcbmltcG9ydCAqIGFzIGNyeXB0byBmcm9tICdjcnlwdG8nO1xuLy8gZXNsaW50LWRpc2FibGUtbmV4dC1saW5lIEB0eXBlc2NyaXB0LWVzbGludC9uby12YXItcmVxdWlyZXNcbmNvbnN0IENpcmN1aXRCcmVha2VyOiBhbnkgPSByZXF1aXJlKCdvcG9zc3VtJyk7XG5cbkBJbmplY3RhYmxlKClcbmV4cG9ydCBjbGFzcyBHZW1pbmlTZXJ2aWNlIHtcbiAgcHJpdmF0ZSBnZW5BSTogR29vZ2xlR2VuZXJhdGl2ZUFJO1xuICBwcml2YXRlIG1vZGVsOiBhbnk7XG4gIHByaXZhdGUgYnJlYWtlcjogYW55O1xuXG4gIGNvbnN0cnVjdG9yKHByaXZhdGUgcmVhZG9ubHkgY29uZmlnU2VydmljZTogQ29uZmlnU2VydmljZSwgcHJpdmF0ZSByZWFkb25seSBtZXRyaWNzOiBNZXRyaWNzU2VydmljZSwgcHJpdmF0ZSByZWFkb25seSBwcmlzbWE6IFByaXNtYVNlcnZpY2UsIHByaXZhdGUgcmVhZG9ubHkgY2FjaGU6IENhY2hlU2VydmljZSkge1xuICAgIGNvbnN0IGFwaUtleSA9IHRoaXMuY29uZmlnU2VydmljZS5nZXQ8c3RyaW5nPignR0VNSU5JX0FQSV9LRVknKTtcbiAgICBpZiAoIWFwaUtleSkge1xuICAgICAgdGhyb3cgbmV3IEVycm9yKCdHRU1JTklfQVBJX0tFWSBlbnZpcm9ubWVudCB2YXJpYWJsZSBpcyByZXF1aXJlZCcpO1xuICAgIH1cbiAgICB0aGlzLmdlbkFJID0gbmV3IEdvb2dsZUdlbmVyYXRpdmVBSShhcGlLZXkpO1xuICAgIGNvbnN0IHByZWZlcnJlZE1vZGVsID0gdGhpcy5jb25maWdTZXJ2aWNlLmdldDxzdHJpbmc+KCdHRU1JTklfTU9ERUwnKSB8fCAnZ2VtaW5pLTEuNS1mbGFzaCc7XG4gICAgdGhpcy5tb2RlbCA9IHRoaXMuZ2VuQUkuZ2V0R2VuZXJhdGl2ZU1vZGVsKHsgbW9kZWw6IHByZWZlcnJlZE1vZGVsIH0pO1xuXG4gICAgY29uc3QgYnJlYWtlck9wdGlvbnMgPSB7XG4gICAgICB0aW1lb3V0OiAxNTAwMCxcbiAgICAgIGVycm9yVGhyZXNob2xkUGVyY2VudGFnZTogNTAsXG4gICAgICByZXNldFRpbWVvdXQ6IDMwMDAwLFxuICAgIH0gYXMgYW55O1xuICAgIHRoaXMuYnJlYWtlciA9IG5ldyBDaXJjdWl0QnJlYWtlcihhc3luYyAoYXJnczogeyBwcm9tcHQ6IHN0cmluZyB9KSA9PiB7XG4gICAgICBjb25zdCB7IHByb21wdCB9ID0gYXJncztcbiAgICAgIHJldHVybiB0aGlzLm1vZGVsLmdlbmVyYXRlQ29udGVudCh7XG4gICAgICAgIGNvbnRlbnRzOiBbeyByb2xlOiAndXNlcicsIHBhcnRzOiBbeyB0ZXh0OiBwcm9tcHQgfV19XSxcbiAgICAgIH0pO1xuICAgIH0sIGJyZWFrZXJPcHRpb25zKTtcbiAgfVxuXG4gIGFzeW5jIGdlbmVyYXRlQ29udGVudChwcm9tcHQ6IHN0cmluZywgb3B0cz86IHsgdXNlcklkPzogc3RyaW5nOyBlbmRwb2ludD86IHN0cmluZzsgY2FjaGVUdGxTZWNvbmRzPzogbnVtYmVyOyBtb2RlbE92ZXJyaWRlPzogc3RyaW5nIH0pOiBQcm9taXNlPHN0cmluZz4ge1xuICAgIGNvbnN0IE1BWF9SRVRSSUVTID0gMztcbiAgICBjb25zdCBtb2RlbE5hbWUgPSBvcHRzPy5tb2RlbE92ZXJyaWRlIHx8IHRoaXMuY29uZmlnU2VydmljZS5nZXQ8c3RyaW5nPignR0VNSU5JX01PREVMJykgfHwgJ2dlbWluaS0xLjUtZmxhc2gnO1xuICAgIGNvbnN0IGVuZHBvaW50ID0gb3B0cz8uZW5kcG9pbnQgfHwgJ2dlbmVyYXRlQ29udGVudCc7XG4gICAgY29uc3QgdXNlcklkID0gb3B0cz8udXNlcklkO1xuICAgIGNvbnN0IGNhY2hlVHRsU2Vjb25kcyA9IHR5cGVvZiBvcHRzPy5jYWNoZVR0bFNlY29uZHMgPT09ICdudW1iZXInID8gb3B0cz8uY2FjaGVUdGxTZWNvbmRzIDogMzYwMDtcblxuICAgIC8vIEtvdGEga29udHJvbMO8ICh2YXJzYSlcbiAgICBpZiAodXNlcklkKSB7XG4gICAgICBjb25zdCB1c2FnZSA9IGF3YWl0ICh0aGlzLnByaXNtYSBhcyBhbnkpLnVzZXJVc2FnZUNvbnRyb2w/LmZpbmRVbmlxdWU/Lih7IHdoZXJlOiB7IHVzZXJJZCB9IH0pLmNhdGNoKCgpID0+IG51bGwpO1xuICAgICAgaWYgKHVzYWdlICYmIHVzYWdlLm1vbnRobHlUb2tlblVzZWQgPj0gdXNhZ2UubW9udGhseVRva2VuTGltaXQpIHtcbiAgICAgICAgdGhyb3cgbmV3IEZvcmJpZGRlbkV4Y2VwdGlvbihgVXNlciAke3VzZXJJZH0gZXhjZWVkZWQgbW9udGhseSB0b2tlbiBsaW1pdGApO1xuICAgICAgfVxuICAgIH1cblxuICAgIC8vIENhY2hlIGtvbnRyb2zDvFxuICAgIGNvbnN0IHByb21wdEhhc2ggPSBjcnlwdG8uY3JlYXRlSGFzaCgnc2hhMjU2JykudXBkYXRlKGAke21vZGVsTmFtZX06OiR7ZW5kcG9pbnR9Ojoke3Byb21wdH1gKS5kaWdlc3QoJ2hleCcpO1xuICAgIGNvbnN0IGNhY2hlS2V5ID0gYGdlbWluaTpjYWNoZToke21vZGVsTmFtZX06JHtwcm9tcHRIYXNofWA7XG4gICAgY29uc3QgY2FjaGVkID0gYXdhaXQgdGhpcy5jYWNoZS5nZXQ8c3RyaW5nPihjYWNoZUtleSk7XG4gICAgaWYgKGNhY2hlZCkge1xuICAgICAgdGhpcy5tZXRyaWNzLnJlY29yZENhY2hlSGl0KGNhY2hlS2V5LCB0cnVlKTtcbiAgICAgIHJldHVybiBjYWNoZWQ7XG4gICAgfSBlbHNlIHtcbiAgICAgIHRoaXMubWV0cmljcy5yZWNvcmRDYWNoZUhpdChjYWNoZUtleSwgZmFsc2UpO1xuICAgIH1cbiAgICBjb25zdCBzdGFydCA9IERhdGUubm93KCk7XG4gICAgLy8gcGxhbl90eXBlIGJlbGlybGUgKGFib25lbGlrIGR1cnVtdW5hIGfDtnJlKVxuICAgIGNvbnN0IHBsYW5UeXBlID0gdXNlcklkXG4gICAgICA/IChhd2FpdCAodGhpcy5wcmlzbWEgYXMgYW55KS51c2VyLmZpbmRVbmlxdWU/Lih7IHdoZXJlOiB7IGlkOiB1c2VySWQgfSwgc2VsZWN0OiB7IHN1YnNjcmlwdGlvblN0YXR1czogdHJ1ZSB9IH0pLmNhdGNoKCgpID0+IG51bGwpKT8uc3Vic2NyaXB0aW9uU3RhdHVzPy50b0xvd2VyQ2FzZT8uKCkgfHwgdW5kZWZpbmVkXG4gICAgICA6IHVuZGVmaW5lZDtcbiAgICBmb3IgKGxldCBhdHRlbXB0ID0gMTsgYXR0ZW1wdCA8PSBNQVhfUkVUUklFUzsgYXR0ZW1wdCsrKSB7XG4gICAgICB0cnkge1xuICAgICAgICBjb25zdCByZXN1bHQgPSBhd2FpdCB0aGlzLmJyZWFrZXIuZmlyZSh7IHByb21wdCB9KTtcbiAgICAgICAgY29uc3QgcmVzcG9uc2UgPSBhd2FpdCByZXN1bHQucmVzcG9uc2U7XG4gICAgICAgIGNvbnN0IHRleHQgPSByZXNwb25zZS50ZXh0KCk7XG4gICAgICAgIGNvbnN0IHVzYWdlID0gKHJlc3BvbnNlIGFzIGFueSk/LnVzYWdlTWV0YWRhdGEgfHwge307XG4gICAgICAgIGNvbnN0IHRvdGFsVG9rZW5zID0gTnVtYmVyKHVzYWdlLnRvdGFsVG9rZW5Db3VudCB8fCB1c2FnZS50b3RhbFRva2VucyB8fCAwKTtcbiAgICAgICAgY29uc3QgZHVyYXRpb24gPSBEYXRlLm5vdygpIC0gc3RhcnQ7XG4gICAgICAgIHRoaXMubWV0cmljcy5yZWNvcmRHZW1pbmlVc2FnZSh1c2VySWQsIHBsYW5UeXBlLCBtb2RlbE5hbWUsIGVuZHBvaW50LCB0b3RhbFRva2Vucyk7XG4gICAgICAgIHRoaXMubWV0cmljcy5yZWNvcmRHZW1pbmlDYWxsRHVyYXRpb24odXNlcklkLCBwbGFuVHlwZSwgbW9kZWxOYW1lLCBlbmRwb2ludCwgZHVyYXRpb24sIHRydWUpO1xuICAgICAgICB0aGlzLm1ldHJpY3MucmVjb3JkR2VtaW5pUmVxdWVzdCgnc3VjY2VzcycsIGVuZHBvaW50LCBtb2RlbE5hbWUpO1xuXG4gICAgICAgIC8vIEtvdGEgc2F5YcOnIGFydMSxxZ/EsVxuICAgICAgICBpZiAodXNlcklkICYmIHRvdGFsVG9rZW5zID4gMCkge1xuICAgICAgICAgIGF3YWl0ICh0aGlzLnByaXNtYSBhcyBhbnkpLnVzZXJVc2FnZUNvbnRyb2w/LnVwc2VydD8uKHtcbiAgICAgICAgICAgIHdoZXJlOiB7IHVzZXJJZCB9LFxuICAgICAgICAgICAgY3JlYXRlOiB7IHVzZXJJZCwgbW9udGhseVRva2VuVXNlZDogdG90YWxUb2tlbnMgfSxcbiAgICAgICAgICAgIHVwZGF0ZTogeyBtb250aGx5VG9rZW5Vc2VkOiB7IGluY3JlbWVudDogdG90YWxUb2tlbnMgfSB9LFxuICAgICAgICAgIH0pLmNhdGNoKCgpID0+IG51bGwpO1xuICAgICAgICB9XG5cbiAgICAgICAgLy8gU29udWN1IGNhY2hlJ2UgeWF6XG4gICAgICAgIGF3YWl0IHRoaXMuY2FjaGUuc2V0KGNhY2hlS2V5LCB0ZXh0LCBjYWNoZVR0bFNlY29uZHMpO1xuICAgICAgICByZXR1cm4gdGV4dDtcbiAgICAgIH0gY2F0Y2ggKGVycm9yKSB7XG4gICAgICAgIGNvbnNvbGUuZXJyb3IoYEdlbWluaSBBUEkgRXJyb3IgKEF0dGVtcHQgJHthdHRlbXB0fS8ke01BWF9SRVRSSUVTfSk6YCwgKGVycm9yIGFzIGFueSk/Lm1lc3NhZ2UgfHwgZXJyb3IpO1xuICAgICAgICBpZiAoYXR0ZW1wdCA9PT0gTUFYX1JFVFJJRVMpIHtcbiAgICAgICAgICBjb25zdCBkdXJhdGlvbiA9IERhdGUubm93KCkgLSBzdGFydDtcbiAgICAgICAgICB0aGlzLm1ldHJpY3MucmVjb3JkR2VtaW5pQ2FsbER1cmF0aW9uKHVzZXJJZCwgcGxhblR5cGUsIG1vZGVsTmFtZSwgZW5kcG9pbnQsIGR1cmF0aW9uLCBmYWxzZSk7XG4gICAgICAgICAgdGhpcy5tZXRyaWNzLnJlY29yZEdlbWluaVJlcXVlc3QoJ2Vycm9yJywgZW5kcG9pbnQsIG1vZGVsTmFtZSk7XG4gICAgICAgIH1cbiAgICAgICAgXG4gICAgICAgIGlmIChhdHRlbXB0ID09PSBNQVhfUkVUUklFUykge1xuICAgICAgICAgIC8vIFNvbiBkZW5lbWVkZSBkZSBiYcWfYXLEsXPEsXogb2x1cnNhIGZhbGxiYWNrJ2UgZ2XDp1xuICAgICAgICAgIHRyeSB7XG4gICAgICAgICAgICBjb25zdCBmYWxsYmFjayA9IHRoaXMuZ2VuQUkuZ2V0R2VuZXJhdGl2ZU1vZGVsKHsgbW9kZWw6ICdnZW1pbmktMS41LWZsYXNoJyB9KTtcbiAgICAgICAgICAgIGNvbnN0IHJlc3VsdCA9IGF3YWl0IGZhbGxiYWNrLmdlbmVyYXRlQ29udGVudCh7XG4gICAgICAgICAgICAgIGNvbnRlbnRzOiBbeyByb2xlOiAndXNlcicsIHBhcnRzOiBbeyB0ZXh0OiBwcm9tcHQgfV19XSxcbiAgICAgICAgICAgIH0pO1xuICAgICAgICAgICAgY29uc3QgcmVzcG9uc2UgPSBhd2FpdCByZXN1bHQucmVzcG9uc2U7XG4gICAgICAgICAgICBjb25zdCB0ZXh0ID0gcmVzcG9uc2UudGV4dCgpO1xuICAgICAgICAgICAgY29uc3QgdXNhZ2UgPSAocmVzcG9uc2UgYXMgYW55KT8udXNhZ2VNZXRhZGF0YSB8fCB7fTtcbiAgICAgICAgICAgIGNvbnN0IHRvdGFsVG9rZW5zID0gTnVtYmVyKHVzYWdlLnRvdGFsVG9rZW5Db3VudCB8fCB1c2FnZS50b3RhbFRva2VucyB8fCAwKTtcbiAgICAgICAgICAgIGNvbnN0IGR1cmF0aW9uID0gRGF0ZS5ub3coKSAtIHN0YXJ0O1xuICAgICAgICAgICAgdGhpcy5tZXRyaWNzLnJlY29yZEdlbWluaVVzYWdlKHVzZXJJZCwgcGxhblR5cGUsICdnZW1pbmktMS41LWZsYXNoJywgZW5kcG9pbnQsIHRvdGFsVG9rZW5zKTtcbiAgICAgICAgICAgIHRoaXMubWV0cmljcy5yZWNvcmRHZW1pbmlDYWxsRHVyYXRpb24odXNlcklkLCBwbGFuVHlwZSwgJ2dlbWluaS0xLjUtZmxhc2gnLCBlbmRwb2ludCwgZHVyYXRpb24sIHRydWUpO1xuICAgICAgICAgICAgdGhpcy5tZXRyaWNzLnJlY29yZEdlbWluaVJlcXVlc3QoJ3N1Y2Nlc3MnLCBlbmRwb2ludCwgJ2dlbWluaS0xLjUtZmxhc2gnKTtcbiAgICAgICAgICAgIGlmICh1c2VySWQgJiYgdG90YWxUb2tlbnMgPiAwKSB7XG4gICAgICAgICAgICAgIGF3YWl0ICh0aGlzLnByaXNtYSBhcyBhbnkpLnVzZXJVc2FnZUNvbnRyb2w/LnVwc2VydD8uKHtcbiAgICAgICAgICAgICAgICB3aGVyZTogeyB1c2VySWQgfSxcbiAgICAgICAgICAgICAgICBjcmVhdGU6IHsgdXNlcklkLCBtb250aGx5VG9rZW5Vc2VkOiB0b3RhbFRva2VucyB9LFxuICAgICAgICAgICAgICAgIHVwZGF0ZTogeyBtb250aGx5VG9rZW5Vc2VkOiB7IGluY3JlbWVudDogdG90YWxUb2tlbnMgfSB9LFxuICAgICAgICAgICAgICB9KS5jYXRjaCgoKSA9PiBudWxsKTtcbiAgICAgICAgICAgIH1cbiAgICAgICAgICAgIHJldHVybiB0ZXh0O1xuICAgICAgICAgIH0gY2F0Y2ggKGVycjIpIHtcbiAgICAgICAgICAgIGNvbnNvbGUuZXJyb3IoJ0dlbWluaSBBUEkgRXJyb3IgKGZhbGxiYWNrIG1vZGVsKTonLCAoZXJyMiBhcyBhbnkpPy5tZXNzYWdlIHx8IGVycjIpO1xuICAgICAgICAgICAgcmV0dXJuICdBSSBzZXJ2aXNpIMWfdSBhbmRhIGt1bGxhbsSxbGFtxLF5b3IuIEzDvHRmZW4gZGFoYSBzb25yYSB0ZWtyYXIgZGVuZXlpbi4nO1xuICAgICAgICAgIH1cbiAgICAgICAgfVxuICAgICAgICBcbiAgICAgICAgLy8gQmlyIHNvbnJha2kgZGVuZW1lIGnDp2luIGvEsXNhIGJpciBzw7xyZSBiZWtsZVxuICAgICAgICBhd2FpdCBuZXcgUHJvbWlzZShyZXNvbHZlID0+IHNldFRpbWVvdXQocmVzb2x2ZSwgMTAwMCAqIGF0dGVtcHQpKTtcbiAgICAgIH1cbiAgICB9XG4gICAgXG4gICAgcmV0dXJuICdBSSBzZXJ2aXNpIHTDvG0gZGVuZW1lbGVyZSByYcSfbWVuIHlhbsSxdCB2ZXJtZWRpLic7XG4gIH1cblxuICBhc3luYyBnZW5lcmF0ZUNvbnRlbnRTdHJlYW0ocHJvbXB0OiBzdHJpbmcpOiBQcm9taXNlPEFzeW5jR2VuZXJhdG9yPHN0cmluZz4+IHtcbiAgICB0cnkge1xuICAgICAgY29uc3QgbW9kZWxOYW1lID0gdGhpcy5jb25maWdTZXJ2aWNlLmdldDxzdHJpbmc+KCdHRU1JTklfTU9ERUwnKSB8fCAnZ2VtaW5pLTEuNS1mbGFzaCc7XG4gICAgICBjb25zdCBlbmRwb2ludCA9ICdnZW5lcmF0ZUNvbnRlbnRTdHJlYW0nO1xuICAgICAgY29uc3Qgc3RhcnQgPSBEYXRlLm5vdygpO1xuICAgICAgY29uc3QgcmVzdWx0ID0gYXdhaXQgdGhpcy5tb2RlbC5nZW5lcmF0ZUNvbnRlbnRTdHJlYW0ocHJvbXB0KTtcbiAgICAgIFxuICAgICAgcmV0dXJuIChhc3luYyBmdW5jdGlvbiogKCkge1xuICAgICAgICBmb3IgYXdhaXQgKGNvbnN0IGNodW5rIG9mIHJlc3VsdC5zdHJlYW0pIHtcbiAgICAgICAgICBjb25zdCBjaHVua1RleHQgPSBjaHVuay50ZXh0KCk7XG4gICAgICAgICAgaWYgKGNodW5rVGV4dCkge1xuICAgICAgICAgICAgeWllbGQgY2h1bmtUZXh0O1xuICAgICAgICAgIH1cbiAgICAgICAgfVxuICAgICAgfSkoKTtcbiAgICB9IGNhdGNoIChlcnJvcikge1xuICAgICAgaWYgKHByb2Nlc3MuZW52Lk5PREVfRU5WICE9PSAncHJvZHVjdGlvbicpIHtcbiAgICAgICAgY29uc29sZS5lcnJvcignR2VtaW5pIFN0cmVhbSBBUEkgRXJyb3I6JywgZXJyb3IpO1xuICAgICAgfVxuICAgICAgcmV0dXJuIChhc3luYyBmdW5jdGlvbiogKCkge1xuICAgICAgICB5aWVsZCAnQUkgc2VydmlzaSDFn3UgYW5kYSBrdWxsYW7EsWxhbcSxeW9yLiBMw7x0ZmVuIGRhaGEgc29ucmEgdGVrcmFyIGRlbmV5aW4uJztcbiAgICAgIH0pKCk7XG4gICAgfVxuICB9XG5cbiAgYXN5bmMgZ2VuZXJhdGVTdHJ1Y3R1cmVkQ29udGVudChwcm9tcHQ6IHN0cmluZywgc2NoZW1hPzogYW55KTogUHJvbWlzZTxhbnk+IHtcbiAgICB0cnkge1xuICAgICAgY29uc3Qgc3RydWN0dXJlZFByb21wdCA9IHNjaGVtYSBcbiAgICAgICAgPyBgJHtwcm9tcHR9XFxuXFxuTMO8dGZlbiB5YW7EsXTEsSDFn3UgSlNPTiBmb3JtYXTEsW5kYSB2ZXI6ICR7SlNPTi5zdHJpbmdpZnkoc2NoZW1hKX1gXG4gICAgICAgIDogcHJvbXB0O1xuICAgICAgXG4gICAgICBjb25zdCBjb250ZW50ID0gYXdhaXQgdGhpcy5nZW5lcmF0ZUNvbnRlbnQoc3RydWN0dXJlZFByb21wdCk7XG4gICAgICBcbiAgICAgIC8vIEpTT04gcGFyc2UnxLEgZGVuZVxuICAgICAgdHJ5IHtcbiAgICAgICAgcmV0dXJuIEpTT04ucGFyc2UoY29udGVudCk7XG4gICAgICB9IGNhdGNoIHtcbiAgICAgICAgcmV0dXJuIHsgY29udGVudCwgc3RydWN0dXJlZDogZmFsc2UgfTtcbiAgICAgIH1cbiAgICB9IGNhdGNoIChlcnJvcikge1xuICAgICAgaWYgKHByb2Nlc3MuZW52Lk5PREVfRU5WICE9PSAncHJvZHVjdGlvbicpIHtcbiAgICAgICAgY29uc29sZS5lcnJvcignU3RydWN0dXJlZCBDb250ZW50IEVycm9yOicsIGVycm9yKTtcbiAgICAgIH1cbiAgICAgIHJldHVybiB7IGVycm9yOiAnWWFwxLFsYW5kxLFyxLFsbcSxxZ8gacOnZXJpayBvbHXFn3R1cnVsYW1hZMSxJyB9O1xuICAgIH1cbiAgfVxuXG4gIC8vIEZ1bmN0aW9uIENhbGxpbmc6IEdlbWluaSduaW4gdG9vbC9mdW5jdGlvbiDDp2HEn3LEsWxhcsSxbsSxIGt1bGxhbmFyYWsgeWFwxLFsYW5kxLFyxLFsbcSxxZ8gYXJnw7xtYW5sYXLEsSBkw7ZuZMO8ci5cbiAgLy8gdG9vbE5hbWU6IMOnYcSfcsSxbGFjYWsgZm9ua3NpeW9uIGFkxLEsIHBhcmFtZXRlcnNTY2hlbWE6IEpTT04gU2NoZW1hIChPcGVuQVBJL0pTT04gU2NoZW1hIGJlbnplcmkpLCBwcm9tcHQ6IGt1bGxhbsSxY8SxIHRhbGltYXTEsVxuICBhc3luYyBnZW5lcmF0ZUZ1bmN0aW9uQ2FsbCh0b29sTmFtZTogc3RyaW5nLCBwYXJhbWV0ZXJzU2NoZW1hOiBhbnksIHByb21wdDogc3RyaW5nKTogUHJvbWlzZTxhbnk+IHtcbiAgICBjb25zdCBNQVhfUkVUUklFUyA9IDM7XG4gICAgXG4gICAgZm9yIChsZXQgYXR0ZW1wdCA9IDE7IGF0dGVtcHQgPD0gTUFYX1JFVFJJRVM7IGF0dGVtcHQrKykge1xuICAgICAgdHJ5IHtcbiAgICAgICAgY29uc3QgZnVuY3Rpb25EZWNsYXJhdGlvbnMgPSBbe1xuICAgICAgICAgIG5hbWU6IHRvb2xOYW1lLFxuICAgICAgICAgIGRlc2NyaXB0aW9uOiAnU2F2ZSBnZW5lcmF0ZWQgc3R1ZHkgcGxhbiBpbnRvIGJhY2tlbmQgaW4gYSBzdHJ1Y3R1cmVkIGZvcm1hdCcsXG4gICAgICAgICAgcGFyYW1ldGVyczogcGFyYW1ldGVyc1NjaGVtYSxcbiAgICAgICAgfV07XG5cbiAgICAgICAgY29uc3QgbW9kZWwgPSB0aGlzLmdlbkFJLmdldEdlbmVyYXRpdmVNb2RlbCh7XG4gICAgICAgICAgbW9kZWw6IHRoaXMuY29uZmlnU2VydmljZS5nZXQ8c3RyaW5nPignR0VNSU5JX01PREVMJykgfHwgJ2dlbWluaS0xLjUtZmxhc2gnLFxuICAgICAgICB9KTtcbiAgICAgICAgY29uc3QgcmVzdWx0ID0gYXdhaXQgbW9kZWwuZ2VuZXJhdGVDb250ZW50KHtcbiAgICAgICAgICBjb250ZW50czogW3sgcm9sZTogJ3VzZXInLCBwYXJ0czogW3sgdGV4dDogcHJvbXB0IH1dfV0sXG4gICAgICAgICAgdG9vbHM6IFt7IGZ1bmN0aW9uRGVjbGFyYXRpb25zIH1dLFxuICAgICAgICAgIHRvb2xDb25maWc6IHsgZnVuY3Rpb25DYWxsOiB7IG5hbWU6IHRvb2xOYW1lIH0gfSxcbiAgICAgICAgfSBhcyBhbnkpO1xuXG4gICAgICAgIGNvbnN0IHJlc3BvbnNlOiBhbnkgPSBhd2FpdCByZXN1bHQucmVzcG9uc2U7XG4gICAgICAgIGNvbnN0IGNhbmRpZGF0ZXM6IGFueVtdID0gKHJlc3BvbnNlIGFzIGFueSk/LmNhbmRpZGF0ZXMgfHwgW107XG4gICAgICAgIGNvbnN0IHBhcnRzOiBhbnlbXSA9IGNhbmRpZGF0ZXNbMF0/LmNvbnRlbnQ/LnBhcnRzIHx8IFtdO1xuICAgICAgICBjb25zdCBmbkNhbGwgPSBwYXJ0cy5maW5kKChwOiBhbnkpID0+IHAuZnVuY3Rpb25DYWxsKTtcbiAgICAgICAgaWYgKGZuQ2FsbCAmJiBmbkNhbGwuZnVuY3Rpb25DYWxsICYmIGZuQ2FsbC5mdW5jdGlvbkNhbGwuYXJncykge1xuICAgICAgICAgIHJldHVybiBmbkNhbGwuZnVuY3Rpb25DYWxsLmFyZ3M7XG4gICAgICAgIH1cbiAgICAgICAgLy8gQmF6xLEgc8O8csO8bWxlcmRlIGZ1bmN0aW9uQ2FsbHMgcmVzcG9uc2UucHJvbXB0RmVlZGJhY2sgdmV5YSB1c2FnZU1ldGFkYXRhIGTEscWfxLFuZGEgZMO2bmViaWxpclxuICAgICAgICAvLyBFbW5peWV0bGkgZ2VyaSBkw7Zuw7zFnzogdGV4dCBwYXJzZSBldG1leWkgZGVuZW1lIChzb24gw6dhcmUpXG4gICAgICAgIGNvbnN0IGZhbGxiYWNrVGV4dCA9IHJlc3BvbnNlLnRleHQ/LigpIHx8ICcnO1xuICAgICAgICB0cnkgeyByZXR1cm4gSlNPTi5wYXJzZShmYWxsYmFja1RleHQpOyB9IGNhdGNoIHsgcmV0dXJuIHsgZXJyb3I6ICdOb0Z1bmN0aW9uQ2FsbCcgfTsgfVxuICAgICAgfSBjYXRjaCAoZXJyb3IpIHtcbiAgICAgICAgY29uc29sZS5lcnJvcihgR2VtaW5pIEZ1bmN0aW9uIENhbGxpbmcgRXJyb3IgKEF0dGVtcHQgJHthdHRlbXB0fS8ke01BWF9SRVRSSUVTfSk6YCwgKGVycm9yIGFzIGFueSk/Lm1lc3NhZ2UgfHwgZXJyb3IpO1xuICAgICAgICBcbiAgICAgICAgaWYgKGF0dGVtcHQgPT09IE1BWF9SRVRSSUVTKSB7XG4gICAgICAgICAgaWYgKHByb2Nlc3MuZW52Lk5PREVfRU5WICE9PSAncHJvZHVjdGlvbicpIHtcbiAgICAgICAgICAgIGNvbnNvbGUuZXJyb3IoJ0dlbWluaSBGdW5jdGlvbiBDYWxsaW5nIEVycm9yOicsIGVycm9yKTtcbiAgICAgICAgICB9XG4gICAgICAgICAgcmV0dXJuIHsgZXJyb3I6ICdGdW5jdGlvbkNhbGxGYWlsZWQnIH07XG4gICAgICAgIH1cbiAgICAgICAgXG4gICAgICAgIC8vIEJpciBzb25yYWtpIGRlbmVtZSBpw6dpbiBrxLFzYSBiaXIgc8O8cmUgYmVrbGVcbiAgICAgICAgYXdhaXQgbmV3IFByb21pc2UocmVzb2x2ZSA9PiBzZXRUaW1lb3V0KHJlc29sdmUsIDEwMDAgKiBhdHRlbXB0KSk7XG4gICAgICB9XG4gICAgfVxuICAgIFxuICAgIHJldHVybiB7IGVycm9yOiAnRnVuY3Rpb25DYWxsRmFpbGVkJyB9O1xuICB9XG5cbiAgYXN5bmMgZ2VuZXJhdGVFZHVjYXRpb25hbENvbnRlbnQodG9waWM6IHN0cmluZywgbGV2ZWw6IHN0cmluZywgdHlwZTogc3RyaW5nKTogUHJvbWlzZTxhbnk+IHtcbiAgICBjb25zdCBwcm9tcHQgPSBgXG4gICAgJHt0b3BpY30ga29udXN1IGhha2vEsW5kYSAke2xldmVsfSBzZXZpeWVzaW5kZSAke3R5cGV9IHTDvHLDvG5kZSBlxJ9pdGltIGnDp2VyacSfaSBvbHXFn3R1ci5cbiAgICBcbiAgICDEsMOnZXJpayDFn3VubGFyxLEgacOnZXJtZWxpOlxuICAgIDEuIEtvbnVudW4gYcOnxLFrbGFtYXPEsVxuICAgIDIuIMOWbmVtbGkga2F2cmFtbGFyXG4gICAgMy4gw5ZybmVrbGVyXG4gICAgNC4gUHJhdGlrIGFsxLHFn3TEsXJtYWxhclxuICAgIDUuIERlxJ9lcmxlbmRpcm1lIHNvcnVsYXLEsVxuICAgIFxuICAgIEpTT04gZm9ybWF0xLFuZGEgeWFwxLFsYW5kxLFyxLFsbcSxxZ8gYmlyIHlhbsSxdCB2ZXIuXG4gICAgYDtcblxuICAgIHJldHVybiB0aGlzLmdlbmVyYXRlU3RydWN0dXJlZENvbnRlbnQocHJvbXB0KTtcbiAgfVxuXG4gIGFzeW5jIGFuYWx5emVTdHVkZW50UmVzcG9uc2UocXVlc3Rpb246IHN0cmluZywgc3R1ZGVudEFuc3dlcjogc3RyaW5nLCBjb3JyZWN0QW5zd2VyOiBzdHJpbmcpOiBQcm9taXNlPGFueT4ge1xuICAgIGNvbnN0IHByb21wdCA9IGBcbiAgICBCaXIgw7bEn3JlbmNpbmluIGNldmFixLFuxLEgYW5hbGl6IGV0OlxuICAgIFxuICAgIFNvcnU6ICR7cXVlc3Rpb259XG4gICAgw5bEn3JlbmNpIENldmFixLE6ICR7c3R1ZGVudEFuc3dlcn1cbiAgICBEb8SfcnUgQ2V2YXA6ICR7Y29ycmVjdEFuc3dlcn1cbiAgICBcbiAgICBBbmFsaXogZXQ6XG4gICAgMS4gQ2V2YXAgZG/En3J1IG11P1xuICAgIDIuIFZhcnNhIGthdnJhbXNhbCBoYXRhbGFyXG4gICAgMy4gR8O8w6dsw7wgecO2bmxlclxuICAgIDQuIEdlbGnFn2ltIMO2bmVyaWxlcmlcbiAgICA1LiBFayDDp2FsxLHFn21hIGtvbnVsYXLEsVxuICAgIFxuICAgIEpTT04gZm9ybWF0xLFuZGEgZGV0YXlsxLEgYW5hbGl6IHZlci5cbiAgICBgO1xuXG4gICAgcmV0dXJuIHRoaXMuZ2VuZXJhdGVTdHJ1Y3R1cmVkQ29udGVudChwcm9tcHQpO1xuICB9XG5cbiAgYXN5bmMgZ2VuZXJhdGVRdWVzdGlvbnModG9waWM6IHN0cmluZywgZGlmZmljdWx0eTogc3RyaW5nLCBjb3VudDogbnVtYmVyKTogUHJvbWlzZTxhbnk+IHtcbiAgICBjb25zdCBwcm9tcHQgPSBgXG4gICAgJHt0b3BpY30ga29udXN1IGhha2vEsW5kYSAke2RpZmZpY3VsdHl9IHpvcmx1ayBzZXZpeWVzaW5kZSAke2NvdW50fSBhZGV0IMOnb2t0YW4gc2XDp21lbGkgc29ydSBvbHXFn3R1ci5cbiAgICBcbiAgICBIZXIgc29ydSBpw6dpbjpcbiAgICAtIFNvcnUgbWV0bmlcbiAgICAtIDQgc2XDp2VuZWsgKEEsIEIsIEMsIEQpXG4gICAgLSBEb8SfcnUgY2V2YXBcbiAgICAtIEHDp8Sxa2xhbWFcbiAgICBcbiAgICBKU09OIGZvcm1hdMSxbmRhIHNvcnVsYXIgbGlzdGVzaSB2ZXIuXG4gICAgYDtcblxuICAgIHJldHVybiB0aGlzLmdlbmVyYXRlU3RydWN0dXJlZENvbnRlbnQocHJvbXB0KTtcbiAgfVxuXG4gIGFzeW5jIGNyZWF0ZUxlYXJuaW5nUGF0aChnb2Fsczogc3RyaW5nW10sIGN1cnJlbnRMZXZlbDogc3RyaW5nLCBwcmVmZXJlbmNlczogYW55KTogUHJvbWlzZTxhbnk+IHtcbiAgICBjb25zdCBwcm9tcHQgPSBgXG4gICAgxZ51IGhlZGVmbGVyIGnDp2luIMO2xJ9yZW5tZSB5b2x1IG9sdcWfdHVyOlxuICAgIEhlZGVmbGVyOiAke2dvYWxzLmpvaW4oJywgJyl9XG4gICAgTWV2Y3V0IFNldml5ZTogJHtjdXJyZW50TGV2ZWx9XG4gICAgVGVyY2lobGVyOiAke0pTT04uc3RyaW5naWZ5KHByZWZlcmVuY2VzKX1cbiAgICBcbiAgICDDlsSfcmVubWUgeW9sdSDFn3VubGFyxLEgacOnZXJtZWxpOlxuICAgIDEuIEFkxLFtIGFkxLFtIGlsZXJsZW1lIHBsYW7EsVxuICAgIDIuIEhlciBhZMSxbSBpw6dpbiBrYXluYWsgw7ZuZXJpbGVyaVxuICAgIDMuIERlxJ9lcmxlbmRpcm1lIGtyaXRlcmxlcmlcbiAgICA0LiBUYWhtaW5pIHPDvHJlXG4gICAgNS4gS2lsb21ldHJlIHRhxZ9sYXLEsVxuICAgIFxuICAgIEpTT04gZm9ybWF0xLFuZGEgZGV0YXlsxLEgw7bEn3Jlbm1lIHlvbHUgdmVyLlxuICAgIGA7XG5cbiAgICByZXR1cm4gdGhpcy5nZW5lcmF0ZVN0cnVjdHVyZWRDb250ZW50KHByb21wdCk7XG4gIH1cblxuICBhc3luYyBwcm92aWRlTWVudGFsU3VwcG9ydChpc3N1ZTogc3RyaW5nLCBjb250ZXh0OiBzdHJpbmcpOiBQcm9taXNlPHN0cmluZz4ge1xuICAgIGNvbnN0IHByb21wdCA9IGBcbiAgICBCaXIgw7bEn3JlbmNpIMWfdSBrb251ZGEgZGVzdGVrIGlzdGl5b3I6XG4gICAgXG4gICAgU29ydW46ICR7aXNzdWV9XG4gICAgQmHEn2xhbTogJHtjb250ZXh0fVxuICAgIFxuICAgIEVtcGF0aWsgdmUgZGVzdGVrbGV5aWNpIGJpciB5YWtsYcWfxLFtbGE6XG4gICAgMS4gU29ydW51IGFubGEgdmUgbm9ybWFsbGXFn3RpclxuICAgIDIuIFByYXRpayDDp8O2esO8bSDDtm5lcmlsZXJpIHZlclxuICAgIDMuIE1vdGl2YXN5b25lbCBtZXNhamxhciBla2xlXG4gICAgNC4gR2VyZWt0acSfaW5kZSBwcm9mZXN5b25lbCB5YXJkxLFtIMO2bmVyXG4gICAgXG4gICAgRGVzdGVrbGV5aWNpIHZlIHlhcMSxY8SxIGJpciB5YW7EsXQgdmVyLlxuICAgIGA7XG5cbiAgICByZXR1cm4gdGhpcy5nZW5lcmF0ZUNvbnRlbnQocHJvbXB0KTtcbiAgfVxufVxuKi9cbiJdLCJtYXBwaW5ncyI6Ijs7QUFBQTtBQUNBOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQTtBQUFBLFNBQUFBLGVBQUE7RUFBQSxJQUFBQyxJQUFBO0VBQUEsSUFBQUMsSUFBQTtFQUFBLElBQUFDLE1BQUEsT0FBQUMsUUFBQTtFQUFBLElBQUFDLEdBQUE7RUFBQSxJQUFBQyxZQUFBO0lBQUFMLElBQUE7SUFBQU0sWUFBQTtJQUFBQyxLQUFBO0lBQUFDLFNBQUE7SUFBQUMsQ0FBQTtJQUFBQyxDQUFBO0lBQUFDLENBQUE7SUFBQUMsY0FBQTtNQUFBQyxJQUFBO01BQUFDLFFBQUE7TUFBQUMsS0FBQTtNQUFBQyxPQUFBO01BQUFDLGNBQUE7TUFBQUMsT0FBQTtJQUFBO0lBQUFDLGVBQUE7SUFBQWxCLElBQUE7RUFBQTtFQUFBLElBQUFtQixRQUFBLEdBQUFsQixNQUFBLENBQUFFLEdBQUEsTUFBQUYsTUFBQSxDQUFBRSxHQUFBO0VBQUEsS0FBQWdCLFFBQUEsQ0FBQXBCLElBQUEsS0FBQW9CLFFBQUEsQ0FBQXBCLElBQUEsRUFBQUMsSUFBQSxLQUFBQSxJQUFBO0lBQUFtQixRQUFBLENBQUFwQixJQUFBLElBQUFLLFlBQUE7RUFBQTtFQUFBLElBQUFnQixjQUFBLEdBQUFELFFBQUEsQ0FBQXBCLElBQUE7RUFBQSIsImlnbm9yZUxpc3QiOltdfQ==

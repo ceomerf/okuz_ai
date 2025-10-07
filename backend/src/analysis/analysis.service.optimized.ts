@@ -73,12 +73,12 @@ export class AnalysisService {
       throw new Error('User not found');
     }
 
-    const { examResults, quizzes, studySessions } = userData;
+    const { examResults, quizzes, studySessions } = userData as any;
 
     // Tüm skorları birleştir
     const allScores = [
-      ...examResults.map(e => (e.score / e.totalScore) * 100),
-      ...quizzes.map(q => ((q.score || 0) / q.totalScore) * 100),
+      ...examResults.map((e: any) => (e.score / e.totalScore) * 100),
+      ...quizzes.map((q: any) => ((q.score || 0) / q.totalScore) * 100),
     ];
 
     // Konu bazlı skorları hesapla
@@ -170,9 +170,9 @@ export class AnalysisService {
 
     const subjectScores: Record<string, number[]> = {};
     
-    [...examResults, ...quizResults].forEach(item => {
+    [...examResults, ...quizResults].forEach((item: any) => {
       if (!subjectScores[item.subject]) subjectScores[item.subject] = [];
-      const score = item.score / item.totalScore * 100;
+      const score = (item.score || 0) / item.totalScore * 100;
       subjectScores[item.subject].push(score);
     });
 

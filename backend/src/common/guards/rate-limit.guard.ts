@@ -9,6 +9,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { CacheService } from '../cache/cache.service';
+import { ConfigService } from '@nestjs/config';
 
 export interface RateLimitOptions {
   windowMs: number; // Time window in milliseconds
@@ -16,6 +17,9 @@ export interface RateLimitOptions {
   message?: string;
   skipSuccessfulRequests?: boolean;
   skipFailedRequests?: boolean;
+  keyGenerator?: (req: Request) => string;
+  skipIf?: (req: Request) => boolean;
+  onLimitReached?: (req: Request, res: any) => void;
 }
 
 @Injectable()
@@ -25,14 +29,21 @@ export class RateLimitGuard implements CanActivate {
   constructor(
     private readonly cacheService: CacheService,
     private readonly reflector: Reflector,
+    private readonly configService: ConfigService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
+    const response = context.switchToHttp().getResponse();
     const options = this.getRateLimitOptions(context);
 
     if (!options) {
       return true; // No rate limiting configured
+    }
+
+    // Skip if condition is met
+    if (options.skipIf && options.skipIf(request)) {
+      return true;
     }
 
     const key = this.generateKey(request, options);
@@ -47,6 +58,21 @@ export class RateLimitGuard implements CanActivate {
         userAgent: request.headers['user-agent'],
         current,
         max: options.max,
+        endpoint: request.path,
+        method: request.method,
+      });
+
+      // Call custom limit reached handler
+      if (options.onLimitReached) {
+        options.onLimitReached(request, response);
+      }
+
+      // Log security event
+      this.logSecurityEvent('RATE_LIMIT_EXCEEDED', {
+        ip: request.ip,
+        userId: uid,
+        endpoint: request.path,
+        userAgent: request.headers['user-agent'],
       });
 
       throw new HttpException(
@@ -55,6 +81,7 @@ export class RateLimitGuard implements CanActivate {
           retryAfter: Math.ceil(ttl / 1000),
           limit: options.max,
           remaining: 0,
+          timestamp: new Date().toISOString(),
         },
         HttpStatus.TOO_MANY_REQUESTS
       );
@@ -64,10 +91,10 @@ export class RateLimitGuard implements CanActivate {
     await this.incrementCount(key, options.windowMs);
 
     // Add rate limit headers
-    const response = context.switchToHttp().getResponse();
     response.setHeader('X-RateLimit-Limit', options.max);
     response.setHeader('X-RateLimit-Remaining', Math.max(0, options.max - current - 1));
     response.setHeader('X-RateLimit-Reset', new Date(Date.now() + ttl).toISOString());
+    response.setHeader('X-RateLimit-Window', Math.ceil(options.windowMs / 1000));
 
     return true;
   }
@@ -81,16 +108,22 @@ export class RateLimitGuard implements CanActivate {
   }
 
   private generateKey(request: Request, options: RateLimitOptions): string {
+    // Custom key generator kullan
+    if (options.keyGenerator) {
+      return options.keyGenerator(request);
+    }
+
     const userId = (request as any)?.user?.id as string | undefined;
     const ip = request.ip;
+    const endpoint = request.path;
     
     // User-based rate limiting (preferred)
     if (userId) {
-      return `rate_limit:user:${userId}`;
+      return `rate_limit:user:${userId}:${endpoint}`;
     }
     
     // IP-based rate limiting (fallback)
-    return `rate_limit:ip:${ip}`;
+    return `rate_limit:ip:${ip}:${endpoint}`;
   }
 
   private async getCurrentCount(key: string): Promise<number> {
@@ -121,6 +154,14 @@ export class RateLimitGuard implements CanActivate {
     } catch (error) {
       this.logger.error(`Failed to increment count for key: ${key}`, error);
     }
+  }
+
+  private logSecurityEvent(eventType: string, data: any): void {
+    this.logger.warn(`Security Event: ${eventType}`, {
+      eventType,
+      timestamp: new Date().toISOString(),
+      ...data,
+    });
   }
 }
 

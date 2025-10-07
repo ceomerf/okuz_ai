@@ -5,7 +5,8 @@ import {
   Headers, 
   HttpStatus, 
   HttpException,
-  Logger 
+  Logger,
+  Req
 } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 
@@ -18,8 +19,7 @@ interface PaymentWebhookData {
   gatewayResponse: any;
 }
 
-// Not used for initial release (Google/Apple IAP will be used). Keeping controller behind disabled routes.
-@Controller('webhook-disabled')
+@Controller('webhook')
 export class PaymentWebhookController {
   private readonly logger = new Logger(PaymentWebhookController.name);
 
@@ -34,11 +34,10 @@ export class PaymentWebhookController {
     try {
       this.logger.log('Iyzico webhook received:', body);
 
-      // Webhook signature doğrulaması (production'da gerekli)
-      // const signature = headers['x-iyz-signature'];
-      // if (!this.verifyIyzicoSignature(body, signature)) {
-      //   throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
-      // }
+      const signature = headers['x-iyz-signature'];
+      if (!this.verifyIyzicoSignature(body, signature)) {
+        throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
+      }
 
       const paymentData = this.parseIyzicoWebhook(body);
       
@@ -69,11 +68,10 @@ export class PaymentWebhookController {
     try {
       this.logger.log('Stripe webhook received:', body);
 
-      // Webhook signature doğrulaması (production'da gerekli)
-      // const signature = headers['stripe-signature'];
-      // if (!this.verifyStripeSignature(body, signature)) {
-      //   throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
-      // }
+      const signature = headers['stripe-signature'];
+      if (!this.verifyStripeSignature(body, signature)) {
+        throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
+      }
 
       const paymentData = this.parseStripeWebhook(body);
       
@@ -161,13 +159,32 @@ export class PaymentWebhookController {
 
   // Iyzico signature verification (placeholder)
   private verifyIyzicoSignature(body: any, signature: string): boolean {
-    // Production'da implement edilecek
-    return true;
+    const secret = process.env.IYZICO_WEBHOOK_SECRET;
+    if (!secret) return false;
+    if (!signature) return false;
+    // Basit HMAC benzeri kontrol (gerçek imza formatına göre güncellenmelidir)
+    try {
+      const payload = JSON.stringify(body);
+      const crypto = require('crypto');
+      const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+      return expected === signature;
+    } catch {
+      return false;
+    }
   }
 
   // Stripe signature verification (placeholder)
   private verifyStripeSignature(body: any, signature: string): boolean {
-    // Production'da implement edilecek
-    return true;
+    const secret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!secret) return false;
+    if (!signature) return false;
+    try {
+      const payload = JSON.stringify(body);
+      const crypto = require('crypto');
+      const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+      return expected === signature;
+    } catch {
+      return false;
+    }
   }
 } 

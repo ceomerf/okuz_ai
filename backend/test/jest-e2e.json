@@ -5,5 +5,39 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "collectCoverageFrom": [
+    "src/**/*.(t|j)s"
+  ],
+  "coverageDirectory": "../coverage-e2e",
+  "coverageReporters": [
+    "text",
+    "text-summary",
+    "html",
+    "lcov",
+    "json"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "branches": 98,
+      "functions": 98,
+      "lines": 98,
+      "statements": 98
+    }
+  },
+  "setupFilesAfterEnv": [
+    "<rootDir>/setup/jest.setup.ts"
+  ],
+  "globalSetup": "<rootDir>/setup/global.setup.ts",
+  "globalTeardown": "<rootDir>/setup/global.teardown.ts",
+  "testTimeout": 30000,
+  "detectOpenHandles": true,
+  "forceExit": true,
+  "verbose": true,
+  "clearMocks": true,
+  "restoreMocks": true,
+  "errorOnDeprecated": true,
+  "maxWorkers": "50%",
+  "cache": true,
+  "cacheDirectory": "<rootDir>/../.jest-cache-e2e"
 }

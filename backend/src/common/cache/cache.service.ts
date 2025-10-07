@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Redis from 'ioredis';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const Redis = require('ioredis');
 
 @Injectable()
 export class CacheService {
   private readonly logger = new Logger(CacheService.name);
-  private redis: Redis;
+  private redis: any;
 
   constructor(private readonly configService: ConfigService) {
     this.redis = new Redis({
@@ -21,7 +22,7 @@ export class CacheService {
       commandTimeout: 5000,
     });
 
-    this.redis.on('error', (err) => {
+    this.redis.on('error', (err: any) => {
       this.logger.error('Redis connection error:', err);
     });
 
@@ -72,7 +73,7 @@ export class CacheService {
     try {
       // Redis automatically handles TTL, but we can add manual cleanup
       const keys = await this.redis.keys('*');
-      const expiredKeys = [];
+      const expiredKeys: string[] = [];
       
       for (const key of keys) {
         const ttl = await this.redis.ttl(key);
@@ -97,7 +98,7 @@ export class CacheService {
       const lines = info.split('\r\n');
       const memoryInfo: any = {};
       
-      lines.forEach(line => {
+      lines.forEach((line: string) => {
         if (line.includes(':')) {
           const [key, value] = line.split(':');
           memoryInfo[key] = value;
@@ -234,7 +235,7 @@ export class CacheService {
       return {
         memory: this.parseMemoryInfo(info),
         keyspace: this.parseKeyspaceInfo(keyspace),
-        uptime: await this.redis.info('server').then(info => this.parseUptime(info))
+        uptime: await this.redis.info('server').then((info: string) => this.parseUptime(info))
       };
     } catch (error) {
       this.logger.error('Cache stats error:', error);
@@ -250,7 +251,7 @@ export class CacheService {
     const lines = info.split('\r\n');
     const memory: any = {};
     
-    lines.forEach(line => {
+    lines.forEach((line: string) => {
       if (line.includes(':')) {
         const [key, value] = line.split(':');
         if (key.startsWith('used_memory') || key.startsWith('maxmemory')) {
@@ -266,7 +267,7 @@ export class CacheService {
     const lines = info.split('\r\n');
     const keyspace: any = {};
     
-    lines.forEach(line => {
+    lines.forEach((line: string) => {
       if (line.startsWith('db')) {
         const [db, stats] = line.split(':');
         keyspace[db] = stats;

@@ -47,6 +47,37 @@ export class PlanAnalysisService {
     };
   }
 
+  // Materialized view: user_weekly_stats_mv (Aşama 2)
+  async ensureWeeklyStatsMV() {
+    // Not: Prisma migrate yerine runtime safeguard; prod’da migration tercih edilir
+    await (this.prisma as any).$executeRawUnsafe(`
+      CREATE MATERIALIZED VIEW IF NOT EXISTS user_weekly_stats_mv AS
+      SELECT
+        ss."userId" as user_id,
+        date_trunc('week', ss."startTime")::date as week_start,
+        COUNT(*) FILTER (WHERE ss."isCompleted" = true) as completed_sessions,
+        COUNT(*) as total_sessions,
+        COALESCE(SUM(ss."duration"),0) as total_minutes
+      FROM "StudySession" ss
+      GROUP BY 1,2;
+      CREATE INDEX IF NOT EXISTS idx_user_weekly_stats_mv_user_week ON user_weekly_stats_mv(user_id, week_start);
+    `);
+  }
+
+  async refreshWeeklyStatsMV() {
+    await (this.prisma as any).$executeRawUnsafe('REFRESH MATERIALIZED VIEW CONCURRENTLY user_weekly_stats_mv');
+  }
+
+  async getWeeklyStatsFromMV(userId: string, weeksBack = 1) {
+    await this.ensureWeeklyStatsMV();
+    const rows = await (this.prisma as any).$queryRawUnsafe(
+      `SELECT * FROM user_weekly_stats_mv WHERE user_id = $1 ORDER BY week_start DESC LIMIT $2`,
+      userId,
+      weeksBack
+    );
+    return rows;
+  }
+
   /**
    * Streak günlerini hesaplar
    */
@@ -161,7 +192,7 @@ export class PlanAnalysisService {
           orderBy: { createdAt: 'desc' },
           take: 10,
           include: {
-            sessions: true,
+            studySessions: true,
           },
         },
       },

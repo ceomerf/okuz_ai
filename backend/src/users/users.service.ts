@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
+import { PlanningService } from '../planning/planning.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService, private readonly cache: CacheService) {}
+  constructor(private readonly prisma: PrismaService, private readonly cache: CacheService, private readonly planningService: PlanningService) {}
 
   async findAll() {
     return { message: 'Users service implementation' };
@@ -262,7 +263,30 @@ export class UsersService {
       });
 
       console.log('✅ Onboarding completed successfully');
-      
+
+      // Onboarding tamamlandıktan sonra 3 günlük initial planı otomatik oluştur
+      try {
+        const initialPlanPayload: any = {
+          planType: 'initial',
+          useOnboardingData: true,
+          planDurationDays: 3,
+          // Onboarding verilerinden olabildiğince taşı
+          subjects: Array.isArray(onboardingData.selectedSubjects) ? onboardingData.selectedSubjects : [],
+          goals: Array.isArray(onboardingData.goals) ? onboardingData.goals : [],
+          availableTime: Number(onboardingData.dailyHours) > 0 ? Math.round(Number(onboardingData.dailyHours) * 60) : 120,
+          learningStyle: onboardingData.learningStyle || 'visual',
+          currentLevel: String(onboardingData.grade || 'Orta'),
+          preferences: {
+            studyTimes: Array.isArray(onboardingData.preferredStudyTimes) ? onboardingData.preferredStudyTimes : [],
+            difficulty: 'balanced',
+          },
+        };
+        await this.planningService.createPlanFromOnboarding(userId, initialPlanPayload);
+      } catch (e) {
+        // Initial plan başarısız olsa bile onboarding akışını bozma; logla yeter
+        console.error('⚠️ Initial plan creation failed after onboarding:', (e as any)?.message || e);
+      }
+
       return {
         success: true,
         message: 'Onboarding completed successfully',

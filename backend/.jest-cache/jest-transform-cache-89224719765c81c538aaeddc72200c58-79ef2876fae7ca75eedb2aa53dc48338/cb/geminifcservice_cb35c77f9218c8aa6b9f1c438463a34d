@@ -1,0 +1,86 @@
+0b5992976d5c50b7cc83c50dbea805d6
+"use strict";
+
+// GEMINI FUNCTION CALLING SERVİSİ DEVRE DIŞI - OPENAI KULLANILIYOR
+/*
+import { Injectable } from '@nestjs/common';
+import { z } from 'zod';
+import { GeminiService } from './gemini.service';
+
+export interface ToolDefinition {
+  name: string;
+  description?: string;
+  schema: any; // JSON Schema benzeri
+}
+
+@Injectable()
+export class GeminiFunctionCallingService {
+  constructor(private readonly gemini: GeminiService) {}
+
+  async callStructured<T>(prompt: string, tool: ToolDefinition, validator?: z.ZodTypeAny): Promise<T> {
+    // Basit ilk sürüm: prompt içine tool şemasını gömerek sıkı yönlendirme
+    const fcPrompt = `You are a function calling model. Call the tool with valid JSON args only.
+TOOL_NAME: ${tool.name}
+TOOL_SCHEMA: ${JSON.stringify(tool.schema)}
+PROMPT: ${prompt}
+Return ONLY JSON matching TOOL_SCHEMA.`;
+
+    const raw = await this.gemini.generateContent(fcPrompt);
+    const cleaned = raw?.trim()?.replace(/```json\n?/gi, '').replace(/```/g, '');
+    let json: any;
+    try {
+      json = JSON.parse(cleaned);
+    } catch {
+      throw new Error('Invalid JSON from model');
+    }
+    if (validator) {
+      const parsed = validator.safeParse(json);
+      if (!parsed.success) {
+        throw new Error('Validation failed for model output');
+      }
+      return parsed.data as T;
+    }
+    return json as T;
+  }
+}
+*/
+/* istanbul ignore next */
+function cov_1xv7yr89ng() {
+  var path = "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/services/gemini-fc.service.ts";
+  var hash = "a9e55f2eb5222313e8bb15547a5f4ec072cf18e2";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/services/gemini-fc.service.ts",
+    statementMap: {},
+    fnMap: {},
+    branchMap: {},
+    s: {},
+    f: {},
+    b: {},
+    inputSourceMap: {
+      file: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/services/gemini-fc.service.ts",
+      mappings: ";AAAA,mEAAmE;AACnE;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAyCE",
+      names: [],
+      sources: ["/Users/ceomerf/Downloads/okuz_ai-main/backend/src/services/gemini-fc.service.ts"],
+      sourcesContent: ["// GEMINI FUNCTION CALLING SERV\u0130S\u0130 DEVRE DI\u015EI - OPENAI KULLANILIYOR\n/*\nimport { Injectable } from '@nestjs/common';\nimport { z } from 'zod';\nimport { GeminiService } from './gemini.service';\n\nexport interface ToolDefinition {\n  name: string;\n  description?: string;\n  schema: any; // JSON Schema benzeri\n}\n\n@Injectable()\nexport class GeminiFunctionCallingService {\n  constructor(private readonly gemini: GeminiService) {}\n\n  async callStructured<T>(prompt: string, tool: ToolDefinition, validator?: z.ZodTypeAny): Promise<T> {\n    // Basit ilk s\xFCr\xFCm: prompt i\xE7ine tool \u015Femas\u0131n\u0131 g\xF6merek s\u0131k\u0131 y\xF6nlendirme\n    const fcPrompt = `You are a function calling model. Call the tool with valid JSON args only.\nTOOL_NAME: ${tool.name}\nTOOL_SCHEMA: ${JSON.stringify(tool.schema)}\nPROMPT: ${prompt}\nReturn ONLY JSON matching TOOL_SCHEMA.`;\n\n    const raw = await this.gemini.generateContent(fcPrompt);\n    const cleaned = raw?.trim()?.replace(/```json\\n?/gi, '').replace(/```/g, '');\n    let json: any;\n    try {\n      json = JSON.parse(cleaned);\n    } catch {\n      throw new Error('Invalid JSON from model');\n    }\n    if (validator) {\n      const parsed = validator.safeParse(json);\n      if (!parsed.success) {\n        throw new Error('Validation failed for model output');\n      }\n      return parsed.data as T;\n    }\n    return json as T;\n  }\n}\n*/\n\n\n"],
+      version: 3
+    },
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "a9e55f2eb5222313e8bb15547a5f4ec072cf18e2"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    // @ts-ignore
+    cov_1xv7yr89ng = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_1xv7yr89ng();
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJjb3ZfMXh2N3lyODluZyIsInBhdGgiLCJoYXNoIiwiZ2xvYmFsIiwiRnVuY3Rpb24iLCJnY3YiLCJjb3ZlcmFnZURhdGEiLCJzdGF0ZW1lbnRNYXAiLCJmbk1hcCIsImJyYW5jaE1hcCIsInMiLCJmIiwiYiIsImlucHV0U291cmNlTWFwIiwiZmlsZSIsIm1hcHBpbmdzIiwibmFtZXMiLCJzb3VyY2VzIiwic291cmNlc0NvbnRlbnQiLCJ2ZXJzaW9uIiwiX2NvdmVyYWdlU2NoZW1hIiwiY292ZXJhZ2UiLCJhY3R1YWxDb3ZlcmFnZSJdLCJzb3VyY2VzIjpbIi9Vc2Vycy9jZW9tZXJmL0Rvd25sb2Fkcy9va3V6X2FpLW1haW4vYmFja2VuZC9zcmMvc2VydmljZXMvZ2VtaW5pLWZjLnNlcnZpY2UudHMiXSwic291cmNlc0NvbnRlbnQiOlsiLy8gR0VNSU5JIEZVTkNUSU9OIENBTExJTkcgU0VSVsSwU8SwIERFVlJFIERJxZ5JIC0gT1BFTkFJIEtVTExBTklMSVlPUlxuLypcbmltcG9ydCB7IEluamVjdGFibGUgfSBmcm9tICdAbmVzdGpzL2NvbW1vbic7XG5pbXBvcnQgeyB6IH0gZnJvbSAnem9kJztcbmltcG9ydCB7IEdlbWluaVNlcnZpY2UgfSBmcm9tICcuL2dlbWluaS5zZXJ2aWNlJztcblxuZXhwb3J0IGludGVyZmFjZSBUb29sRGVmaW5pdGlvbiB7XG4gIG5hbWU6IHN0cmluZztcbiAgZGVzY3JpcHRpb24/OiBzdHJpbmc7XG4gIHNjaGVtYTogYW55OyAvLyBKU09OIFNjaGVtYSBiZW56ZXJpXG59XG5cbkBJbmplY3RhYmxlKClcbmV4cG9ydCBjbGFzcyBHZW1pbmlGdW5jdGlvbkNhbGxpbmdTZXJ2aWNlIHtcbiAgY29uc3RydWN0b3IocHJpdmF0ZSByZWFkb25seSBnZW1pbmk6IEdlbWluaVNlcnZpY2UpIHt9XG5cbiAgYXN5bmMgY2FsbFN0cnVjdHVyZWQ8VD4ocHJvbXB0OiBzdHJpbmcsIHRvb2w6IFRvb2xEZWZpbml0aW9uLCB2YWxpZGF0b3I/OiB6LlpvZFR5cGVBbnkpOiBQcm9taXNlPFQ+IHtcbiAgICAvLyBCYXNpdCBpbGsgc8O8csO8bTogcHJvbXB0IGnDp2luZSB0b29sIMWfZW1hc8SxbsSxIGfDtm1lcmVrIHPEsWvEsSB5w7ZubGVuZGlybWVcbiAgICBjb25zdCBmY1Byb21wdCA9IGBZb3UgYXJlIGEgZnVuY3Rpb24gY2FsbGluZyBtb2RlbC4gQ2FsbCB0aGUgdG9vbCB3aXRoIHZhbGlkIEpTT04gYXJncyBvbmx5LlxuVE9PTF9OQU1FOiAke3Rvb2wubmFtZX1cblRPT0xfU0NIRU1BOiAke0pTT04uc3RyaW5naWZ5KHRvb2wuc2NoZW1hKX1cblBST01QVDogJHtwcm9tcHR9XG5SZXR1cm4gT05MWSBKU09OIG1hdGNoaW5nIFRPT0xfU0NIRU1BLmA7XG5cbiAgICBjb25zdCByYXcgPSBhd2FpdCB0aGlzLmdlbWluaS5nZW5lcmF0ZUNvbnRlbnQoZmNQcm9tcHQpO1xuICAgIGNvbnN0IGNsZWFuZWQgPSByYXc/LnRyaW0oKT8ucmVwbGFjZSgvYGBganNvblxcbj8vZ2ksICcnKS5yZXBsYWNlKC9gYGAvZywgJycpO1xuICAgIGxldCBqc29uOiBhbnk7XG4gICAgdHJ5IHtcbiAgICAgIGpzb24gPSBKU09OLnBhcnNlKGNsZWFuZWQpO1xuICAgIH0gY2F0Y2gge1xuICAgICAgdGhyb3cgbmV3IEVycm9yKCdJbnZhbGlkIEpTT04gZnJvbSBtb2RlbCcpO1xuICAgIH1cbiAgICBpZiAodmFsaWRhdG9yKSB7XG4gICAgICBjb25zdCBwYXJzZWQgPSB2YWxpZGF0b3Iuc2FmZVBhcnNlKGpzb24pO1xuICAgICAgaWYgKCFwYXJzZWQuc3VjY2Vzcykge1xuICAgICAgICB0aHJvdyBuZXcgRXJyb3IoJ1ZhbGlkYXRpb24gZmFpbGVkIGZvciBtb2RlbCBvdXRwdXQnKTtcbiAgICAgIH1cbiAgICAgIHJldHVybiBwYXJzZWQuZGF0YSBhcyBUO1xuICAgIH1cbiAgICByZXR1cm4ganNvbiBhcyBUO1xuICB9XG59XG4qL1xuXG5cbiJdLCJtYXBwaW5ncyI6Ijs7QUFBQTtBQUNBOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQTtBQUFBLFNBQUFBLGVBQUE7RUFBQSxJQUFBQyxJQUFBO0VBQUEsSUFBQUMsSUFBQTtFQUFBLElBQUFDLE1BQUEsT0FBQUMsUUFBQTtFQUFBLElBQUFDLEdBQUE7RUFBQSxJQUFBQyxZQUFBO0lBQUFMLElBQUE7SUFBQU0sWUFBQTtJQUFBQyxLQUFBO0lBQUFDLFNBQUE7SUFBQUMsQ0FBQTtJQUFBQyxDQUFBO0lBQUFDLENBQUE7SUFBQUMsY0FBQTtNQUFBQyxJQUFBO01BQUFDLFFBQUE7TUFBQUMsS0FBQTtNQUFBQyxPQUFBO01BQUFDLGNBQUE7TUFBQUMsT0FBQTtJQUFBO0lBQUFDLGVBQUE7SUFBQWxCLElBQUE7RUFBQTtFQUFBLElBQUFtQixRQUFBLEdBQUFsQixNQUFBLENBQUFFLEdBQUEsTUFBQUYsTUFBQSxDQUFBRSxHQUFBO0VBQUEsS0FBQWdCLFFBQUEsQ0FBQXBCLElBQUEsS0FBQW9CLFFBQUEsQ0FBQXBCLElBQUEsRUFBQUMsSUFBQSxLQUFBQSxJQUFBO0lBQUFtQixRQUFBLENBQUFwQixJQUFBLElBQUFLLFlBQUE7RUFBQTtFQUFBLElBQUFnQixjQUFBLEdBQUFELFFBQUEsQ0FBQXBCLElBQUE7RUFBQSIsImlnbm9yZUxpc3QiOltdfQ==

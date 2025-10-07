@@ -1,0 +1,165 @@
+dd63b41e723ceffa7192a162060be926
+"use strict";
+
+/* istanbul ignore next */
+function cov_27r7eyrs5g() {
+  var path = "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/ai/prompts/motivational-content-generation.prompt.ts";
+  var hash = "ddc97709d9fe3cc09aadf2748232466dde39c7e8";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/ai/prompts/motivational-content-generation.prompt.ts",
+    statementMap: {
+      "0": {
+        start: {
+          line: 2,
+          column: 0
+        },
+        end: {
+          line: 2,
+          column: 62
+        }
+      },
+      "1": {
+        start: {
+          line: 3,
+          column: 0
+        },
+        end: {
+          line: 3,
+          column: 53
+        }
+      },
+      "2": {
+        start: {
+          line: 4,
+          column: 0
+        },
+        end: {
+          line: 81,
+          column: 2
+        }
+      }
+    },
+    fnMap: {},
+    branchMap: {},
+    s: {
+      "0": 0,
+      "1": 0,
+      "2": 0
+    },
+    f: {},
+    b: {},
+    inputSourceMap: {
+      file: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/ai/prompts/motivational-content-generation.prompt.ts",
+      mappings: ";;;AAAa,QAAA,mCAAmC,GAAG;IACjD,IAAI,EAAE,iCAAiC;IACvC,OAAO,EAAE,OAAO;IAChB,WAAW,EAAE,yDAAyD;IACtE,QAAQ,EAAE;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;GAqET;IACD,SAAS,EAAE,CAAC,QAAQ,EAAE,aAAa,EAAE,gBAAgB,EAAE,SAAS,EAAE,WAAW,CAAC;IAC9E,QAAQ,EAAE,sBAAsB;IAChC,QAAQ,EAAE,IAAI;CACf,CAAC",
+      names: [],
+      sources: ["/Users/ceomerf/Downloads/okuz_ai-main/backend/src/ai/prompts/motivational-content-generation.prompt.ts"],
+      sourcesContent: ["export const motivationalContentGenerationPrompt = {\n  name: 'motivational_content_generation',\n  version: '1.0.0',\n  description: 'Generate personalized motivational content for students',\n  template: `\nSen bir uzman e\u011Fitim ko\xE7usun ve motivasyon uzman\u0131s\u0131n. \xD6\u011Frencinin profili ve duygusal durumuna g\xF6re ki\u015Fiselle\u015Ftirilmi\u015F motivasyonel i\xE7erik olu\u015Fturuyorsun.\n\n**\xD6\u011Frenci Profili:**\n- Kullan\u0131c\u0131 ID: {{userId}}\n- Profil: {{userProfile}}\n- Duygusal Durum: {{emotionalState}}\n- Ba\u011Flam: {{context}}\n- Zaman: {{timestamp}}\n\n**\u0130\xE7erik Olu\u015Fturma G\xF6revi:**\nA\u015Fa\u011F\u0131daki JSON format\u0131nda motivasyonel i\xE7erik olu\u015Ftur:\n\n\\`\\`\\`json\n{\n  \"type\": \"quote\" | \"tip\" | \"challenge\" | \"reminder\" | \"celebration\" | \"encouragement\",\n  \"title\": \"Ba\u015Fl\u0131k\",\n  \"content\": \"Motivasyonel i\xE7erik metni\",\n  \"emotionalTone\": \"uplifting\" | \"calming\" | \"energizing\" | \"supportive\" | \"challenging\",\n  \"targetEmotions\": [\"hedef_duygu1\", \"hedef_duygu2\"],\n  \"expectedImpact\": 1-10,\n  \"confidence\": 0.0-1.0,\n  \"targetOutcome\": \"Beklenen sonu\xE7\",\n  \"delivery\": {\n    \"channel\": \"push\" | \"email\" | \"websocket\" | \"in_app\",\n    \"timing\": \"immediate\" | \"scheduled\" | \"contextual\",\n    \"priority\": \"low\" | \"medium\" | \"high\" | \"urgent\"\n  },\n  \"expiresAt\": \"2024-01-01T00:00:00Z\",\n  \"metadata\": {\n    \"learningStyle\": \"visual\" | \"auditory\" | \"kinesthetic\" | \"reading\",\n    \"personalityType\": \"introvert\" | \"extrovert\" | \"balanced\",\n    \"interests\": [\"ilgi1\", \"ilgi2\"],\n    \"goals\": [\"hedef1\", \"hedef2\"]\n  }\n}\n\\`\\`\\`\n\n**\u0130\xE7erik Kriterleri:**\n1. **Ki\u015Fiselle\u015Ftirme**: \xD6\u011Frencinin profiline uygun\n2. **Duygusal Uyum**: Mevcut duygusal duruma uygun\n3. **Motivasyonel Etki**: Pozitif etki yaratacak\n4. **Ya\u015F Uygunlu\u011Fu**: \xD6\u011Frenci ya\u015F grubuna uygun\n5. **K\xFClt\xFCrel Uyum**: T\xFCrk k\xFClt\xFCr\xFCne uygun\n6. **E\u011Fitim Odakl\u0131**: \xD6\u011Frenme ve geli\u015Fim odakl\u0131\n\n**\u0130\xE7erik T\xFCrleri:**\n- **Quote**: \u0130lham verici s\xF6zler\n- **Tip**: Pratik \xF6\u011Frenme ipu\xE7lar\u0131\n- **Challenge**: Ki\u015Fisel geli\u015Fim meydan okumalar\u0131\n- **Reminder**: Hat\u0131rlat\u0131c\u0131 mesajlar\n- **Celebration**: Ba\u015Far\u0131 kutlamalar\u0131\n- **Encouragement**: Cesaretlendirici mesajlar\n\n**Duygusal Tonlar:**\n- **Uplifting**: Y\xFCkseltici ve enerji verici\n- **Calming**: Sakinle\u015Ftirici ve rahatlat\u0131c\u0131\n- **Energizing**: Enerji verici ve hareketlendirici\n- **Supportive**: Destekleyici ve anlay\u0131\u015Fl\u0131\n- **Challenging**: Meydan okuyucu ve te\u015Fvik edici\n\n**\xD6nemli Notlar:**\n- T\xFCrk\xE7e i\xE7erik olu\u015Ftur\n- Pozitif ve yap\u0131c\u0131 yakla\u015F\u0131m benimse\n- \xD6\u011Frencinin gizlili\u011Fini koru\n- E\u011Fitim de\u011Feri olan i\xE7erik \xFCret\n- Ki\u015Fisel geli\u015Fim odakl\u0131 ol\n\nSadece JSON format\u0131nda yan\u0131t ver, ba\u015Fka a\xE7\u0131klama ekleme.\n  `,\n  variables: ['userId', 'userProfile', 'emotionalState', 'context', 'timestamp'],\n  category: 'motivational_content',\n  isActive: true,\n};\n"],
+      version: 3
+    },
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "ddc97709d9fe3cc09aadf2748232466dde39c7e8"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    // @ts-ignore
+    cov_27r7eyrs5g = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_27r7eyrs5g();
+cov_27r7eyrs5g().s[0]++;
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+/* istanbul ignore next */
+cov_27r7eyrs5g().s[1]++;
+exports.motivationalContentGenerationPrompt = void 0;
+/* istanbul ignore next */
+cov_27r7eyrs5g().s[2]++;
+exports.motivationalContentGenerationPrompt = {
+  name: 'motivational_content_generation',
+  version: '1.0.0',
+  description: 'Generate personalized motivational content for students',
+  template: `
+Sen bir uzman eğitim koçusun ve motivasyon uzmanısın. Öğrencinin profili ve duygusal durumuna göre kişiselleştirilmiş motivasyonel içerik oluşturuyorsun.
+
+**Öğrenci Profili:**
+- Kullanıcı ID: {{userId}}
+- Profil: {{userProfile}}
+- Duygusal Durum: {{emotionalState}}
+- Bağlam: {{context}}
+- Zaman: {{timestamp}}
+
+**İçerik Oluşturma Görevi:**
+Aşağıdaki JSON formatında motivasyonel içerik oluştur:
+
+\`\`\`json
+{
+  "type": "quote" | "tip" | "challenge" | "reminder" | "celebration" | "encouragement",
+  "title": "Başlık",
+  "content": "Motivasyonel içerik metni",
+  "emotionalTone": "uplifting" | "calming" | "energizing" | "supportive" | "challenging",
+  "targetEmotions": ["hedef_duygu1", "hedef_duygu2"],
+  "expectedImpact": 1-10,
+  "confidence": 0.0-1.0,
+  "targetOutcome": "Beklenen sonuç",
+  "delivery": {
+    "channel": "push" | "email" | "websocket" | "in_app",
+    "timing": "immediate" | "scheduled" | "contextual",
+    "priority": "low" | "medium" | "high" | "urgent"
+  },
+  "expiresAt": "2024-01-01T00:00:00Z",
+  "metadata": {
+    "learningStyle": "visual" | "auditory" | "kinesthetic" | "reading",
+    "personalityType": "introvert" | "extrovert" | "balanced",
+    "interests": ["ilgi1", "ilgi2"],
+    "goals": ["hedef1", "hedef2"]
+  }
+}
+\`\`\`
+
+**İçerik Kriterleri:**
+1. **Kişiselleştirme**: Öğrencinin profiline uygun
+2. **Duygusal Uyum**: Mevcut duygusal duruma uygun
+3. **Motivasyonel Etki**: Pozitif etki yaratacak
+4. **Yaş Uygunluğu**: Öğrenci yaş grubuna uygun
+5. **Kültürel Uyum**: Türk kültürüne uygun
+6. **Eğitim Odaklı**: Öğrenme ve gelişim odaklı
+
+**İçerik Türleri:**
+- **Quote**: İlham verici sözler
+- **Tip**: Pratik öğrenme ipuçları
+- **Challenge**: Kişisel gelişim meydan okumaları
+- **Reminder**: Hatırlatıcı mesajlar
+- **Celebration**: Başarı kutlamaları
+- **Encouragement**: Cesaretlendirici mesajlar
+
+**Duygusal Tonlar:**
+- **Uplifting**: Yükseltici ve enerji verici
+- **Calming**: Sakinleştirici ve rahatlatıcı
+- **Energizing**: Enerji verici ve hareketlendirici
+- **Supportive**: Destekleyici ve anlayışlı
+- **Challenging**: Meydan okuyucu ve teşvik edici
+
+**Önemli Notlar:**
+- Türkçe içerik oluştur
+- Pozitif ve yapıcı yaklaşım benimse
+- Öğrencinin gizliliğini koru
+- Eğitim değeri olan içerik üret
+- Kişisel gelişim odaklı ol
+
+Sadece JSON formatında yanıt ver, başka açıklama ekleme.
+  `,
+  variables: ['userId', 'userProfile', 'emotionalState', 'context', 'timestamp'],
+  category: 'motivational_content',
+  isActive: true
+};
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJleHBvcnRzIiwibW90aXZhdGlvbmFsQ29udGVudEdlbmVyYXRpb25Qcm9tcHQiLCJuYW1lIiwidmVyc2lvbiIsImRlc2NyaXB0aW9uIiwidGVtcGxhdGUiLCJ2YXJpYWJsZXMiLCJjYXRlZ29yeSIsImlzQWN0aXZlIl0sInNvdXJjZXMiOlsiL1VzZXJzL2Nlb21lcmYvRG93bmxvYWRzL29rdXpfYWktbWFpbi9iYWNrZW5kL3NyYy9haS9wcm9tcHRzL21vdGl2YXRpb25hbC1jb250ZW50LWdlbmVyYXRpb24ucHJvbXB0LnRzIl0sInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCBjb25zdCBtb3RpdmF0aW9uYWxDb250ZW50R2VuZXJhdGlvblByb21wdCA9IHtcbiAgbmFtZTogJ21vdGl2YXRpb25hbF9jb250ZW50X2dlbmVyYXRpb24nLFxuICB2ZXJzaW9uOiAnMS4wLjAnLFxuICBkZXNjcmlwdGlvbjogJ0dlbmVyYXRlIHBlcnNvbmFsaXplZCBtb3RpdmF0aW9uYWwgY29udGVudCBmb3Igc3R1ZGVudHMnLFxuICB0ZW1wbGF0ZTogYFxuU2VuIGJpciB1em1hbiBlxJ9pdGltIGtvw6d1c3VuIHZlIG1vdGl2YXN5b24gdXptYW7EsXPEsW4uIMOWxJ9yZW5jaW5pbiBwcm9maWxpIHZlIGR1eWd1c2FsIGR1cnVtdW5hIGfDtnJlIGtpxZ9pc2VsbGXFn3RpcmlsbWnFnyBtb3RpdmFzeW9uZWwgacOnZXJpayBvbHXFn3R1cnV5b3JzdW4uXG5cbioqw5bEn3JlbmNpIFByb2ZpbGk6Kipcbi0gS3VsbGFuxLFjxLEgSUQ6IHt7dXNlcklkfX1cbi0gUHJvZmlsOiB7e3VzZXJQcm9maWxlfX1cbi0gRHV5Z3VzYWwgRHVydW06IHt7ZW1vdGlvbmFsU3RhdGV9fVxuLSBCYcSfbGFtOiB7e2NvbnRleHR9fVxuLSBaYW1hbjoge3t0aW1lc3RhbXB9fVxuXG4qKsSww6dlcmlrIE9sdcWfdHVybWEgR8O2cmV2aToqKlxuQcWfYcSfxLFkYWtpIEpTT04gZm9ybWF0xLFuZGEgbW90aXZhc3lvbmVsIGnDp2VyaWsgb2x1xZ90dXI6XG5cblxcYFxcYFxcYGpzb25cbntcbiAgXCJ0eXBlXCI6IFwicXVvdGVcIiB8IFwidGlwXCIgfCBcImNoYWxsZW5nZVwiIHwgXCJyZW1pbmRlclwiIHwgXCJjZWxlYnJhdGlvblwiIHwgXCJlbmNvdXJhZ2VtZW50XCIsXG4gIFwidGl0bGVcIjogXCJCYcWfbMSxa1wiLFxuICBcImNvbnRlbnRcIjogXCJNb3RpdmFzeW9uZWwgacOnZXJpayBtZXRuaVwiLFxuICBcImVtb3Rpb25hbFRvbmVcIjogXCJ1cGxpZnRpbmdcIiB8IFwiY2FsbWluZ1wiIHwgXCJlbmVyZ2l6aW5nXCIgfCBcInN1cHBvcnRpdmVcIiB8IFwiY2hhbGxlbmdpbmdcIixcbiAgXCJ0YXJnZXRFbW90aW9uc1wiOiBbXCJoZWRlZl9kdXlndTFcIiwgXCJoZWRlZl9kdXlndTJcIl0sXG4gIFwiZXhwZWN0ZWRJbXBhY3RcIjogMS0xMCxcbiAgXCJjb25maWRlbmNlXCI6IDAuMC0xLjAsXG4gIFwidGFyZ2V0T3V0Y29tZVwiOiBcIkJla2xlbmVuIHNvbnXDp1wiLFxuICBcImRlbGl2ZXJ5XCI6IHtcbiAgICBcImNoYW5uZWxcIjogXCJwdXNoXCIgfCBcImVtYWlsXCIgfCBcIndlYnNvY2tldFwiIHwgXCJpbl9hcHBcIixcbiAgICBcInRpbWluZ1wiOiBcImltbWVkaWF0ZVwiIHwgXCJzY2hlZHVsZWRcIiB8IFwiY29udGV4dHVhbFwiLFxuICAgIFwicHJpb3JpdHlcIjogXCJsb3dcIiB8IFwibWVkaXVtXCIgfCBcImhpZ2hcIiB8IFwidXJnZW50XCJcbiAgfSxcbiAgXCJleHBpcmVzQXRcIjogXCIyMDI0LTAxLTAxVDAwOjAwOjAwWlwiLFxuICBcIm1ldGFkYXRhXCI6IHtcbiAgICBcImxlYXJuaW5nU3R5bGVcIjogXCJ2aXN1YWxcIiB8IFwiYXVkaXRvcnlcIiB8IFwia2luZXN0aGV0aWNcIiB8IFwicmVhZGluZ1wiLFxuICAgIFwicGVyc29uYWxpdHlUeXBlXCI6IFwiaW50cm92ZXJ0XCIgfCBcImV4dHJvdmVydFwiIHwgXCJiYWxhbmNlZFwiLFxuICAgIFwiaW50ZXJlc3RzXCI6IFtcImlsZ2kxXCIsIFwiaWxnaTJcIl0sXG4gICAgXCJnb2Fsc1wiOiBbXCJoZWRlZjFcIiwgXCJoZWRlZjJcIl1cbiAgfVxufVxuXFxgXFxgXFxgXG5cbioqxLDDp2VyaWsgS3JpdGVybGVyaToqKlxuMS4gKipLacWfaXNlbGxlxZ90aXJtZSoqOiDDlsSfcmVuY2luaW4gcHJvZmlsaW5lIHV5Z3VuXG4yLiAqKkR1eWd1c2FsIFV5dW0qKjogTWV2Y3V0IGR1eWd1c2FsIGR1cnVtYSB1eWd1blxuMy4gKipNb3RpdmFzeW9uZWwgRXRraSoqOiBQb3ppdGlmIGV0a2kgeWFyYXRhY2FrXG40LiAqKllhxZ8gVXlndW5sdcSfdSoqOiDDlsSfcmVuY2kgeWHFnyBncnVidW5hIHV5Z3VuXG41LiAqKkvDvGx0w7xyZWwgVXl1bSoqOiBUw7xyayBrw7xsdMO8csO8bmUgdXlndW5cbjYuICoqRcSfaXRpbSBPZGFrbMSxKio6IMOWxJ9yZW5tZSB2ZSBnZWxpxZ9pbSBvZGFrbMSxXG5cbioqxLDDp2VyaWsgVMO8cmxlcmk6Kipcbi0gKipRdW90ZSoqOiDEsGxoYW0gdmVyaWNpIHPDtnpsZXJcbi0gKipUaXAqKjogUHJhdGlrIMO2xJ9yZW5tZSBpcHXDp2xhcsSxXG4tICoqQ2hhbGxlbmdlKio6IEtpxZ9pc2VsIGdlbGnFn2ltIG1leWRhbiBva3VtYWxhcsSxXG4tICoqUmVtaW5kZXIqKjogSGF0xLFybGF0xLFjxLEgbWVzYWpsYXJcbi0gKipDZWxlYnJhdGlvbioqOiBCYcWfYXLEsSBrdXRsYW1hbGFyxLFcbi0gKipFbmNvdXJhZ2VtZW50Kio6IENlc2FyZXRsZW5kaXJpY2kgbWVzYWpsYXJcblxuKipEdXlndXNhbCBUb25sYXI6Kipcbi0gKipVcGxpZnRpbmcqKjogWcO8a3NlbHRpY2kgdmUgZW5lcmppIHZlcmljaVxuLSAqKkNhbG1pbmcqKjogU2FraW5sZcWfdGlyaWNpIHZlIHJhaGF0bGF0xLFjxLFcbi0gKipFbmVyZ2l6aW5nKio6IEVuZXJqaSB2ZXJpY2kgdmUgaGFyZWtldGxlbmRpcmljaVxuLSAqKlN1cHBvcnRpdmUqKjogRGVzdGVrbGV5aWNpIHZlIGFubGF5xLHFn2zEsVxuLSAqKkNoYWxsZW5naW5nKio6IE1leWRhbiBva3V5dWN1IHZlIHRlxZ92aWsgZWRpY2lcblxuKirDlm5lbWxpIE5vdGxhcjoqKlxuLSBUw7xya8OnZSBpw6dlcmlrIG9sdcWfdHVyXG4tIFBveml0aWYgdmUgeWFwxLFjxLEgeWFrbGHFn8SxbSBiZW5pbXNlXG4tIMOWxJ9yZW5jaW5pbiBnaXpsaWxpxJ9pbmkga29ydVxuLSBFxJ9pdGltIGRlxJ9lcmkgb2xhbiBpw6dlcmlrIMO8cmV0XG4tIEtpxZ9pc2VsIGdlbGnFn2ltIG9kYWtsxLEgb2xcblxuU2FkZWNlIEpTT04gZm9ybWF0xLFuZGEgeWFuxLF0IHZlciwgYmHFn2thIGHDp8Sxa2xhbWEgZWtsZW1lLlxuICBgLFxuICB2YXJpYWJsZXM6IFsndXNlcklkJywgJ3VzZXJQcm9maWxlJywgJ2Vtb3Rpb25hbFN0YXRlJywgJ2NvbnRleHQnLCAndGltZXN0YW1wJ10sXG4gIGNhdGVnb3J5OiAnbW90aXZhdGlvbmFsX2NvbnRlbnQnLFxuICBpc0FjdGl2ZTogdHJ1ZSxcbn07XG4iXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBYUEsT0FBQSxDQUFBQyxtQ0FBbUMsR0FBRztFQUNqREMsSUFBSSxFQUFFLGlDQUFpQztFQUN2Q0MsT0FBTyxFQUFFLE9BQU87RUFDaEJDLFdBQVcsRUFBRSx5REFBeUQ7RUFDdEVDLFFBQVEsRUFBRTs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7O0dBcUVUO0VBQ0RDLFNBQVMsRUFBRSxDQUFDLFFBQVEsRUFBRSxhQUFhLEVBQUUsZ0JBQWdCLEVBQUUsU0FBUyxFQUFFLFdBQVcsQ0FBQztFQUM5RUMsUUFBUSxFQUFFLHNCQUFzQjtFQUNoQ0MsUUFBUSxFQUFFO0NBQ1giLCJpZ25vcmVMaXN0IjpbXX0=

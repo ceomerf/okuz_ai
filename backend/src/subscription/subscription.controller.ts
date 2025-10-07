@@ -14,6 +14,8 @@ import {
 } from '@nestjs/common';
 import { SubscriptionService, CreateSubscriptionDto } from './subscription.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UseGuards } from '@nestjs/common';
+import { ApiKeyGuard } from '../common/guards/api-key.guard';
 
 @Controller('subscription')
 export class SubscriptionController {
@@ -58,6 +60,7 @@ export class SubscriptionController {
     return this.subscriptionService.updateSubscription(id, data);
   }
 
+  @UseGuards(ApiKeyGuard)
   @Post('process-payment')
   async processPayment(@Body() data: any) {
     return this.subscriptionService.processPayment(data);
@@ -117,6 +120,7 @@ export class SubscriptionController {
   }
 
   // Payment'i onayla (webhook için)
+  @UseGuards(ApiKeyGuard)
   @Post('confirm-payment')
   async confirmPayment(
     @Body() body: {
@@ -201,6 +205,35 @@ export class SubscriptionController {
       this.logger.error(`Failed to check premium access:`, error);
       throw new HttpException(
         'Failed to check premium access',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Feature flags: frontend'e açık/kapalı özellikleri döndür
+  @UseGuards(JwtAuthGuard)
+  @Get('feature-flags')
+  async getFeatureFlags(@Request() req: any) {
+    try {
+      const userId = req.user.id;
+      const status = await this.subscriptionService.getSubscriptionStatus(userId);
+      const baseFlags = {
+        basic_plan: true,
+      } as Record<string, boolean>;
+      const premiumFlags = {
+        weekly_plan: true,
+        ai_tools: true,
+        detailed_reports: true,
+      };
+      const hasPremium = status.status === 'TRIAL' || status.status === 'PREMIUM' || status.status === 'FAMILY';
+      return {
+        success: true,
+        flags: hasPremium ? { ...baseFlags, ...premiumFlags } : baseFlags,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get feature flags:`, error);
+      throw new HttpException(
+        'Failed to get feature flags',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

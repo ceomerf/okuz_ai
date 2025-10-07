@@ -1,22 +1,33 @@
 import { Module } from '@nestjs/common';
-import { RealtimeGateway } from './realtime.gateway';
 import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
+import { CacheModule } from '@nestjs/cache-manager';
+import { PrismaModule } from '../common/prisma/prisma.module';
+import { RealtimeGateway } from './realtime.gateway';
+import { ConnectionManagerService } from './connection-manager.service';
+import { EventValidatorService } from './event-validator.service';
+import { MetricsModule } from '../monitoring/metrics.module';
+import { WebSocketMetricsService } from '../monitoring/websocket-metrics.service';
 
 @Module({
   imports: [
     ConfigModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: config.get<string>('JWT_ACCESS_TOKEN_EXPIRATION') || '1h' },
-      }),
-    }),
+    JwtModule,
+    CacheModule,
+    PrismaModule,
+    MetricsModule,
   ],
-  providers: [RealtimeGateway],
-  exports: [RealtimeGateway],
+  providers: [
+    RealtimeGateway,
+    ConnectionManagerService,
+    EventValidatorService,
+    WebSocketMetricsService,
+  ],
+  exports: [
+    RealtimeGateway,
+    ConnectionManagerService,
+    EventValidatorService,
+    WebSocketMetricsService,
+  ],
 })
 export class RealtimeModule {}
-

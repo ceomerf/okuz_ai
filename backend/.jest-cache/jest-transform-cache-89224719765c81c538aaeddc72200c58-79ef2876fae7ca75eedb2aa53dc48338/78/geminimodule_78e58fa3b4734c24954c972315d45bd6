@@ -1,0 +1,54 @@
+eefce5533e169c26522e18ddd9a064f0
+"use strict";
+
+// GEMINI MODÜLÜ DEVRE DIŞI - OPENAI KULLANILIYOR
+/*
+import { Module } from '@nestjs/common';
+import { GeminiService } from './gemini.service';
+
+@Module({
+  providers: [GeminiService],
+  exports: [GeminiService],
+})
+export class GeminiModule {}
+*/
+/* istanbul ignore next */
+function cov_2qaucd76p6() {
+  var path = "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/services/gemini.module.ts";
+  var hash = "cb6f880881fc380de4cb04c18cf27c6f14901d85";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/services/gemini.module.ts",
+    statementMap: {},
+    fnMap: {},
+    branchMap: {},
+    s: {},
+    f: {},
+    b: {},
+    inputSourceMap: {
+      file: "/Users/ceomerf/Downloads/okuz_ai-main/backend/src/services/gemini.module.ts",
+      mappings: ";AAAA,iDAAiD;AACjD;;;;;;;;;EASE",
+      names: [],
+      sources: ["/Users/ceomerf/Downloads/okuz_ai-main/backend/src/services/gemini.module.ts"],
+      sourcesContent: ["// GEMINI MOD\xDCL\xDC DEVRE DI\u015EI - OPENAI KULLANILIYOR\n/*\nimport { Module } from '@nestjs/common';\nimport { GeminiService } from './gemini.service';\n\n@Module({\n  providers: [GeminiService],\n  exports: [GeminiService],\n})\nexport class GeminiModule {}\n*/\n"],
+      version: 3
+    },
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "cb6f880881fc380de4cb04c18cf27c6f14901d85"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    // @ts-ignore
+    cov_2qaucd76p6 = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_2qaucd76p6();
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJjb3ZfMnFhdWNkNzZwNiIsInBhdGgiLCJoYXNoIiwiZ2xvYmFsIiwiRnVuY3Rpb24iLCJnY3YiLCJjb3ZlcmFnZURhdGEiLCJzdGF0ZW1lbnRNYXAiLCJmbk1hcCIsImJyYW5jaE1hcCIsInMiLCJmIiwiYiIsImlucHV0U291cmNlTWFwIiwiZmlsZSIsIm1hcHBpbmdzIiwibmFtZXMiLCJzb3VyY2VzIiwic291cmNlc0NvbnRlbnQiLCJ2ZXJzaW9uIiwiX2NvdmVyYWdlU2NoZW1hIiwiY292ZXJhZ2UiLCJhY3R1YWxDb3ZlcmFnZSJdLCJzb3VyY2VzIjpbIi9Vc2Vycy9jZW9tZXJmL0Rvd25sb2Fkcy9va3V6X2FpLW1haW4vYmFja2VuZC9zcmMvc2VydmljZXMvZ2VtaW5pLm1vZHVsZS50cyJdLCJzb3VyY2VzQ29udGVudCI6WyIvLyBHRU1JTkkgTU9Ew5xMw5wgREVWUkUgREnFnkkgLSBPUEVOQUkgS1VMTEFOSUxJWU9SXG4vKlxuaW1wb3J0IHsgTW9kdWxlIH0gZnJvbSAnQG5lc3Rqcy9jb21tb24nO1xuaW1wb3J0IHsgR2VtaW5pU2VydmljZSB9IGZyb20gJy4vZ2VtaW5pLnNlcnZpY2UnO1xuXG5ATW9kdWxlKHtcbiAgcHJvdmlkZXJzOiBbR2VtaW5pU2VydmljZV0sXG4gIGV4cG9ydHM6IFtHZW1pbmlTZXJ2aWNlXSxcbn0pXG5leHBvcnQgY2xhc3MgR2VtaW5pTW9kdWxlIHt9XG4qL1xuIl0sIm1hcHBpbmdzIjoiOztBQUFBO0FBQ0E7Ozs7Ozs7Ozs7QUFBQTtBQUFBLFNBQUFBLGVBQUE7RUFBQSxJQUFBQyxJQUFBO0VBQUEsSUFBQUMsSUFBQTtFQUFBLElBQUFDLE1BQUEsT0FBQUMsUUFBQTtFQUFBLElBQUFDLEdBQUE7RUFBQSxJQUFBQyxZQUFBO0lBQUFMLElBQUE7SUFBQU0sWUFBQTtJQUFBQyxLQUFBO0lBQUFDLFNBQUE7SUFBQUMsQ0FBQTtJQUFBQyxDQUFBO0lBQUFDLENBQUE7SUFBQUMsY0FBQTtNQUFBQyxJQUFBO01BQUFDLFFBQUE7TUFBQUMsS0FBQTtNQUFBQyxPQUFBO01BQUFDLGNBQUE7TUFBQUMsT0FBQTtJQUFBO0lBQUFDLGVBQUE7SUFBQWxCLElBQUE7RUFBQTtFQUFBLElBQUFtQixRQUFBLEdBQUFsQixNQUFBLENBQUFFLEdBQUEsTUFBQUYsTUFBQSxDQUFBRSxHQUFBO0VBQUEsS0FBQWdCLFFBQUEsQ0FBQXBCLElBQUEsS0FBQW9CLFFBQUEsQ0FBQXBCLElBQUEsRUFBQUMsSUFBQSxLQUFBQSxJQUFBO0lBQUFtQixRQUFBLENBQUFwQixJQUFBLElBQUFLLFlBQUE7RUFBQTtFQUFBLElBQUFnQixjQUFBLEdBQUFELFFBQUEsQ0FBQXBCLElBQUE7RUFBQSIsImlnbm9yZUxpc3QiOltdfQ==

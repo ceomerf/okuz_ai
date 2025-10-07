@@ -25,6 +25,13 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SolverModule } from './services/solver.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { CoachingModule } from './coaching/coaching.module';
+import { ParentReportsModule } from './parent-reports/parent-reports.module';
+import { AICoachModule } from './ai-coach/ai-coach.module';
+import { NotificationSettingsModule } from './notification-settings/notification-settings.module';
+import { ReferralModule } from './referral/referral.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -96,8 +103,17 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     RealtimeModule,
     SolverModule,
     MonitoringModule,
+    // Sprint 1: Koç paneli ve veli raporları
+    CoachingModule,
+    ParentReportsModule,
+    AICoachModule,
+    NotificationSettingsModule,
+    ReferralModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

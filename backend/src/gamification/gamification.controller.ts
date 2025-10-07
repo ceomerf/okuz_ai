@@ -12,7 +12,7 @@ export class GamificationController {
     this.logger.log('GamificationController initialized');
   }
 
-  // @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+  @UseGuards(JwtAuthGuard)
   @Post('complete-task')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Complete a task and earn rewards' })
@@ -22,7 +22,7 @@ export class GamificationController {
     return this.gamificationService.completeTask({ ...data, userId });
   }
 
-  // @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+  @UseGuards(JwtAuthGuard)
   @Get('leaderboard')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get leaderboard rankings' })
@@ -32,7 +32,7 @@ export class GamificationController {
     return this.gamificationService.getLeaderboard(userId);
   }
 
-  // @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+  @UseGuards(JwtAuthGuard)
   @Get('achievements')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get user achievements' })
@@ -105,7 +105,7 @@ export class GamificationController {
     return this.gamificationService.getUserStats(userId);
   }
 
-  // @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+  @UseGuards(JwtAuthGuard)
   @Post('unlock-achievement')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Unlock an achievement' })
@@ -115,7 +115,7 @@ export class GamificationController {
     return this.gamificationService.unlockAchievement({ ...data, userId });
   }
 
-  // @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+  @UseGuards(JwtAuthGuard)
   @Get('daily-challenges')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get daily challenges' })
@@ -125,7 +125,7 @@ export class GamificationController {
     return this.gamificationService.getDailyChallenges(userId);
   }
 
-  // @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+  @UseGuards(JwtAuthGuard)
   @Post('complete-challenge')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Complete a daily challenge' })
@@ -135,7 +135,7 @@ export class GamificationController {
     return this.gamificationService.completeChallenge({ ...data, userId });
   }
 
-  // @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+  @UseGuards(JwtAuthGuard)
   @Get('streaks')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get user streaks and patterns' })
@@ -145,7 +145,7 @@ export class GamificationController {
     return this.gamificationService.getStreaks(userId);
   }
 
-  // @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+  @UseGuards(JwtAuthGuard)
   @Get('rewards')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get available rewards' })
@@ -155,7 +155,7 @@ export class GamificationController {
     return this.gamificationService.getRewards(userId);
   }
 
-  // @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+  @UseGuards(JwtAuthGuard)
   @Post('claim-reward')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Claim a reward' })
@@ -178,7 +178,7 @@ export class GamificationController {
       this.logger.log('getProgress service call successful');
       return result;
     } catch (error: any) {
-      this.logger.error(`getProgress error: ${error.message}`);
+      this.logger.error(`getProgress error: ${error instanceof Error ? error.message : "Unknown error"}`);
       throw error;
     }
   }
@@ -196,12 +196,12 @@ export class GamificationController {
       this.logger.log('getLevelInfo service call successful');
       return result;
     } catch (error: any) {
-      this.logger.error(`getLevelInfo error: ${error.message}`);
+      this.logger.error(`getLevelInfo error: ${error instanceof Error ? error.message : "Unknown error"}`);
       throw error;
     }
   }
 
-  // @UseGuards(JwtAuthGuard)  // Geçici olarak kaldırıldı
+  @UseGuards(JwtAuthGuard)
   @Post('use-energy')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Use energy for an activity' })
@@ -224,7 +224,7 @@ export class GamificationController {
       this.logger.log('getEnergyStatus service call successful');
       return result;
     } catch (error: any) {
-      this.logger.error(`getEnergyStatus error: ${error.message}`);
+      this.logger.error(`getEnergyStatus error: ${error instanceof Error ? error.message : "Unknown error"}`);
       throw error;
     }
   }

@@ -14,7 +14,7 @@ export class PlanPersistenceService {
       where: { userId },
       orderBy: { createdAt: 'desc' },
       include: {
-        sessions: {
+        studySessions: {
           orderBy: { startTime: 'asc' },
         },
       },
@@ -30,7 +30,8 @@ export class PlanPersistenceService {
       startDate: plan.startDate,
       endDate: plan.endDate,
       isActive: plan.isActive,
-      sessions: plan.sessions,
+      // Prisma şemasında ilişki adı studySessions; plan.sessions mevcut değil
+      sessions: (plan as any).studySessions ?? [],
     }));
   }
 
@@ -41,7 +42,7 @@ export class PlanPersistenceService {
     let plan = await this.prisma.plan.findFirst({
       where: { id: planId, userId },
       include: {
-        sessions: {
+        studySessions: {
           orderBy: { startTime: 'asc' },
         },
         user: {
@@ -160,11 +161,14 @@ export class PlanPersistenceService {
       topic: session.topic || 'Genel Konu',
       startTime: new Date(session.startTime || new Date()),
       duration: session.durationInMinutes || session.duration || 45,
-      difficulty: session.difficulty || 'medium',
-      type: session.type || 'study',
-      objectives: session.objectives || [],
-      resources: session.resources || [],
-      techniques: session.techniques || [],
+      // Şemada olmayan alanları metadata altında topla
+      metadata: {
+        difficulty: session.difficulty || 'medium',
+        type: session.type || 'study',
+        objectives: session.objectives || [],
+        resources: session.resources || [],
+        techniques: session.techniques || [],
+      },
     }));
 
     const result = await this.prisma.studySession.createMany({
@@ -212,7 +216,7 @@ export class PlanPersistenceService {
         isActive: true,
       },
       include: {
-        sessions: {
+        studySessions: {
           orderBy: { startTime: 'asc' },
         },
       },

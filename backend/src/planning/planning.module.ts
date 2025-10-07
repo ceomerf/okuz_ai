@@ -6,9 +6,11 @@ import { PlanningPersistenceService } from './planning-persistence.service';
 import { PlanningRuleService } from './planning-rule.service';
 import { ReplanService } from './replan.service';
 import { PrismaModule } from '../common/prisma/prisma.module';
-import { PlanGenerationService } from './plan-generation.service';
-import { PlanValidationService } from './plan-validation.service';
-import { PlanPersistenceService } from './plan-persistence.service';
+import { PlanGenerationService } from './services/plan-generation.service';
+import { PlanValidationService } from './services/plan-validation.service';
+import { PlanOptimizationService } from './services/plan-optimization.service';
+import { PlanPersistenceService } from './services/plan-persistence.service';
+import { PlanningFacade } from './planning-facade.service';
 import { PlanAnalysisService } from './plan-analysis.service';
 import { ScheduleAdjustmentService } from './schedule-adjustment.service';
 import { AdaptiveInsightsService } from './adaptive-insights.service';
@@ -28,19 +30,46 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { MonitoringModule } from '../monitoring/monitoring.module';
+import { CurriculumEngineService } from './curriculum-engine.service';
+import { PerformanceAnalyzerService } from './performance-analyzer.service';
+import { TopicPrioritizerService } from './topic-prioritizer.service';
+import { OutboxService } from '../services/outbox.service';
+import { OutboxWorker } from '../services/outbox.worker';
+import { OutboxCronService } from '../services/outbox.cron.service';
+import { ScheduleModule } from '@nestjs/schedule';
+import { QueueModule } from '../services/queue.module';
+import { AIService } from '../ai/ai.service';
+import { LoggingService } from '../common/logging/logging.service';
+import { ExceptionService } from '../common/exceptions/exception.service';
 
 @Module({
-  imports: [PrismaModule, CacheModule, ConfigModule, AuthModule, RealtimeModule, MonitoringModule],
+  imports: [
+    PrismaModule, 
+    CacheModule, 
+    ConfigModule, 
+    AuthModule, 
+    RealtimeModule, 
+    MonitoringModule, 
+    ScheduleModule.forRoot(),
+    QueueModule
+  ],
   controllers: [PlanningController],
   providers: [
+    // Legacy services (deprecated - will be removed)
     PlanningService, 
     PlanningQueryService, 
     PlanningPersistenceService, 
     PlanningRuleService, 
     ReplanService, 
+    
+    // New modular services
+    PlanningFacade,
     PlanGenerationService, 
     PlanValidationService, 
+    PlanOptimizationService,
     PlanPersistenceService, 
+    
+    // Supporting services
     PlanAnalysisService,
     ScheduleAdjustmentService, 
     AdaptiveInsightsService, 
@@ -54,22 +83,48 @@ import { MonitoringModule } from '../monitoring/monitoring.module';
     CacheService,
     OpenAIService,
     SolverService,
-    MetricsService
+    MetricsService,
+    CurriculumEngineService,
+    PerformanceAnalyzerService,
+    TopicPrioritizerService,
+    OutboxService,
+    OutboxWorker,
+    OutboxCronService,
+    
+    // New services
+    AIService,
+    LoggingService,
+    ExceptionService
   ],
   exports: [
+    // Primary facade service
+    PlanningFacade,
+    
+    // Individual services for direct access
+    PlanGenerationService, 
+    PlanValidationService, 
+    PlanOptimizationService,
+    PlanPersistenceService,
+    
+    // Legacy services (for backward compatibility)
     PlanningService, 
     PlanningQueryService, 
     PlanningPersistenceService, 
     PlanningRuleService, 
     ReplanService, 
-    PlanGenerationService, 
-    PlanValidationService, 
-    PlanPersistenceService, 
+    
+    // Supporting services
     PlanAnalysisService,
     ScheduleAdjustmentService, 
     AdaptiveInsightsService, 
     AdaptiveStrategyService, 
-    DigitalDossierService
+    DigitalDossierService,
+    CurriculumEngineService,
+    PerformanceAnalyzerService,
+    TopicPrioritizerService,
+    OutboxService,
+    OutboxWorker,
+    OutboxCronService
   ],
 })
 export class PlanningModule {}

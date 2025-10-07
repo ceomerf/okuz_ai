@@ -1,0 +1,422 @@
+name: 🚀 Okuz AI - Complete CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, feature/*]
+  pull_request:
+    branches: [main, develop]
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ===========================================
+  # CODE QUALITY & SECURITY CHECKS
+  # ===========================================
+  
+  code-quality:
+    name: 🔍 Code Quality & Security
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🏗️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'backend/package-lock.json'
+
+      - name: 📦 Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🔍 Run ESLint
+        working-directory: ./backend
+        run: npm run lint
+
+      - name: 🎨 Run Prettier check
+        working-directory: ./backend
+        run: npm run format:check
+
+      - name: 🔒 Run security audit
+        working-directory: ./backend
+        run: npm audit --audit-level=high
+
+      - name: 🔍 Run SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # ===========================================
+  # TESTING
+  # ===========================================
+  
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: okuz_ai_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'backend/package-lock.json'
+
+      - name: 📦 Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🔧 Setup test environment
+        working-directory: ./backend
+        run: |
+          cp .env.example .env.test
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/okuz_ai_test" >> .env.test
+          echo "REDIS_URL=redis://localhost:6379" >> .env.test
+          echo "JWT_SECRET=test-jwt-secret-key-minimum-32-chars" >> .env.test
+          echo "JWT_REFRESH_SECRET=test-refresh-secret-key-minimum-32-chars" >> .env.test
+
+      - name: 🗄️ Run database migrations
+        working-directory: ./backend
+        run: |
+          npx prisma migrate deploy
+          npx prisma generate
+
+      - name: 🧪 Run unit tests
+        working-directory: ./backend
+        run: npm run test:unit
+
+      - name: 🧪 Run integration tests
+        working-directory: ./backend
+        run: npm run test:integration
+
+      - name: 🧪 Run e2e tests
+        working-directory: ./backend
+        run: npm run test:e2e
+
+      - name: 📊 Generate test coverage
+        working-directory: ./backend
+        run: npm run test:coverage
+
+      - name: 📤 Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+
+  # ===========================================
+  # BUILD & PACKAGE
+  # ===========================================
+  
+  build:
+    name: 🏗️ Build & Package
+    runs-on: ubuntu-latest
+    needs: [code-quality, test]
+    if: github.event_name == 'push' || github.event_name == 'release'
+    
+    strategy:
+      matrix:
+        service: [api-gateway, planning-service, smart-tools-service, gamification-service, notification-service, auth-service]
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'backend/package-lock.json'
+
+      - name: 📦 Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🏗️ Build application
+        working-directory: ./backend
+        run: npm run build
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ matrix.service }}-latest
+
+      - name: 🐳 Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/services/${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===========================================
+  # STAGING DEPLOYMENT
+  # ===========================================
+  
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+    environment: staging
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: 🔐 Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: 🚀 Deploy to staging
+        run: |
+          # Update image tags
+          sed -i "s|image: okuz-ai/.*-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api-gateway:develop|g" k8s/staging/api-gateway.yaml
+          sed -i "s|image: okuz-ai/.*-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/planning-service:develop|g" k8s/staging/planning-service.yaml
+          sed -i "s|image: okuz-ai/.*-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/smart-tools-service:develop|g" k8s/staging/smart-tools-service.yaml
+          sed -i "s|image: okuz-ai/.*-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gamification-service:develop|g" k8s/staging/gamification-service.yaml
+          sed -i "s|image: okuz-ai/.*-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/notification-service:develop|g" k8s/staging/notification-service.yaml
+          sed -i "s|image: okuz-ai/.*-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/auth-service:develop|g" k8s/staging/auth-service.yaml
+          
+          # Apply configurations
+          kubectl apply -f k8s/staging/namespace.yaml
+          kubectl apply -f k8s/staging/configmap.yaml
+          kubectl apply -f k8s/staging/secrets.yaml
+          kubectl apply -f k8s/staging/api-gateway.yaml
+          kubectl apply -f k8s/staging/planning-service.yaml
+          kubectl apply -f k8s/staging/smart-tools-service.yaml
+          kubectl apply -f k8s/staging/gamification-service.yaml
+          kubectl apply -f k8s/staging/notification-service.yaml
+          kubectl apply -f k8s/staging/auth-service.yaml
+          kubectl apply -f k8s/staging/ingress.yaml
+
+      - name: ⏳ Wait for deployment
+        run: |
+          kubectl rollout status deployment/api-gateway -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/planning-service -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/smart-tools-service -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/gamification-service -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/notification-service -n okuz-ai-staging --timeout=300s
+          kubectl rollout status deployment/auth-service -n okuz-ai-staging --timeout=300s
+
+      - name: 🏥 Health check
+        run: |
+          echo "Testing staging health check..."
+          kubectl get pods -n okuz-ai-staging
+          kubectl get services -n okuz-ai-staging
+          
+          # Wait for services to be ready
+          sleep 30
+          
+          # Test health endpoints
+          kubectl port-forward -n okuz-ai-staging service/api-gateway 8080:80 &
+          sleep 10
+          curl -f http://localhost:8080/health || echo "Health check failed"
+
+  # ===========================================
+  # PRODUCTION DEPLOYMENT
+  # ===========================================
+  
+  deploy-production:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, deploy-staging]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'release'
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: 🔐 Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: 🚀 Deploy to production
+        run: |
+          # Update image tags
+          sed -i "s|image: okuz-ai/.*-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api-gateway:main|g" k8s/production/api-gateway.yaml
+          sed -i "s|image: okuz-ai/.*-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/planning-service:main|g" k8s/production/planning-service.yaml
+          sed -i "s|image: okuz-ai/.*-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/smart-tools-service:main|g" k8s/production/smart-tools-service.yaml
+          sed -i "s|image: okuz-ai/.*-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gamification-service:main|g" k8s/production/gamification-service.yaml
+          sed -i "s|image: okuz-ai/.*-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/notification-service:main|g" k8s/production/notification-service.yaml
+          sed -i "s|image: okuz-ai/.*-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/auth-service:main|g" k8s/production/auth-service.yaml
+          
+          # Apply configurations
+          kubectl apply -f k8s/production/namespace.yaml
+          kubectl apply -f k8s/production/configmap.yaml
+          kubectl apply -f k8s/production/secrets.yaml
+          kubectl apply -f k8s/production/api-gateway.yaml
+          kubectl apply -f k8s/production/planning-service.yaml
+          kubectl apply -f k8s/production/smart-tools-service.yaml
+          kubectl apply -f k8s/production/gamification-service.yaml
+          kubectl apply -f k8s/production/notification-service.yaml
+          kubectl apply -f k8s/production/auth-service.yaml
+          kubectl apply -f k8s/production/ingress.yaml
+
+      - name: ⏳ Wait for deployment
+        run: |
+          kubectl rollout status deployment/api-gateway -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/planning-service -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/smart-tools-service -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/gamification-service -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/notification-service -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/auth-service -n okuz-ai-production --timeout=300s
+
+      - name: 🏥 Health check
+        run: |
+          echo "Testing production health check..."
+          kubectl get pods -n okuz-ai-production
+          kubectl get services -n okuz-ai-production
+          
+          # Wait for services to be ready
+          sleep 30
+          
+          # Test health endpoints
+          kubectl port-forward -n okuz-ai-production service/api-gateway 8080:80 &
+          sleep 10
+          curl -f http://localhost:8080/health || echo "Health check failed"
+
+      - name: 📊 Notify deployment
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always()
+
+  # ===========================================
+  # ROLLBACK
+  # ===========================================
+  
+  rollback:
+    name: 🔄 Rollback Deployment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'rollback'
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: 🔐 Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: 🔄 Rollback deployment
+        run: |
+          # Rollback to previous version
+          kubectl rollout undo deployment/api-gateway -n okuz-ai-production
+          kubectl rollout undo deployment/planning-service -n okuz-ai-production
+          kubectl rollout undo deployment/smart-tools-service -n okuz-ai-production
+          kubectl rollout undo deployment/gamification-service -n okuz-ai-production
+          kubectl rollout undo deployment/notification-service -n okuz-ai-production
+          kubectl rollout undo deployment/auth-service -n okuz-ai-production
+
+      - name: ⏳ Wait for rollback
+        run: |
+          kubectl rollout status deployment/api-gateway -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/planning-service -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/smart-tools-service -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/gamification-service -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/notification-service -n okuz-ai-production --timeout=300s
+          kubectl rollout status deployment/auth-service -n okuz-ai-production --timeout=300s
+
+      - name: 🏥 Health check after rollback
+        run: |
+          echo "Testing rollback health check..."
+          kubectl get pods -n okuz-ai-production
+          
+          # Wait for services to be ready
+          sleep 30
+          
+          # Test health endpoints
+          kubectl port-forward -n okuz-ai-production service/api-gateway 8080:80 &
+          sleep 10
+          curl -f http://localhost:8080/health || echo "Health check failed"
+
+      - name: 📊 Notify rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always()

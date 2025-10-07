@@ -73,6 +73,11 @@ export class QueueService {
     return queue.add(name, payload as any, defaulted);
   }
 
+  // Alias for addJob to maintain compatibility
+  async add<T = any>(name: string, payload: T, opts?: JobsOptions) {
+    return this.addJob(name as QueueName, payload, opts);
+  }
+
   getConnection() {
     return this.isTestMode ? undefined : this.connection;
   }

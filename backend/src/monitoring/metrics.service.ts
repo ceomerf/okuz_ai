@@ -298,4 +298,82 @@ export class MetricsService {
       throw new Error('Failed to get all metrics');
     }
   }
+
+  // Eksik metodları ekleyelim
+  private gauges: Map<string, any> = new Map();
+  private counters: Map<string, any> = new Map();
+  private histograms: Map<string, any> = new Map();
+
+  registerGauge(name: string, help: string, labelNames?: string[]) {
+    if (!this.gauges.has(name)) {
+      const gauge = new Gauge({
+        name,
+        help,
+        labelNames: labelNames || [],
+        registers: [this.registry]
+      });
+      this.gauges.set(name, gauge);
+    }
+    return this.gauges.get(name);
+  }
+
+  registerCounter(name: string, help: string, labelNames?: string[]) {
+    if (!this.counters.has(name)) {
+      const counter = new Counter({
+        name,
+        help,
+        labelNames: labelNames || [],
+        registers: [this.registry]
+      });
+      this.counters.set(name, counter);
+    }
+    return this.counters.get(name);
+  }
+
+  registerHistogram(name: string, help: string, labelNames?: string[], buckets?: number[]) {
+    if (!this.histograms.has(name)) {
+      const histogram = new Histogram({
+        name,
+        help,
+        labelNames: labelNames || [],
+        buckets: buckets || [0.1, 0.5, 1, 2, 5, 10, 30],
+        registers: [this.registry]
+      });
+      this.histograms.set(name, histogram);
+    }
+    return this.histograms.get(name);
+  }
+
+  setGauge(name: string, value: number, labels?: Record<string, string>) {
+    const gauge = this.gauges.get(name);
+    if (gauge) {
+      if (labels) {
+        gauge.labels(labels).set(value);
+      } else {
+        gauge.set(value);
+      }
+    }
+  }
+
+  incrementCounter(name: string, value: number = 1, labels?: Record<string, string>) {
+    const counter = this.counters.get(name);
+    if (counter) {
+      if (labels) {
+        counter.labels(labels).inc(value);
+      } else {
+        counter.inc(value);
+      }
+    }
+  }
+
+  observeHistogram(name: string, value: number, labels?: Record<string, string>) {
+    const histogram = this.histograms.get(name);
+    if (histogram) {
+      if (labels) {
+        histogram.labels(labels).observe(value);
+      } else {
+        histogram.observe(value);
+      }
+    }
+  }
 }
