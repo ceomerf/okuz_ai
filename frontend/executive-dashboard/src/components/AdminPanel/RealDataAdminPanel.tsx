@@ -98,7 +98,7 @@ import {
   Assignment,
   TrendingFlat,
 } from '@mui/icons-material';
-import { apiService, User, Student, Teacher, Course, DashboardStats, SystemHealth, Alert } from '../../services/api.service';
+import { apiService, User, Student, Teacher, Course, DashboardStats, SystemHealth, Alert as ApiAlert } from '../../services/api.service';
 
 // Veri tipleri
 interface TabPanelProps {
@@ -135,7 +135,7 @@ const RealDataAdminPanel: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<ApiAlert[]>([]);
   
   // Pagination state'leri
   const [usersPage, setUsersPage] = useState(0);

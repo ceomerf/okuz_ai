@@ -104,7 +104,7 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import { tr } from 'date-fns/locale/tr';
 
 // Veri tipleri
 interface Metric {

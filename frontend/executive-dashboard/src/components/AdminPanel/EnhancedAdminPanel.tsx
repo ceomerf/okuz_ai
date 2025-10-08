@@ -52,7 +52,6 @@ import {
   List,
   ListItem,
   ListItemAvatar,
-  ListItemText,
   ListItemSecondaryAction,
   Fab,
   SpeedDial,
@@ -157,7 +156,7 @@ import {
   Home as HomeAdd,
   Public as PublicAdd,
 } from '@mui/icons-material';
-import { apiService, User, Student, Teacher, Course, DashboardStats, SystemHealth, Alert } from '../../services/api.service';
+import { apiService, User, Student, Teacher, Course, DashboardStats, SystemHealth, Alert as ApiAlert } from '../../services/api.service';
 
 // Veri tipleri
 interface TabPanelProps {
@@ -194,7 +193,7 @@ const EnhancedAdminPanel: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<ApiAlert[]>([]);
   
   // Pagination state'leri
   const [usersPage, setUsersPage] = useState(0);
@@ -338,6 +337,31 @@ const EnhancedAdminPanel: React.FC = () => {
     loadAllData();
   }, []);
 
+  // Kullanıcı işlemleri
+  const handleAddUser = () => {
+    setEditingUser(null);
+    setUserDialogOpen(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setUserDialogOpen(true);
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    try {
+      const response = await apiService.deleteUser(user.id);
+      if (response.success) {
+        setUsers(prev => prev.filter(u => u.id !== user.id));
+        setSnackbar({ open: true, message: 'Kullanıcı silindi', severity: 'success' });
+      } else {
+        setSnackbar({ open: true, message: 'Kullanıcı silinirken hata oluştu', severity: 'error' });
+      }
+    } catch (error) {
+      setSnackbar({ open: true, message: 'Kullanıcı silinirken hata oluştu', severity: 'error' });
+    }
+  };
+
   // Pagination handlers
   const handleChangePage = (event: unknown, newPage: number, type: 'users' | 'students' | 'teachers' | 'courses') => {
     switch (type) {
@@ -356,7 +380,7 @@ const EnhancedAdminPanel: React.FC = () => {
     }
   };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>, type: 'users' | 'students' | 'teachers' | 'courses') => {
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, type: 'users' | 'students' | 'teachers' | 'courses') => {
     const newRowsPerPage = parseInt(event.target.value, 10);
     switch (type) {
       case 'users':
@@ -414,7 +438,7 @@ const EnhancedAdminPanel: React.FC = () => {
   const EnhancedDashboardOverview = () => (
     <Grid container spacing={3}>
       {/* System Health with more details */}
-      <Grid item xs={12} md={6} lg={3}>
+      <Grid size={{ xs: 12, md: 6, lg: 3 }}>
         <Card sx={{ height: '100%' }}>
           <CardContent>
             <Box display="flex" alignItems="center" mb={2}>
@@ -467,7 +491,7 @@ const EnhancedAdminPanel: React.FC = () => {
       </Grid>
 
       {/* Total Users with trends */}
-      <Grid item xs={12} md={6} lg={3}>
+      <Grid size={{ xs: 12, md: 6, lg: 3 }}>
         <Card sx={{ height: '100%' }}>
           <CardContent>
             <Box display="flex" alignItems="center" mb={2}>
@@ -509,7 +533,7 @@ const EnhancedAdminPanel: React.FC = () => {
       </Grid>
 
       {/* Students with performance */}
-      <Grid item xs={12} md={6} lg={3}>
+      <Grid size={{ xs: 12, md: 6, lg: 3 }}>
         <Card sx={{ height: '100%' }}>
           <CardContent>
             <Box display="flex" alignItems="center" mb={2}>
@@ -546,7 +570,7 @@ const EnhancedAdminPanel: React.FC = () => {
       </Grid>
 
       {/* Revenue with growth */}
-      <Grid item xs={12} md={6} lg={3}>
+      <Grid size={{ xs: 12, md: 6, lg: 3 }}>
         <Card sx={{ height: '100%' }}>
           <CardContent>
             <Box display="flex" alignItems="center" mb={2}>
@@ -589,7 +613,7 @@ const EnhancedAdminPanel: React.FC = () => {
 
       {/* Real-time Alerts */}
       {alerts.length > 0 && (
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
@@ -600,7 +624,7 @@ const EnhancedAdminPanel: React.FC = () => {
               </Box>
               <Grid container spacing={2}>
                 {alerts.slice(0, 4).map((alert) => (
-                  <Grid item xs={12} md={6} lg={3} key={alert.id}>
+                  <Grid size={{ xs: 12, md: 6, lg: 3 }} key={alert.id}>
                     <Alert 
                       severity={alert.severity === 'critical' ? 'error' : alert.severity === 'high' ? 'warning' : 'info'} 
                       sx={{ height: '100%' }}
@@ -635,7 +659,7 @@ const EnhancedAdminPanel: React.FC = () => {
           ⚡ Hızlı İşlemler
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Button
               variant="contained"
               startIcon={<Add />}
@@ -645,7 +669,7 @@ const EnhancedAdminPanel: React.FC = () => {
               Yeni Kullanıcı
             </Button>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Button
               variant="contained"
               startIcon={<School />}
@@ -655,7 +679,7 @@ const EnhancedAdminPanel: React.FC = () => {
               Yeni Öğrenci
             </Button>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Button
               variant="contained"
               startIcon={<Group />}
@@ -665,7 +689,7 @@ const EnhancedAdminPanel: React.FC = () => {
               Yeni Öğretmen
             </Button>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Button
               variant="contained"
               startIcon={<Book />}
@@ -852,7 +876,7 @@ const EnhancedAdminPanel: React.FC = () => {
             📊 Gelişmiş Analitik
           </Typography>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -880,7 +904,7 @@ const EnhancedAdminPanel: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -912,7 +936,7 @@ const EnhancedAdminPanel: React.FC = () => {
             ⚙️ Gelişmiş Sistem Ayarları
           </Typography>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -933,7 +957,7 @@ const EnhancedAdminPanel: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
