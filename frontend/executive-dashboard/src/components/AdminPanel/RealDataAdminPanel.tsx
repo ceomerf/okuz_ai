@@ -278,7 +278,7 @@ const RealDataAdminPanel: React.FC = () => {
     }
   };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>, type: 'users' | 'students' | 'teachers' | 'courses') => {
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, type: 'users' | 'students' | 'teachers' | 'courses') => {
     const newRowsPerPage = parseInt(event.target.value, 10);
     switch (type) {
       case 'users':
@@ -434,9 +434,9 @@ const RealDataAdminPanel: React.FC = () => {
 
   // Dashboard Overview Component
   const DashboardOverview = () => (
-    <Grid container spacing={3}>
+    <Box display="flex" flexWrap="wrap" gap={3}>
       {/* System Health */}
-      <Grid item xs={12} md={6} lg={3}>
+      <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
         <Card>
           <CardContent>
             <Box display="flex" alignItems="center" mb={2}>
@@ -461,10 +461,10 @@ const RealDataAdminPanel: React.FC = () => {
             )}
           </CardContent>
         </Card>
-      </Grid>
+      </Box>
 
       {/* Total Users */}
-      <Grid item xs={12} md={6} lg={3}>
+      <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
         <Card>
           <CardContent>
             <Box display="flex" alignItems="center" mb={2}>
@@ -488,10 +488,10 @@ const RealDataAdminPanel: React.FC = () => {
             )}
           </CardContent>
         </Card>
-      </Grid>
+      </Box>
 
       {/* Students */}
-      <Grid item xs={12} md={6} lg={3}>
+      <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
         <Card>
           <CardContent>
             <Box display="flex" alignItems="center" mb={2}>
@@ -512,10 +512,10 @@ const RealDataAdminPanel: React.FC = () => {
             )}
           </CardContent>
         </Card>
-      </Grid>
+      </Box>
 
       {/* Revenue */}
-      <Grid item xs={12} md={6} lg={3}>
+      <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
         <Card>
           <CardContent>
             <Box display="flex" alignItems="center" mb={2}>
@@ -536,11 +536,11 @@ const RealDataAdminPanel: React.FC = () => {
             )}
           </CardContent>
         </Card>
-      </Grid>
+      </Box>
 
       {/* Alerts */}
       {alerts.length > 0 && (
-        <Grid item xs={12}>
+        <Box sx={{ width: '100%' }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -554,9 +554,9 @@ const RealDataAdminPanel: React.FC = () => {
               ))}
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
       )}
-    </Grid>
+    </Box>
   );
 
   return (
@@ -926,8 +926,8 @@ const RealDataAdminPanel: React.FC = () => {
           <Typography variant="h5" gutterBottom>
             📊 Sistem Analitikleri
           </Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+          <Box display="flex" flexWrap="wrap" gap={3}>
+            <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -954,8 +954,8 @@ const RealDataAdminPanel: React.FC = () => {
                   )}
                 </CardContent>
               </Card>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -978,8 +978,8 @@ const RealDataAdminPanel: React.FC = () => {
                   )}
                 </CardContent>
               </Card>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </TabPanel>
 
         {/* Ayarlar Tab */}
@@ -987,8 +987,8 @@ const RealDataAdminPanel: React.FC = () => {
           <Typography variant="h5" gutterBottom>
             ⚙️ Sistem Ayarları
           </Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+          <Box display="flex" flexWrap="wrap" gap={3}>
+            <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -1008,8 +1008,8 @@ const RealDataAdminPanel: React.FC = () => {
                   />
                 </CardContent>
               </Card>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -1029,8 +1029,8 @@ const RealDataAdminPanel: React.FC = () => {
                   />
                 </CardContent>
               </Card>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </TabPanel>
       </Card>
 
