@@ -6,7 +6,7 @@ export class TopicManagementService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getTopicsBySubjectAndGrade(subject: string, grade: number) {
-    return this.prisma.topic.findMany({
+    return (this.prisma as any).topic.findMany({
       where: {
         subject,
         grade,
@@ -28,7 +28,7 @@ export class TopicManagementService {
   async buildTopicMetadataMap(): Promise<Map<string, { examWeight: number | null; difficultyDist: number[]; prerequisites: string[] }>> {
     const map = new Map();
     
-    const topics = await this.prisma.topic.findMany({
+    const topics = await (this.prisma as any).topic.findMany({
       select: {
         id: true,
         topic: true,
@@ -38,7 +38,7 @@ export class TopicManagementService {
       },
     });
 
-    topics.forEach(topic => {
+    topics.forEach((topic: any) => {
       const examWeight = (topic.tytWeight || 0) + (topic.aytWeight || 0);
       const difficultyDist = [0.3, 0.4, 0.3]; // easy, medium, hard
       const prerequisites = topic.outcomes || [];
@@ -80,32 +80,32 @@ export class TopicManagementService {
         ...monthFilter,
       };
 
-      const topics = await this.prisma.topic.findMany({
+      const topics = await (this.prisma as any).topic.findMany({
         where,
         select: { topic: true },
         orderBy: { month: 'asc' },
       });
 
       if (topics.length > 0) {
-        pool[subject] = topics.map(t => t.topic);
+        pool[subject] = topics.map((t: any) => t.topic);
       } else {
         // Fallback: tüm konuları al
         const relaxedWhere1 = { subject, grade };
         const relaxedWhere2 = { subject };
         
-        const fallbackTopics = await this.prisma.topic.findMany({
+        const fallbackTopics = await (this.prisma as any).topic.findMany({
           where: relaxedWhere1,
           select: { topic: true },
         });
 
         if (fallbackTopics.length === 0) {
-          const allTopics = await this.prisma.topic.findMany({
+          const allTopics = await (this.prisma as any).topic.findMany({
             where: relaxedWhere2,
             select: { topic: true },
           });
-          pool[subject] = allTopics.map(t => t.topic);
+          pool[subject] = allTopics.map((t: any) => t.topic);
         } else {
-          pool[subject] = fallbackTopics.map(t => t.topic);
+          pool[subject] = fallbackTopics.map((t: any) => t.topic);
         }
       }
     }
@@ -192,7 +192,7 @@ export class TopicManagementService {
 
   async getTopicsByGrade(grade: number) {
     try {
-      const topics = await this.prisma.topic.findMany({
+      const topics = await (this.prisma as any).topic.findMany({
         where: { grade },
         orderBy: { month: 'asc' }
       });
@@ -204,7 +204,7 @@ export class TopicManagementService {
 
   async getTopicsBySubject(subject: string) {
     try {
-      const topics = await this.prisma.topic.findMany({
+      const topics = await (this.prisma as any).topic.findMany({
         where: { subject },
         orderBy: { month: 'asc' }
       });
@@ -216,7 +216,7 @@ export class TopicManagementService {
 
   async createTopic(data: any) {
     try {
-      const topic = await this.prisma.topic.create({
+      const topic = await (this.prisma as any).topic.create({
         data: {
           topic: data.topic,
           subject: data.subject,
@@ -236,7 +236,7 @@ export class TopicManagementService {
 
   async updateTopic(id: string, data: any) {
     try {
-      const topic = await this.prisma.topic.update({
+      const topic = await (this.prisma as any).topic.update({
         where: { id },
         data
       });
@@ -248,7 +248,7 @@ export class TopicManagementService {
 
   async deleteTopic(id: string) {
     try {
-      await this.prisma.topic.delete({
+      await (this.prisma as any).topic.delete({
         where: { id }
       });
       return { message: 'Topic deleted' };
@@ -259,7 +259,7 @@ export class TopicManagementService {
 
   async getCurriculum(grade: number) {
     try {
-      const curriculum = await this.prisma.topic.findMany({
+      const curriculum = await (this.prisma as any).topic.findMany({
         where: { grade },
         orderBy: [
           { subject: 'asc' },

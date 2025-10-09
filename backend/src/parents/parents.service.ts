@@ -28,7 +28,7 @@ export class ParentsService {
   // Eksik methodları ekleyelim
   async createParent(data: any) {
     try {
-      const parent = await this.prisma.parent.create({
+      const parent = await (this.prisma as any).parent.create({
         data: {
           name: data.name,
           email: data.email,
@@ -44,7 +44,7 @@ export class ParentsService {
 
   async getParent(id: string) {
     try {
-      const parent = await this.prisma.parent.findUnique({
+      const parent = await (this.prisma as any).parent.findUnique({
         where: { id }
       });
       return { message: 'Parent found', parent };
@@ -55,7 +55,7 @@ export class ParentsService {
 
   async getChildren(parentId: string) {
     try {
-      const children = await this.prisma.student.findMany({
+      const children = await (this.prisma as any).student.findMany({
         where: { parentId }
       });
       return { message: 'Children found', children };
@@ -66,7 +66,7 @@ export class ParentsService {
 
   async getChildProgress(childId: string) {
     try {
-      const progress = await this.prisma.student.findUnique({
+      const progress = await (this.prisma as any).student.findUnique({
         where: { id: childId },
         include: {
           plans: true,
@@ -84,7 +84,7 @@ export class ParentsService {
 
   async updateParent(id: string, data: any) {
     try {
-      const parent = await this.prisma.parent.update({
+      const parent = await (this.prisma as any).parent.update({
         where: { id },
         data
       });
@@ -96,7 +96,7 @@ export class ParentsService {
 
   async deleteParent(id: string) {
     try {
-      await this.prisma.parent.delete({
+      await (this.prisma as any).parent.delete({
         where: { id }
       });
       return { message: 'Parent deleted successfully' };

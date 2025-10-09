@@ -108,7 +108,7 @@ export class SystemService {
 
   private async getUserCount() {
     try {
-      const count = await this.prisma.user.count();
+      const count = await (this.prisma as any).user.count();
       return count;
     } catch (error) {
       return 0;
@@ -118,12 +118,12 @@ export class SystemService {
   private async getRevenue() {
     try {
       // Abonelik gelirlerini hesapla
-      const subscriptions = await this.prisma.subscription.findMany({
+      const subscriptions = await (this.prisma as any).subscription.findMany({
         where: { status: 'PREMIUM' }
       });
       
       let totalRevenue = 0;
-      subscriptions.forEach(sub => {
+      subscriptions.forEach((sub: any) => {
         if (sub.planType === 'MONTHLY_PREMIUM' || sub.planType === 'YEARLY_PREMIUM') {
           totalRevenue += 99; // Premium plan fiyatı
         } else if (sub.planType === 'FAMILY_PLAN') {

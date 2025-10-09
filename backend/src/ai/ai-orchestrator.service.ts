@@ -379,7 +379,7 @@ export class AIOrchestrator {
    */
   private async getUserTier(userId: string): Promise<string> {
     try {
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id: userId },
         select: { subscriptionStatus: true },
       });
@@ -514,11 +514,11 @@ export class AIOrchestrator {
         const days = parseInt(timeRange.replace('days', ''));
         where.timestamp = { gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) }; // DÜZELTME: createdAt -> timestamp
       }
-      const logs = await this.prisma.aiRequestLog.findMany({ where, select: { model: true, totalTokens: true, duration: true } });
+      const logs = await (this.prisma as any).aiRequestLog.findMany({ where, select: { model: true, totalTokens: true, duration: true } });
       const totalRequests = logs.length;
-      const totalTokens = logs.reduce((sum, l) => sum + (l.totalTokens || 0), 0);
-      const totalCost = logs.reduce((sum, l) => sum + this.aiConfig.calculateCost(l.model, l.totalTokens || 0), 0);
-      const averageDuration = totalRequests > 0 ? logs.reduce((s, l) => s + (l.duration || 0), 0) / totalRequests : 0;
+      const totalTokens = logs.reduce((sum: number, l: any) => sum + (l.totalTokens || 0), 0);
+      const totalCost = logs.reduce((sum: number, l: any) => sum + this.aiConfig.calculateCost(l.model, l.totalTokens || 0), 0);
+      const averageDuration = totalRequests > 0 ? logs.reduce((s: number, l: any) => s + (l.duration || 0), 0) / totalRequests : 0;
 
       return {
         totalRequests,

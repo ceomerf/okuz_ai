@@ -10,7 +10,7 @@ export class PlanPersistenceService {
    * Kullanıcının planlarını getirir
    */
   async getUserPlans(userId: string): Promise<any> {
-    const plans = await this.prisma.plan.findMany({
+    const plans = await (this.prisma as any).plan.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -20,7 +20,7 @@ export class PlanPersistenceService {
       },
     });
 
-    return plans.map(plan => ({
+    return plans.map((plan: any) => ({
       id: plan.id,
       title: plan.title,
       description: plan.description,
@@ -39,7 +39,7 @@ export class PlanPersistenceService {
    * Belirli bir planı getirir
    */
   async getPlan(userId: string, planId: string): Promise<any> {
-    let plan = await this.prisma.plan.findFirst({
+    let plan = await (this.prisma as any).plan.findFirst({
       where: { id: planId, userId },
       include: {
         studySessions: {
@@ -77,7 +77,7 @@ export class PlanPersistenceService {
       return t as PlanType;
     })();
 
-    return this.prisma.plan.create({
+    return (this.prisma as any).plan.create({
       data: {
         ...planData,
         type: normalizedType,
@@ -115,7 +115,7 @@ export class PlanPersistenceService {
    * Plan günceller
    */
   async updatePlan(planId: string, updateData: any): Promise<any> {
-    return this.prisma.plan.update({
+    return (this.prisma as any).plan.update({
       where: { id: planId },
       data: updateData,
     });
@@ -142,7 +142,7 @@ export class PlanPersistenceService {
    * Plan sahipliğini kontrol eder
    */
   async verifyPlanOwnership(userId: string, planId: string): Promise<boolean> {
-    const plan = await this.prisma.plan.findFirst({
+    const plan = await (this.prisma as any).plan.findFirst({
       where: { id: planId, userId },
       select: { id: true },
     });
@@ -171,7 +171,7 @@ export class PlanPersistenceService {
       },
     }));
 
-    const result = await this.prisma.studySession.createMany({
+    const result = await (this.prisma as any).studySession.createMany({
       data: sessionData,
     });
     return result as any;
@@ -181,7 +181,7 @@ export class PlanPersistenceService {
    * Study session günceller
    */
   async updateStudySession(sessionId: string, updateData: any): Promise<any> {
-    return this.prisma.studySession.update({
+    return (this.prisma as any).studySession.update({
       where: { id: sessionId },
       data: updateData,
     });
@@ -191,7 +191,7 @@ export class PlanPersistenceService {
    * Study session siler
    */
   async deleteStudySession(sessionId: string): Promise<any> {
-    return this.prisma.studySession.delete({
+    return (this.prisma as any).studySession.delete({
       where: { id: sessionId },
     });
   }
@@ -200,7 +200,7 @@ export class PlanPersistenceService {
    * Plan ile ilgili tüm session'ları getirir
    */
   async getPlanSessions(planId: string): Promise<any[]> {
-    return this.prisma.studySession.findMany({
+    return (this.prisma as any).studySession.findMany({
       where: { planId },
       orderBy: { startTime: 'asc' },
     });
@@ -210,7 +210,7 @@ export class PlanPersistenceService {
    * Kullanıcının aktif planını getirir
    */
   async getActivePlan(userId: string): Promise<any> {
-    return this.prisma.plan.findFirst({
+    return (this.prisma as any).plan.findFirst({
       where: { 
         userId,
         isActive: true,
@@ -227,7 +227,7 @@ export class PlanPersistenceService {
    * Planı aktif/pasif yapar
    */
   async setPlanActiveStatus(planId: string, isActive: boolean): Promise<any> {
-    return this.prisma.plan.update({
+    return (this.prisma as any).plan.update({
       where: { id: planId },
       data: { isActive },
     });
@@ -237,13 +237,13 @@ export class PlanPersistenceService {
    * Plan istatistiklerini getirir
    */
   async getPlanStats(planId: string): Promise<any> {
-    const sessions = await this.prisma.studySession.findMany({
+    const sessions = await (this.prisma as any).studySession.findMany({
       where: { planId },
     });
 
-    const completed = sessions.filter(s => s.isCompleted);
-    const totalTime = sessions.reduce((sum, s) => sum + s.duration, 0);
-    const completedTime = completed.reduce((sum, s) => sum + s.duration, 0);
+    const completed = sessions.filter((s: any) => s.isCompleted);
+    const totalTime = sessions.reduce((sum: number, s: any) => sum + s.duration, 0);
+    const completedTime = completed.reduce((sum: number, s: any) => sum + s.duration, 0);
 
     return {
       totalSessions: sessions.length,

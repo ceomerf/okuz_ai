@@ -35,7 +35,7 @@ export class QuestionSolverService {
       this.logger.log(`Kullanıcı aranıyor: ${data.userId}`);
       let user;
       try {
-        user = await this.prisma.user.findUnique({
+        user = await (this.prisma as any).user.findUnique({
           where: { id: data.userId },
           select: { id: true, email: true }
         });
@@ -133,7 +133,7 @@ export class QuestionSolverService {
 
   private async recordUsage(userId: string, toolName: string) {
     try {
-      await this.prisma.toolUsage.create({
+      await (this.prisma as any).toolUsage.create({
         data: {
           userId: userId,
           toolName: toolName,

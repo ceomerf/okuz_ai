@@ -117,7 +117,7 @@ export class ProactiveCoachingService {
     const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
 
     // Get user data
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).user.findUnique({
       where: { id: userId },
       include: {
         plans: true,
@@ -132,7 +132,7 @@ export class ProactiveCoachingService {
     });
 
     // Get recent activities
-    const recentActivities = await this.prisma.studySession.findMany({
+    const recentActivities = await (this.prisma as any).studySession.findMany({
       where: {
         userId,
         createdAt: {
@@ -144,7 +144,7 @@ export class ProactiveCoachingService {
     });
 
     // Get upcoming deadlines
-    const upcomingDeadlines = await this.prisma.studySession.findMany({
+    const upcomingDeadlines = await (this.prisma as any).studySession.findMany({
       where: {
         userId,
         startTime: {
@@ -355,7 +355,7 @@ export class ProactiveCoachingService {
       const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
       
-      const studySessions = await this.prisma.studySession.count({
+      const studySessions = await (this.prisma as any).studySession.count({
         where: {
           userId,
           startTime: {
@@ -382,7 +382,7 @@ export class ProactiveCoachingService {
     const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     
-    const oldProgress = await this.prisma.studySession.findMany({
+    const oldProgress = await (this.prisma as any).studySession.findMany({
       where: {
         userId,
         createdAt: {
@@ -392,7 +392,7 @@ export class ProactiveCoachingService {
       },
     });
     
-    const recentProgress = await this.prisma.studySession.findMany({
+    const recentProgress = await (this.prisma as any).studySession.findMany({
       where: {
         userId,
         createdAt: {
@@ -413,7 +413,7 @@ export class ProactiveCoachingService {
    * Analyze subject areas
    */
   private async analyzeSubjectAreas(userId: string): Promise<{ weakAreas: string[]; strongAreas: string[] }> {
-    const progress = await this.prisma.studySession.findMany({
+    const progress = await (this.prisma as any).studySession.findMany({
       where: { userId },
       include: { plan: true },
     });

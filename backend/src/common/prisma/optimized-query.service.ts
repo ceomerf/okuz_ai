@@ -82,7 +82,7 @@ export class OptimizedQueryService {
 
     try {
       // Tek sorgu ile tüm verileri çek
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id: userId },
         select: {
           id: true,
@@ -206,7 +206,7 @@ export class OptimizedQueryService {
 
     try {
       // Tek sorgu ile tüm koç-öğrenci verilerini çek
-      const coachStudents = await this.prisma.coachStudent.findMany({
+      const coachStudents = await (this.prisma as any).coachStudent.findMany({
         where: { 
           coachId,
           isActive: true 
@@ -250,7 +250,7 @@ export class OptimizedQueryService {
         },
       });
 
-      const result = coachStudents.map(cs => ({
+      const result = coachStudents.map((cs: any) => ({
         id: cs.student.id,
         name: cs.student.name,
         email: cs.student.email,
@@ -291,7 +291,7 @@ export class OptimizedQueryService {
 
     try {
       // Tek sorgu ile tüm plan ve session verilerini çek
-      const plans = await this.prisma.plan.findMany({
+      const plans = await (this.prisma as any).plan.findMany({
         where: { userId },
         select: {
           id: true,

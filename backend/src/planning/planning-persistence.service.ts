@@ -7,12 +7,12 @@ export class PlanningPersistenceService {
 
   async createPlanWithSessionsAtomic(planData: any, sessions: any[]) {
     const [plan] = await this.prisma.$transaction([
-      this.prisma.plan.create({ data: planData }),
+      (this.prisma as any).plan.create({ data: planData }),
     ]);
     if (sessions?.length) {
       const patched = sessions.map((s) => ({ ...s, planId: plan.id }));
       await this.prisma.$transaction([
-        this.prisma.studySession.createMany({ data: patched, skipDuplicates: true })
+        (this.prisma as any).studySession.createMany({ data: patched, skipDuplicates: true })
       ]);
     }
     return plan;

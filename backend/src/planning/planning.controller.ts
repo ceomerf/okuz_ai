@@ -11,7 +11,7 @@ import { PlanOptimizationService } from './services/plan-optimization.service';
 import { QueueService } from '../services/queue.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { GeneratePlanDto } from './dto/generate-plan.dto';
 import { CreateFromOnboardingDto } from './dto/create-from-onboarding.dto';
 import { IsArray, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min, MinLength, IsBoolean } from 'class-validator';

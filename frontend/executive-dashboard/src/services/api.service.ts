@@ -6,6 +6,18 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    roles: string[];
+    permissions: string[];
+  };
+}
+
 export interface User {
   id: string;
   name: string;
@@ -142,23 +154,51 @@ class ApiService {
   }
 
   // Authentication
-  async login(email: string, password: string): Promise<ApiResponse<{ token: string; user: User }>> {
-    const response = await this.request<{ token: string; user: User }>('/auth/login', {
+  async login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
+    const response = await this.request<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
 
     if (response.success && response.data) {
-      this.token = response.data.token;
-      localStorage.setItem('admin_token', response.data.token);
+      this.token = response.data.accessToken;
+      localStorage.setItem('admin_token', response.data.accessToken);
+      if (response.data.refreshToken) {
+        localStorage.setItem('refresh_token', response.data.refreshToken);
+      }
     }
 
     return response;
   }
 
-  async logout(): Promise<void> {
+  async register(name: string, email: string, password: string, role?: string): Promise<ApiResponse<any>> {
+    return this.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password, role }),
+    });
+  }
+
+  async refreshToken(refreshToken: string): Promise<ApiResponse<{ accessToken: string; refreshToken: string }>> {
+    return this.request('/auth/refresh-token', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+    });
+  }
+
+  async getProfile(): Promise<ApiResponse<any>> {
+    return this.request('/auth/me');
+  }
+
+  async logout(): Promise<ApiResponse<any>> {
+    const response = await this.request('/auth/logout', {
+      method: 'POST',
+    });
+    
     this.token = null;
     localStorage.removeItem('admin_token');
+    localStorage.removeItem('refresh_token');
+    
+    return response;
   }
 
   // Dashboard Data

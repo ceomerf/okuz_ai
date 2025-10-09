@@ -6,10 +6,10 @@ export class ScheduleAdjustmentService {
   constructor(private readonly prisma: PrismaService) {}
 
   async rescheduleSession(input: { userId: string; sessionId: string; newStartTime: Date; duration?: number }) {
-    const session = await this.prisma.studySession.findFirst({ where: { id: input.sessionId, userId: input.userId } });
+    const session = await (this.prisma as any).studySession.findFirst({ where: { id: input.sessionId, userId: input.userId } });
     if (!session) throw new NotFoundException('Session not found');
     if (input.newStartTime.getTime() < Date.now() - 24 * 60 * 60 * 1000) throw new BadRequestException('Backdating is not allowed');
-    return this.prisma.studySession.update({
+    return (this.prisma as any).studySession.update({
       where: { id: input.sessionId },
       data: {
         startTime: input.newStartTime,
@@ -23,9 +23,9 @@ export class ScheduleAdjustmentService {
   }
 
   async completeSession(input: { userId: string; sessionId: string; performance?: number }) {
-    const session = await this.prisma.studySession.findFirst({ where: { id: input.sessionId, userId: input.userId } });
+    const session = await (this.prisma as any).studySession.findFirst({ where: { id: input.sessionId, userId: input.userId } });
     if (!session) throw new NotFoundException('Session not found');
-    return this.prisma.studySession.update({
+    return (this.prisma as any).studySession.update({
       where: { id: input.sessionId },
       data: {
         isCompleted: true,
@@ -40,9 +40,9 @@ export class ScheduleAdjustmentService {
   }
 
   async cancelSession(input: { userId: string; sessionId: string; reason?: string }) {
-    const session = await this.prisma.studySession.findFirst({ where: { id: input.sessionId, userId: input.userId } });
+    const session = await (this.prisma as any).studySession.findFirst({ where: { id: input.sessionId, userId: input.userId } });
     if (!session) throw new NotFoundException('Session not found');
-    return this.prisma.studySession.update({
+    return (this.prisma as any).studySession.update({
       where: { id: input.sessionId },
       data: {
         metadata: {
@@ -58,9 +58,9 @@ export class ScheduleAdjustmentService {
     if (!input.taskId || typeof input.minutes !== 'number') {
       throw new BadRequestException('Geçersiz parametreler');
     }
-    const session = await this.prisma.studySession.findFirst({ select: { id: true, userId: true, duration: true, metadata: true }, where: { id: input.taskId, userId: input.userId } });
+    const session = await (this.prisma as any).studySession.findFirst({ select: { id: true, userId: true, duration: true, metadata: true }, where: { id: input.taskId, userId: input.userId } });
     if (!session) throw new NotFoundException('Session not found');
-    const updated = await this.prisma.studySession.update({
+    const updated = await (this.prisma as any).studySession.update({
       where: { id: input.taskId },
       data: {
         duration: Math.max(0, (session.duration || 0) + input.minutes),
@@ -81,7 +81,7 @@ export class ScheduleAdjustmentService {
   async checkHolidayStatus(userId: string): Promise<any> {
     try {
       // Kullanıcının tatil durumunu kontrol et
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id: userId },
         select: { 
           id: true, 

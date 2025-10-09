@@ -308,7 +308,7 @@ export class AIRateLimitService {
    */
   private async getUserTier(userId: string): Promise<string> {
     try {
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id: userId },
         select: { subscriptionStatus: true },
       });

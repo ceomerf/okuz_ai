@@ -7,7 +7,7 @@ export class InteractionService {
   constructor(private readonly prisma: PrismaService, private readonly cache: CacheService) {}
 
   async createInteraction(interactionData: any) {
-    const interaction = await this.prisma.interaction.create({
+    const interaction = await (this.prisma as any).interaction.create({
       data: interactionData,
     });
     return interaction;
@@ -18,7 +18,7 @@ export class InteractionService {
   }
 
   async updateInteraction(id: string, updateData: any) {
-    const interaction = await this.prisma.interaction.update({
+    const interaction = await (this.prisma as any).interaction.update({
       where: { id },
       data: updateData,
     });
@@ -64,7 +64,7 @@ export class InteractionService {
     if (cached) {
       return cached as any;
     }
-    const interaction = await this.prisma.interaction.findUnique({
+    const interaction = await (this.prisma as any).interaction.findUnique({
       where: { id },
     });
     if (interaction) {
@@ -74,14 +74,14 @@ export class InteractionService {
   }
 
   async getUserInteractions(userId: string) {
-    return await this.prisma.interaction.findMany({
+    return await (this.prisma as any).interaction.findMany({
       where: { userId },
       orderBy: { timestamp: 'desc' },
     });
   }
 
   async getInteractionsByType(type: string) {
-    return await this.prisma.interaction.findMany({
+    return await (this.prisma as any).interaction.findMany({
       where: { type },
       orderBy: { timestamp: 'desc' },
     });

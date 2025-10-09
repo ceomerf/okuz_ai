@@ -10,20 +10,20 @@ export class TopicPrioritizerService {
   async prioritizeTopics(userId: string, subject: string, grade: number): Promise<any[]> {
     try {
       // Get user's performance data
-      const userSessions = await this.prisma.studySession.findMany({
+      const userSessions = await (this.prisma as any).studySession.findMany({
         where: { userId, subject },
         orderBy: { createdAt: 'desc' },
         take: 20,
       });
 
       // Get curriculum topics
-      const topics = await this.prisma.mebTopic.findMany({
+      const topics = await (this.prisma as any).mebTopic.findMany({
         where: { subject, grade },
         include: { weights: true },
       });
 
       // Calculate priority scores
-      const prioritizedTopics = topics.map(topic => {
+      const prioritizedTopics = topics.map((topic: any) => {
         const userPerformance = this.getUserPerformanceForTopic(userSessions, topic.topic);
         const examWeight = this.getExamWeight(topic.weights);
         const priority = this.calculatePriority(userPerformance, examWeight);
@@ -36,7 +36,7 @@ export class TopicPrioritizerService {
         };
       });
 
-      return prioritizedTopics.sort((a, b) => b.priority - a.priority);
+      return prioritizedTopics.sort((a: any, b: any) => b.priority - a.priority);
     } catch (error) {
       this.logger.error(`Failed to prioritize topics for user ${userId}: ${error instanceof Error ? error.message : String(error)}`);
       return [];

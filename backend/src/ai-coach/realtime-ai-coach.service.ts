@@ -462,7 +462,7 @@ export class RealTimeAICoachService implements OnModuleInit {
    */
   private async saveRecommendation(recommendation: CoachingRecommendation): Promise<void> {
     try {
-      await this.prisma.coachingRecommendation.create({
+      await (this.prisma as any).coachingRecommendation.create({
         data: {
           id: recommendation.id,
           userId: recommendation.userId,
@@ -515,7 +515,7 @@ export class RealTimeAICoachService implements OnModuleInit {
    */
   private async getRecentPerformance(userId: string): Promise<any> {
     try {
-      const performance = await this.prisma.studentPerformanceHistory.findFirst({
+      const performance = await (this.prisma as any).studentPerformanceHistory.findFirst({
         where: { userId },
         orderBy: { createdAt: 'desc' },
       });
@@ -542,7 +542,7 @@ export class RealTimeAICoachService implements OnModuleInit {
    */
   private async getStudyStreak(userId: string): Promise<number> {
     try {
-      const streak = await this.prisma.studyStreak.findFirst({
+      const streak = await (this.prisma as any).studyStreak.findFirst({
         where: { userId },
         orderBy: { createdAt: 'desc' },
       });

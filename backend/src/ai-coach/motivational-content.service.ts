@@ -333,7 +333,7 @@ export class MotivationalContentService implements OnModuleInit {
    */
   private async getUserProfile(userId: string): Promise<any> {
     try {
-      return await this.prisma.user.findUnique({
+      return await (this.prisma as any).user.findUnique({
         where: { id: userId },
         // DÜZELTME: Prisma User modelinde preferences/goals yok; ilişkili alanlar çıkarıldı
       });
@@ -345,7 +345,7 @@ export class MotivationalContentService implements OnModuleInit {
 
   private async getCurrentEmotionalState(userId: string): Promise<any> {
     try {
-      return await this.prisma.emotionalState.findFirst({
+      return await (this.prisma as any).emotionalState.findFirst({
         where: { userId },
         orderBy: { date: 'desc' },
       });
@@ -360,7 +360,7 @@ export class MotivationalContentService implements OnModuleInit {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       
-      return await this.prisma.emotionalState.findMany({
+      return await (this.prisma as any).emotionalState.findMany({
         where: {
           userId,
           date: { gte: startDate },
@@ -378,7 +378,7 @@ export class MotivationalContentService implements OnModuleInit {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       
-      return await this.prisma.studySession.findMany({
+      return await (this.prisma as any).studySession.findMany({
         where: {
           userId,
           createdAt: { gte: startDate },
@@ -396,7 +396,7 @@ export class MotivationalContentService implements OnModuleInit {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       
-      return await this.prisma.studentPerformanceHistory.findMany({
+      return await (this.prisma as any).studentPerformanceHistory.findMany({
         where: {
           userId,
           date: { gte: startDate },
@@ -446,7 +446,7 @@ export class MotivationalContentService implements OnModuleInit {
    */
   private async saveMotivationalContent(content: MotivationalContent): Promise<void> {
     try {
-      await this.prisma.motivationalContent.create({
+      await (this.prisma as any).motivationalContent.create({
         data: content,
       });
     } catch (error) {
@@ -456,7 +456,7 @@ export class MotivationalContentService implements OnModuleInit {
 
   private async savePersonalizedRecommendation(recommendation: PersonalizedRecommendation): Promise<void> {
     try {
-      await this.prisma.personalizedRecommendation.create({
+      await (this.prisma as any).personalizedRecommendation.create({
         data: recommendation,
       });
     } catch (error) {
@@ -466,7 +466,7 @@ export class MotivationalContentService implements OnModuleInit {
 
   private async saveContentTemplate(template: ContentTemplate): Promise<void> {
     try {
-      await this.prisma.contentTemplate.create({
+      await (this.prisma as any).contentTemplate.create({
         data: template,
       });
     } catch (error) {
@@ -476,7 +476,7 @@ export class MotivationalContentService implements OnModuleInit {
 
   private async updateContentEffectiveness(contentId: string, feedback: any): Promise<void> {
     try {
-      await this.prisma.motivationalContent.update({
+      await (this.prisma as any).motivationalContent.update({
         where: { id: contentId },
         data: {
           effectiveness: {
@@ -498,7 +498,7 @@ export class MotivationalContentService implements OnModuleInit {
   async generateDailyMotivationalContent(): Promise<void> {
     try {
       // Aktif öğrenciler için günlük motivasyonel içerik oluştur
-      const students = await this.prisma.user.findMany({
+      const students = await (this.prisma as any).user.findMany({
         where: {
           role: 'STUDENT',
         },

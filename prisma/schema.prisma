@@ -126,6 +126,10 @@ model User {
   studyHabits   StudyHabit[]
   subscriptions Subscription[]
   payments      Payment[]
+
+  // RBAC relations
+  userRoles         UserRoleMap[]
+  temporaryUserRoles TemporaryUserRole[]
 }
 
 model StudentProfile {
@@ -463,6 +467,76 @@ model Payment {
   @@index([subscriptionId])
 }
 
+/// RBAC Models
+model Role {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  description     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relations
+  rolePermissions RolePermission[]
+  userRoles       UserRoleMap[]
+  temporaryUserRoles TemporaryUserRole[]
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g. "students.update"
+  resource    String   // e.g. "students"
+  action      String   // e.g. "update"
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime   @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId], name: "roleId_permissionId")
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model UserRoleMap {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId], name: "userId_roleId")
+  @@index([userId])
+  @@index([roleId])
+}
+
+model TemporaryUserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([roleId])
+  @@index([expiresAt])
+}
+
 /// MEB müfredat konuları ve YKS ağırlıklarını tutar
 model MebTopic {
   id        String   @id @default(cuid())
@@ -475,4 +549,75 @@ model MebTopic {
   aytWeight Int      @default(0) // Konunun AYT'deki ortalama soru sayısı
 
   @@unique([grade, subject, topic])
+}
+
+/// Logging and Audit models
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String
+  entityType  String
+  entityId    String
+  oldValues   Json?
+  newValues   Json?
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  timestamp   DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+}
+
+model LogEntry {
+  id            String   @id @default(cuid())
+  level         String
+  message       String
+  context       String?
+  timestamp     DateTime @default(now())
+  service       String?
+  correlationId String?
+  userId        String?
+
+  @@index([level])
+  @@index([service])
+  @@index([timestamp])
+}
+
+/// Feature flags and remote config
+model FeatureFlagEntity {
+  id               String   @id @default(cuid())
+  key              String   @unique
+  name             String
+  description      String?
+  enabled          Boolean  @default(false)
+  rolloutPercentage Int      @default(0)
+  targetUsers      String[]
+  targetRoles      String[]
+  targetSegments   String[]
+  conditions       Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model RemoteConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+/// Email statistics
+model EmailLog {
+  id           String   @id @default(cuid())
+  success      Boolean
+  deliveryTime Int      @default(0)
+  templateName String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([templateName])
 }

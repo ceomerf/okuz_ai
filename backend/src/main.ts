@@ -16,6 +16,15 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // Backward-compatible admin prefix mapping: /api/v1/admin/* -> /api/*
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    if (req.url.startsWith('/api/v1/admin/')) {
+      req.url = req.url.replace('/api/v1/admin/', '/api/');
+    }
+    next();
+  });
+  // Not setting global prefix here to avoid double prefix with existing controllers using 'api/*'
+
   // Enable API versioning
   app.enableVersioning({
     type: VersioningType.URI,

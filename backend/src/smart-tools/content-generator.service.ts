@@ -174,7 +174,7 @@ export class ContentGeneratorService {
 
   private async recordUsage(userId: string, toolName: string) {
     try {
-      await this.prisma.toolUsage.create({
+      await (this.prisma as any).toolUsage.create({
         data: {
           userId: userId,
           toolName: toolName,

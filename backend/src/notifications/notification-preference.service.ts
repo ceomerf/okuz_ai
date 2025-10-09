@@ -162,12 +162,12 @@ export class NotificationPreferenceService {
       }
 
       // Veritabanından al
-      const preferences = await this.prisma.notificationPreference.findMany({
+      const preferences = await (this.prisma as any).notificationPreference.findMany({
         where: { userId },
         orderBy: { type: 'asc' },
       });
 
-      const result = preferences.map(pref => this.mapToPreference(pref));
+      const result = preferences.map((pref: any) => this.mapToPreference(pref));
 
       // Cache'e kaydet
       await this.cache.set(cacheKey, JSON.stringify(result), 300); // 5 dakika
@@ -187,7 +187,7 @@ export class NotificationPreferenceService {
     type: string
   ): Promise<NotificationPreference | null> {
     try {
-      const preference = await this.prisma.notificationPreference.findFirst({
+      const preference = await (this.prisma as any).notificationPreference.findFirst({
         where: { userId, type },
       });
 
@@ -207,14 +207,14 @@ export class NotificationPreferenceService {
     preference: NotificationPreferenceUpdate
   ): Promise<NotificationPreference> {
     try {
-      const existing = await this.prisma.notificationPreference.findFirst({
+      const existing = await (this.prisma as any).notificationPreference.findFirst({
         where: { userId, type },
       });
 
       let result;
       if (existing) {
         // Güncelle
-        result = await this.prisma.notificationPreference.update({
+        result = await (this.prisma as any).notificationPreference.update({
           where: { id: existing.id },
           data: {
             ...(preference as any),
@@ -223,7 +223,7 @@ export class NotificationPreferenceService {
         });
       } else {
         // Oluştur
-        result = await this.prisma.notificationPreference.create({
+        result = await (this.prisma as any).notificationPreference.create({
           data: {
             userId,
             type,
@@ -263,7 +263,7 @@ export class NotificationPreferenceService {
    */
   async deletePreference(userId: string, type: string): Promise<void> {
     try {
-      await this.prisma.notificationPreference.deleteMany({
+      await (this.prisma as any).notificationPreference.deleteMany({
         where: { userId, type },
       });
 
@@ -292,7 +292,7 @@ export class NotificationPreferenceService {
       const preferences: NotificationPreference[] = [];
 
       for (const [type, defaultPref] of Object.entries(this.defaultPreferences)) {
-        const preference = await this.prisma.notificationPreference.create({
+        const preference = await (this.prisma as any).notificationPreference.create({
           data: {
             userId,
             type,
@@ -415,7 +415,7 @@ export class NotificationPreferenceService {
         return JSON.parse(cached as string);
       }
 
-      const preferences = await this.prisma.notificationPreference.findMany({
+      const preferences = await (this.prisma as any).notificationPreference.findMany({
         select: {
           type: true,
           channel: true,
@@ -431,7 +431,7 @@ export class NotificationPreferenceService {
       const preferencesByType: Record<string, number> = {};
       const preferencesByChannel: Record<string, number> = {};
       
-      preferences.forEach(pref => {
+      preferences.forEach((pref: any) => {
         preferencesByType[pref.type] = (preferencesByType[pref.type] || 0) + 1;
         preferencesByChannel[pref.channel] = (preferencesByChannel[pref.channel] || 0) + 1;
       });
@@ -441,7 +441,7 @@ export class NotificationPreferenceService {
       const quietHoursCounts = { enabled: 0, disabled: 0 };
       const categoryCounts: Record<string, number> = {};
 
-      preferences.forEach(pref => {
+      preferences.forEach((pref: any) => {
         frequencyCounts[pref.frequency] = (frequencyCounts[pref.frequency] || 0) + 1;
         
         if ((pref.quietHours as any)?.enabled) {
@@ -529,7 +529,7 @@ export class NotificationPreferenceService {
     template: Omit<NotificationPreference, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ): Promise<void> {
     try {
-      await this.prisma.notificationPreferenceTemplate.create({
+      await (this.prisma as any).notificationPreferenceTemplate.create({
         data: {
           name,
           type: template.type,
@@ -557,7 +557,7 @@ export class NotificationPreferenceService {
     templateName: string
   ): Promise<NotificationPreference> {
     try {
-      const template = await this.prisma.notificationPreferenceTemplate.findFirst({
+      const template = await (this.prisma as any).notificationPreferenceTemplate.findFirst({
         where: { name: templateName },
       });
 
@@ -565,7 +565,7 @@ export class NotificationPreferenceService {
         throw new NotFoundException(`Preference template not found: ${templateName}`);
       }
 
-      const preference = await this.prisma.notificationPreference.create({
+      const preference = await (this.prisma as any).notificationPreference.create({
         data: {
           userId,
           type: template.type,

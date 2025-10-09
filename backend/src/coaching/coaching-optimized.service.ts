@@ -49,7 +49,7 @@ export class CoachingOptimizedService {
       }
 
       // Tek sorgu ile tüm öğrenci detaylarını çek
-      const coachStudent = await this.prisma.coachStudent.findFirst({
+      const coachStudent = await (this.prisma as any).coachStudent.findFirst({
         where: { 
           coachId,
           studentId,
@@ -186,7 +186,7 @@ export class CoachingOptimizedService {
         where.studentId = studentId;
       }
 
-      const notes = await this.prisma.coachNote.findMany({
+      const notes = await (this.prisma as any).coachNote.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         select: {
@@ -229,7 +229,7 @@ export class CoachingOptimizedService {
       }
 
       // Tek sorgu ile tüm dashboard verilerini çek
-      const coachUser = await this.prisma.user.findUnique({
+      const coachUser = await (this.prisma as any).user.findUnique({
         where: { id: coachId },
         select: { id: true, name: true, email: true },
       });
@@ -238,7 +238,7 @@ export class CoachingOptimizedService {
         throw new NotFoundException('Koç bulunamadı');
       }
 
-      const students = await this.prisma.coachStudent.findMany({
+      const students = await (this.prisma as any).coachStudent.findMany({
         where: { coachId, isActive: true },
         select: {
           id: true,
@@ -258,7 +258,7 @@ export class CoachingOptimizedService {
         },
       });
 
-      const notes = await this.prisma.coachNote.findMany({
+      const notes = await (this.prisma as any).coachNote.findMany({
         where: { coachStudent: { coachId } },
         orderBy: { createdAt: 'desc' },
         take: 10,
@@ -267,7 +267,7 @@ export class CoachingOptimizedService {
 
       const result = {
         coach: coachUser,
-        students: students.map(cs => ({
+        students: students.map((cs: any) => ({
           id: cs.student.id,
           name: cs.student.name,
           grade: cs.student.studentProfile?.grade,

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { GamificationController } from './gamification.controller';
 import { GamificationService } from './gamification.service';
+import { GamificationManagementController } from './gamification-management.controller';
+import { GamificationManagementService } from './gamification-management.service';
 import { PrismaModule } from '../common/prisma/prisma.module';
 // import { GeminiModule } from '../services/gemini.module'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 import { OpenAIModule } from '../services/openai.module';
@@ -10,8 +12,8 @@ import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [PrismaModule, CacheModule, MonitoringModule, ConfigModule, OpenAIModule], // GeminiModule kaldırıldı - OPENAI KULLANILIYOR
-  controllers: [GamificationController],
-  providers: [GamificationService],
-  exports: [GamificationService],
+  controllers: [GamificationController, GamificationManagementController],
+  providers: [GamificationService, GamificationManagementService],
+  exports: [GamificationService, GamificationManagementService],
 })
 export class GamificationModule {}

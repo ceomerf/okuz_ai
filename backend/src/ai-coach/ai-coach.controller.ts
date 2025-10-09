@@ -10,7 +10,7 @@ interface AuthenticatedRequest extends ExpressRequest {
 }
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AiCoachService } from './ai-coach.service';
 import { ProactiveCoachingService } from './proactive-coaching.service';
@@ -217,14 +217,14 @@ export class AICoachController {
     // Get basic user context for AI analysis
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     
-    const recentActivities = await this.prisma.studySession.findMany({
+    const recentActivities = await (this.prisma as any).studySession.findMany({
       where: {
         userId,
         createdAt: { gte: oneWeekAgo },
       },
     });
 
-    const progressData = await this.prisma.studySession.findMany({
+    const progressData = await (this.prisma as any).studySession.findMany({
       where: {
         userId,
         createdAt: { gte: oneWeekAgo },

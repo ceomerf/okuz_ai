@@ -41,7 +41,7 @@ export class AILoggerService {
   async logAIRequest(entry: AILogEntry): Promise<void> {
     try {
       // Database'e kaydet
-      await this.prisma.aiRequestLog.create({
+      await (this.prisma as any).aiRequestLog.create({
         data: {
           requestId: entry.requestId,
           userId: entry.userId,
@@ -87,7 +87,7 @@ export class AILoggerService {
     duration: number
   ): Promise<void> {
     try {
-      await this.prisma.aiRequestLog.create({
+      await (this.prisma as any).aiRequestLog.create({
         data: {
           requestId,
           userId,
@@ -141,7 +141,7 @@ export class AILoggerService {
         };
       }
 
-      const logs = await this.prisma.aiRequestLog.findMany({
+      const logs = await (this.prisma as any).aiRequestLog.findMany({
         where,
         select: {
           model: true,
@@ -153,16 +153,16 @@ export class AILoggerService {
       });
 
       const totalRequests = logs.length;
-      const totalTokens = logs.reduce((sum, log) => sum + log.totalTokens, 0);
-      const successfulRequests = logs.filter(log => log.success).length;
+      const totalTokens = logs.reduce((sum: number, log: any) => sum + log.totalTokens, 0);
+      const successfulRequests = logs.filter((log: any) => log.success).length;
       const successRate = totalRequests > 0 ? successfulRequests / totalRequests : 0;
       const averageResponseTime = totalRequests > 0 
-        ? logs.reduce((sum, log) => sum + log.duration, 0) / totalRequests 
+        ? logs.reduce((sum: number, log: any) => sum + log.duration, 0) / totalRequests 
         : 0;
 
       // Model istatistikleri
       const modelCounts: Record<string, number> = {};
-      logs.forEach(log => {
+      logs.forEach((log: any) => {
         modelCounts[log.model] = (modelCounts[log.model] || 0) + 1;
       });
 
@@ -173,7 +173,7 @@ export class AILoggerService {
 
       // Prompt type istatistikleri
       const promptTypeCounts: Record<string, number> = {};
-      logs.forEach(log => {
+      logs.forEach((log: any) => {
         promptTypeCounts[log.promptType] = (promptTypeCounts[log.promptType] || 0) + 1;
       });
 
@@ -226,7 +226,7 @@ export class AILoggerService {
         };
       }
 
-      const logs = await this.prisma.aiRequestLog.findMany({
+      const logs = await (this.prisma as any).aiRequestLog.findMany({
         where,
         select: {
           totalTokens: true,
@@ -236,16 +236,16 @@ export class AILoggerService {
       });
 
       const totalRequests = logs.length;
-      const successfulRequests = logs.filter(log => log.success).length;
+      const successfulRequests = logs.filter((log: any) => log.success).length;
       const successRate = totalRequests > 0 ? successfulRequests / totalRequests : 0;
       const errorRate = 1 - successRate;
       
       const averageResponseTime = totalRequests > 0 
-        ? logs.reduce((sum, log) => sum + log.duration, 0) / totalRequests 
+        ? logs.reduce((sum: number, log: any) => sum + log.duration, 0) / totalRequests 
         : 0;
       
       const averageTokens = totalRequests > 0 
-        ? logs.reduce((sum, log) => sum + log.totalTokens, 0) / totalRequests 
+        ? logs.reduce((sum: number, log: any) => sum + log.totalTokens, 0) / totalRequests 
         : 0;
 
       const costEstimate = this.calculateCostEstimate(logs);
@@ -293,7 +293,7 @@ export class AILoggerService {
         };
       }
 
-      const logs = await this.prisma.aiRequestLog.findMany({
+      const logs = await (this.prisma as any).aiRequestLog.findMany({
         where,
         select: {
           model: true,
@@ -307,16 +307,16 @@ export class AILoggerService {
       });
 
       const totalRequests = logs.length;
-      const totalTokens = logs.reduce((sum, log) => sum + log.totalTokens, 0);
-      const successfulRequests = logs.filter(log => log.success).length;
+      const totalTokens = logs.reduce((sum: number, log: any) => sum + log.totalTokens, 0);
+      const successfulRequests = logs.filter((log: any) => log.success).length;
       const successRate = totalRequests > 0 ? successfulRequests / totalRequests : 0;
       const averageResponseTime = totalRequests > 0 
-        ? logs.reduce((sum, log) => sum + log.duration, 0) / totalRequests 
+        ? logs.reduce((sum: number, log: any) => sum + log.duration, 0) / totalRequests 
         : 0;
 
       // En çok kullanılan model
       const modelCounts: Record<string, number> = {};
-      logs.forEach(log => {
+      logs.forEach((log: any) => {
         modelCounts[log.model] = (modelCounts[log.model] || 0) + 1;
       });
       const mostUsedModel = Object.entries(modelCounts)
@@ -324,7 +324,7 @@ export class AILoggerService {
 
       // En çok kullanılan prompt type
       const promptTypeCounts: Record<string, number> = {};
-      logs.forEach(log => {
+      logs.forEach((log: any) => {
         promptTypeCounts[log.promptType] = (promptTypeCounts[log.promptType] || 0) + 1;
       });
       const mostUsedPromptType = Object.entries(promptTypeCounts)
@@ -332,7 +332,7 @@ export class AILoggerService {
 
       // Kullanım pattern'i (günlük)
       const usagePattern: Record<string, { requests: number; tokens: number }> = {};
-      logs.forEach(log => {
+      logs.forEach((log: any) => {
         const date = log.timestamp.toISOString().split('T')[0];
         if (!usagePattern[date]) {
           usagePattern[date] = { requests: 0, tokens: 0 };
@@ -370,7 +370,7 @@ export class AILoggerService {
   private calculateCostEstimate(logs: any[]): number {
     // Basit maliyet hesaplama (gerçek maliyetler modele göre değişir)
     const costPerToken = 0.000002; // GPT-3.5 Turbo yaklaşık maliyeti
-    const totalTokens = logs.reduce((sum, log) => sum + log.totalTokens, 0);
+    const totalTokens = logs.reduce((sum: number, log: any) => sum + log.totalTokens, 0);
     return totalTokens * costPerToken;
   }
 
@@ -382,7 +382,7 @@ export class AILoggerService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
-      const result = await this.prisma.aiRequestLog.deleteMany({
+      const result = await (this.prisma as any).aiRequestLog.deleteMany({
         where: {
           timestamp: {
             lt: cutoffDate,
@@ -415,7 +415,7 @@ export class AILoggerService {
     dailyUsage: Array<{ date: string; requests: number; tokens: number }>;
   }> {
     try {
-      const logs = await this.prisma.aiRequestLog.findMany({
+      const logs = await (this.prisma as any).aiRequestLog.findMany({
         where: {
           timestamp: {
             gte: startDate,
@@ -432,14 +432,14 @@ export class AILoggerService {
       });
 
       const totalRequests = logs.length;
-      const totalTokens = logs.reduce((sum, log) => sum + log.totalTokens, 0);
-      const successfulRequests = logs.filter(log => log.success).length;
+      const totalTokens = logs.reduce((sum: number, log: any) => sum + log.totalTokens, 0);
+      const successfulRequests = logs.filter((log: any) => log.success).length;
       const successRate = totalRequests > 0 ? successfulRequests / totalRequests : 0;
       const totalCost = this.calculateCostEstimate(logs);
 
       // Model istatistikleri
       const modelStats: Record<string, { requests: number; tokens: number }> = {};
-      logs.forEach(log => {
+      logs.forEach((log: any) => {
         if (!modelStats[log.model]) {
           modelStats[log.model] = { requests: 0, tokens: 0 };
         }
@@ -454,7 +454,7 @@ export class AILoggerService {
 
       // Prompt type istatistikleri
       const promptTypeStats: Record<string, { requests: number; tokens: number }> = {};
-      logs.forEach(log => {
+      logs.forEach((log: any) => {
         if (!promptTypeStats[log.promptType]) {
           promptTypeStats[log.promptType] = { requests: 0, tokens: 0 };
         }
@@ -469,7 +469,7 @@ export class AILoggerService {
 
       // Günlük kullanım
       const dailyUsage: Record<string, { requests: number; tokens: number }> = {};
-      logs.forEach(log => {
+      logs.forEach((log: any) => {
         const date = log.timestamp.toISOString().split('T')[0];
         if (!dailyUsage[date]) {
           dailyUsage[date] = { requests: 0, tokens: 0 };

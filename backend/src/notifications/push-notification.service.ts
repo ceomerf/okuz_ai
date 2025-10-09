@@ -96,7 +96,7 @@ export class PushNotificationService {
   ): Promise<DeviceInfo> {
     try {
       // Mevcut cihazı kontrol et
-      const existingDevice = await this.prisma.pushDevice.findFirst({
+      const existingDevice = await (this.prisma as any).pushDevice.findFirst({
         where: {
           userId,
           endpoint: subscription.endpoint,
@@ -105,7 +105,7 @@ export class PushNotificationService {
 
       if (existingDevice) {
         // Mevcut cihazı güncelle
-        const updatedDevice = await this.prisma.pushDevice.update({
+        const updatedDevice = await (this.prisma as any).pushDevice.update({
           where: { id: existingDevice.id },
           data: {
             keys: subscription.keys,
@@ -121,7 +121,7 @@ export class PushNotificationService {
       }
 
       // Yeni cihaz kaydet
-      const newDevice = await this.prisma.pushDevice.create({
+      const newDevice = await (this.prisma as any).pushDevice.create({
         data: {
           userId,
           endpoint: subscription.endpoint,
@@ -155,7 +155,7 @@ export class PushNotificationService {
    */
   async unregisterDevice(deviceId: string): Promise<void> {
     try {
-      await this.prisma.pushDevice.delete({
+      await (this.prisma as any).pushDevice.delete({
         where: { id: deviceId },
       });
 
@@ -177,7 +177,7 @@ export class PushNotificationService {
    */
   async getUserDevices(userId: string): Promise<DeviceInfo[]> {
     try {
-      const devices = await this.prisma.pushDevice.findMany({
+      const devices = await (this.prisma as any).pushDevice.findMany({
         where: {
           userId,
           isActive: true,
@@ -185,7 +185,7 @@ export class PushNotificationService {
         orderBy: { lastUsed: 'desc' },
       });
 
-      return devices.map(device => this.mapToDeviceInfo(device));
+      return devices.map((device: any) => this.mapToDeviceInfo(device));
     } catch (error) {
       this.logger.error(`Failed to get user devices: ${this.getErrorMessage(error)}`);
       return [];
@@ -425,7 +425,7 @@ export class PushNotificationService {
    */
   private async updateDeviceUsage(deviceId: string): Promise<void> {
     try {
-      await this.prisma.pushDevice.update({
+      await (this.prisma as any).pushDevice.update({
         where: { id: deviceId },
         data: { lastUsed: new Date() },
       });
@@ -439,7 +439,7 @@ export class PushNotificationService {
    */
   private async deactivateDevice(deviceId: string): Promise<void> {
     try {
-      await this.prisma.pushDevice.update({
+      await (this.prisma as any).pushDevice.update({
         where: { id: deviceId },
         data: { isActive: false },
       });
@@ -458,7 +458,7 @@ export class PushNotificationService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysInactive);
 
-      const result = await this.prisma.pushDevice.deleteMany({
+      const result = await (this.prisma as any).pushDevice.deleteMany({
         where: {
           isActive: false,
           lastUsed: {
@@ -486,7 +486,7 @@ export class PushNotificationService {
     averageDevicesPerUser: number;
   }> {
     try {
-      const devices = await this.prisma.pushDevice.findMany({
+      const devices = await (this.prisma as any).pushDevice.findMany({
         select: {
           isActive: true,
           platform: true,
@@ -495,15 +495,15 @@ export class PushNotificationService {
       });
 
       const totalDevices = devices.length;
-      const activeDevices = devices.filter(d => d.isActive).length;
+      const activeDevices = devices.filter((d: any) => d.isActive).length;
       const inactiveDevices = totalDevices - activeDevices;
 
       const devicesByPlatform: Record<string, number> = {};
-      devices.forEach(device => {
+      devices.forEach((device: any) => {
         devicesByPlatform[device.platform] = (devicesByPlatform[device.platform] || 0) + 1;
       });
 
-      const uniqueUsers = new Set(devices.map(d => d.userId)).size;
+      const uniqueUsers = new Set(devices.map((d: any) => d.userId)).size;
       const averageDevicesPerUser = uniqueUsers > 0 ? totalDevices / uniqueUsers : 0;
 
       return {

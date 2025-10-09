@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, UseGuards, Request, Res } from '@nestjs/co
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { ExecutiveDashboardService } from './executive-dashboard.service';
 import { AutoManagementService } from './auto-management.service';
 import { Response } from 'express';

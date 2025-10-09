@@ -10,7 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
+enum UserRoleType {
   STUDENT
   PARENT
   TEACHER
@@ -130,7 +130,9 @@ model User {
   email     String   @unique
   password  String
   name      String
-  role      UserRole @default(STUDENT)
+  role      UserRoleType @default(STUDENT)
+  refreshToken String?
+  resetToken String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -152,17 +154,12 @@ model User {
   subscriptionEndDate DateTime?
 
   @@index([email])
-  @@index([role])
   @@index([subscriptionStatus])
   @@index([createdAt])
-  @@index([role, subscriptionStatus])
-  @@index([subscriptionStatus, trialEndDate])
-  @@index([subscriptionStatus, subscriptionEndDate])
-  @@index([createdAt, role])
+  @@index([updatedAt])
+  @@index([lastActiveAt])
 
-  // Profile relations
-  studentProfile StudentProfile?
-  parentProfile  ParentProfile?
+  // Profile relations (moved to Student/Parent relations section)
 
   // Invites
   sentInvites     Invite[] @relation("Inviter")
@@ -278,6 +275,25 @@ model User {
   
   // Analysis relations
   analyses Analysis[]
+  
+  // RBAC relations
+  roles UserRole[]
+  
+  // Advanced Analytics relations
+  dashboards Dashboard[]
+  analyticsQueries AnalyticsQuery[]
+  
+  // Additional relations
+  interactions Interaction[]
+  usageRecords Usage[]
+  
+  // Student/Parent relations
+  studentProfile Student?
+  parentProfile Parent?
+  
+  // Profile relations
+  studentProfileData StudentProfile?
+  parentProfileData ParentProfile?
 }
 
 model StudentProfile {
@@ -1882,4 +1898,339 @@ model AiAlert {
   @@index([severity])
   @@index([resolved])
   @@index([timestamp])
+}
+
+// RBAC (Role-Based Access Control) Models
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+  @@index([name])
+  @@index([isActive])
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  resource    String   // e.g., "users", "students", "courses"
+  action      String   // e.g., "create", "read", "update", "delete"
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  roles       RolePermission[]
+
+  @@map("permissions")
+  @@index([name])
+  @@index([resource])
+  @@index([action])
+  @@index([isActive])
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+  @@index([userId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  // Relations
+  role        Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission  Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+// Schema-Driven Dynamic UI Engine Models
+model EntitySchema {
+  id          String   @id @default(cuid())
+  entityName  String   @unique
+  displayName String
+  description String?
+  apiEndpoint String
+  icon        String?
+  color       String?
+  schema      Json     // UI şeması JSON formatında
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("entity_schemas")
+  @@index([entityName])
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+// Advanced Analytics and Dashboard System
+model Dashboard {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  userId      String?  // Kullanıcıya özel dashboard
+  isPublic    Boolean  @default(false)
+  layout      Json     // Grid layout bilgisi
+  settings    Json?    // Dashboard ayarları
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  widgets     Widget[]
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("dashboards")
+  @@index([userId])
+  @@index([isPublic])
+  @@index([isActive])
+}
+
+model Widget {
+  id          String   @id @default(cuid())
+  dashboardId String
+  type        WidgetType
+  title       String
+  description String?
+  position    Json     // Grid position (x, y, w, h)
+  config      Json     // Widget konfigürasyonu
+  query       String?  // SQL sorgusu veya API endpoint
+  refreshRate Int?     // Otomatik yenileme süresi (saniye)
+  isActive    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  dashboard   Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+
+  @@map("widgets")
+  @@index([dashboardId])
+  @@index([type])
+  @@index([isActive])
+}
+
+model AnalyticsQuery {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  query       String   // SQL sorgusu
+  parameters  Json?    // Sorgu parametreleri
+  isPublic    Boolean  @default(false)
+  userId      String?  // Kullanıcıya özel sorgu
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("analytics_queries")
+  @@index([userId])
+  @@index([isPublic])
+  @@index([isActive])
+}
+
+enum WidgetType {
+  METRIC_CARD
+  LINE_CHART
+  BAR_CHART
+  PIE_CHART
+  TABLE
+  HEATMAP
+  SCATTER_PLOT
+  AREA_CHART
+  DONUT_CHART
+  GAUGE
+  PROGRESS_BAR
+  KPI_CARD
+}
+
+// Audit Log Model
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, etc.
+  resource    String   // Table or resource name
+  resourceId  String?  // ID of the affected resource
+  oldValues   Json?    // Previous values
+  newValues   Json?    // New values
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@map("audit_logs")
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+}
+
+// Tenant Model for Multi-tenancy
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  domain      String?  @unique
+  subdomain   String?  @unique
+  settings    Json?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("tenants")
+  @@index([domain])
+  @@index([subdomain])
+  @@index([isActive])
+}
+
+// Course Model
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  subject     String
+  grade       Int?
+  difficulty  String   @default("medium")
+  duration    Int?     // minutes
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("courses")
+  @@index([subject])
+  @@index([grade])
+  @@index([isActive])
+}
+
+// Student Model (simplified)
+model Student {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  grade       Int
+  field       String?
+  school      String?
+  parentId    String?
+  name        String?
+  learningStyle String?
+  goals       String[]
+  strengths   String[]
+  weaknesses  String[]
+  interests   String[]
+  performanceMetrics Json?
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("students")
+  @@index([userId])
+  @@index([grade])
+  @@index([isActive])
+}
+
+// Parent Model (simplified)
+model Parent {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  name        String?
+  phone       String?
+  address     String?
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("parents")
+  @@index([userId])
+  @@index([isActive])
+}
+
+// Interaction Model
+model Interaction {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String
+  content     String
+  timestamp   DateTime @default(now())
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("interactions")
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([timestamp])
+}
+
+// Usage Model
+model Usage {
+  id          String   @id @default(cuid())
+  userId      String
+  resource    String
+  amount      Int
+  date        DateTime @default(now())
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("usage")
+  @@index([userId])
+  @@index([resource])
+  @@index([date])
+}
+
+// Badge Model
+model Badge {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  points      Int      @default(0)
+  rarity      String   @default("common")
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("badges")
+  @@index([name])
+  @@index([isActive])
+  @@index([rarity])
 }

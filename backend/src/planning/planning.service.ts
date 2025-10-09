@@ -92,7 +92,7 @@ export class PlanningService {
       });
 
       // Oturumu bul ve güncelle
-      const session = await this.prisma.studySession.update({
+      const session = await (this.prisma as any).studySession.update({
         where: { id: data.sessionId },
         data: { 
           startTime: new Date(data.newStartTime),
@@ -296,7 +296,7 @@ export class PlanningService {
   async optimizePlan(planId: string, userId: string): Promise<any> {
     try {
       // Önce planı getir
-      const plan = await this.prisma.plan.findFirst({
+      const plan = await (this.prisma as any).plan.findFirst({
         where: { id: planId, userId },
         include: { studySessions: true } as any,
       });

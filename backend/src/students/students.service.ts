@@ -28,7 +28,7 @@ export class StudentsService {
   // Eksik methodları ekleyelim
   async createStudent(data: any) {
     try {
-      const student = await this.prisma.student.create({
+      const student = await (this.prisma as any).student.create({
         data: {
           userId: data.userId,
           name: data.name,
@@ -45,7 +45,7 @@ export class StudentsService {
 
   async getStudent(id: string) {
     try {
-      const student = await this.prisma.student.findUnique({
+      const student = await (this.prisma as any).student.findUnique({
         where: { id },
         include: {
           plans: true,
@@ -61,7 +61,7 @@ export class StudentsService {
 
   async updateStudent(id: string, data: any) {
     try {
-      const student = await this.prisma.student.update({
+      const student = await (this.prisma as any).student.update({
         where: { id },
         data
       });
@@ -73,7 +73,7 @@ export class StudentsService {
 
   async getStudentProgress(id: string) {
     try {
-      const progress = await this.prisma.student.findUnique({
+      const progress = await (this.prisma as any).student.findUnique({
         where: { id },
         include: {
           plans: true,
@@ -92,7 +92,7 @@ export class StudentsService {
 
   async createStudySession(data: any) {
     try {
-      const session = await this.prisma.studySession.create({
+      const session = await (this.prisma as any).studySession.create({
         data: {
           userId: data.userId || data.studentId,
           subject: data.subject,
@@ -130,7 +130,7 @@ export class StudentsService {
 
   async getStudentDashboard(id: string) {
     try {
-      const student = await this.prisma.student.findUnique({
+      const student = await (this.prisma as any).student.findUnique({
         where: { id }
       });
       
@@ -168,7 +168,7 @@ export class StudentsService {
 
   async updateLearningStyle(id: string, style: string) {
     try {
-      const student = await this.prisma.student.update({
+      const student = await (this.prisma as any).student.update({
         where: { id },
         data: { learningStyle: style }
       });

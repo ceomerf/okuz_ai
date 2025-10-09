@@ -67,7 +67,7 @@ export class PromptVersioningService {
     try {
       this.logger.log(`Creating prompt template: ${data.name}`);
 
-      const template = await this.prisma.aiPromptTemplate.create({
+      const template = await (this.prisma as any).aiPromptTemplate.create({
         data: {
           name: data.name,
           template: data.content,
@@ -107,7 +107,7 @@ export class PromptVersioningService {
       this.logger.log(`Updating prompt template: ${templateId}`);
 
       // Mevcut template'i al
-      const existingTemplate = await this.prisma.aiPromptTemplate.findUnique({
+      const existingTemplate = await (this.prisma as any).aiPromptTemplate.findUnique({
         where: { id: templateId },
       });
 
@@ -118,7 +118,7 @@ export class PromptVersioningService {
       // Yeni version oluştur
       const newVersion = this.incrementVersion(existingTemplate.version);
 
-      const updatedTemplate = await this.prisma.aiPromptTemplate.update({
+      const updatedTemplate = await (this.prisma as any).aiPromptTemplate.update({
         where: { id: templateId },
         data: {
           ...(data.content !== undefined ? { template: data.content } : {}),
@@ -158,7 +158,7 @@ export class PromptVersioningService {
         where.version = version;
       }
 
-      const template = await this.prisma.aiPromptTemplate.findFirst({
+      const template = await (this.prisma as any).aiPromptTemplate.findFirst({
         where,
         orderBy: version ? undefined : { updatedAt: 'desc' },
       });
@@ -193,7 +193,7 @@ export class PromptVersioningService {
         where.version = version;
       }
 
-      const template = await this.prisma.aiPromptTemplate.findFirst({
+      const template = await (this.prisma as any).aiPromptTemplate.findFirst({
         where,
         orderBy: version ? undefined : { updatedAt: 'desc' },
       });
@@ -221,7 +221,7 @@ export class PromptVersioningService {
     try {
       const { limit = 50, offset = 0, isActive } = options;
 
-      const templates = await this.prisma.aiPromptTemplate.findMany({
+      const templates = await (this.prisma as any).aiPromptTemplate.findMany({
         where: isActive !== undefined ? { isActive } : undefined,
         orderBy: { updatedAt: 'desc' },
         take: limit,
@@ -361,7 +361,7 @@ export class PromptVersioningService {
    */
   async deactivateTemplate(templateId: string): Promise<void> {
     try {
-      await this.prisma.aiPromptTemplate.update({
+      await (this.prisma as any).aiPromptTemplate.update({
         where: { id: templateId },
         data: { isActive: false },
       });
@@ -381,7 +381,7 @@ export class PromptVersioningService {
    */
   async deleteTemplate(templateId: string): Promise<void> {
     try {
-      await this.prisma.aiPromptTemplate.delete({
+      await (this.prisma as any).aiPromptTemplate.delete({
         where: { id: templateId },
       });
 
@@ -414,7 +414,7 @@ export class PromptVersioningService {
     usageCount: number;
   }> {
     try {
-      const template = await this.prisma.aiPromptTemplate.findUnique({
+      const template = await (this.prisma as any).aiPromptTemplate.findUnique({
         where: { id: templateId },
       });
 
@@ -423,7 +423,7 @@ export class PromptVersioningService {
       }
 
       // Usage count (AI request logs'dan)
-      const usageCount = await this.prisma.aiRequestLog.count({
+      const usageCount = await (this.prisma as any).aiRequestLog.count({
         where: { promptType: template.name },
       });
 

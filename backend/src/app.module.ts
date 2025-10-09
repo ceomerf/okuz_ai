@@ -32,6 +32,10 @@ import { AICoachModule } from './ai-coach/ai-coach.module';
 import { NotificationSettingsModule } from './notification-settings/notification-settings.module';
 import { ReferralModule } from './referral/referral.module';
 import { SystemModule } from './system/system.module';
+import { RbacModule } from './rbac/rbac.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 
 @Module({
   imports: [
@@ -110,11 +114,14 @@ import { SystemModule } from './system/system.module';
     NotificationSettingsModule,
     ReferralModule,
     SystemModule,
+    RbacModule,
+    FeatureFlagsModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
   ],
 })
 export class AppModule {}

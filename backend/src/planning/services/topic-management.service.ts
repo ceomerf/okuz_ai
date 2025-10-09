@@ -9,7 +9,7 @@ export class TopicManagementService {
 
   async getTopicsBySubject(subject: string, grade: number): Promise<any[]> {
     try {
-      return await this.prisma.mebTopic.findMany({
+      return await (this.prisma as any).mebTopic.findMany({
         where: {
           subject,
           grade,
@@ -23,7 +23,7 @@ export class TopicManagementService {
 
   async getTopicById(topicId: string): Promise<any> {
     try {
-      return await this.prisma.mebTopic.findUnique({
+      return await (this.prisma as any).mebTopic.findUnique({
         where: { id: topicId },
       });
     } catch (error) {
@@ -34,7 +34,7 @@ export class TopicManagementService {
 
   async getTopicPrerequisites(topicId: string): Promise<any[]> {
     try {
-      return await this.prisma.topicPrerequisite.findMany({
+      return await (this.prisma as any).topicPrerequisite.findMany({
         where: { topicId },
         include: { prerequisite: true },
       });
@@ -53,7 +53,7 @@ export class TopicManagementService {
       if (subject) where.subject = subject;
       if (grade) where.grade = parseInt(grade);
 
-      return await this.prisma.mebTopic.findMany({
+      return await (this.prisma as any).mebTopic.findMany({
         where,
         orderBy: { grade: 'asc' }
       });
@@ -71,7 +71,7 @@ export class TopicManagementService {
       const where: any = {};
       if (track) where.track = track;
 
-      return await this.prisma.yksTopic.findMany({
+      return await (this.prisma as any).yksTopic.findMany({
         where,
         orderBy: { weight: 'desc' }
       });
@@ -87,7 +87,7 @@ export class TopicManagementService {
   async assignYksSubjects(userId: string, data: { subjects: string[] }): Promise<any> {
     try {
       // Kullanıcının YKS derslerini güncelle
-      const user = await this.prisma.user.update({
+      const user = await (this.prisma as any).user.update({
         where: { id: userId },
         data: {
           yksSubjects: data.subjects
@@ -111,7 +111,7 @@ export class TopicManagementService {
   async getAdaptiveSequence(data: { userId: string; subjects: string[]; weeks: number }): Promise<any> {
     try {
       // Kullanıcının performans verilerini al
-      const userPerformance = await this.prisma.studySession.findMany({
+      const userPerformance = await (this.prisma as any).studySession.findMany({
         where: {
           userId: data.userId,
           subject: { in: data.subjects }
@@ -125,9 +125,9 @@ export class TopicManagementService {
 
       // Performansa göre konu sırası oluştur
       const subjectPerformance = data.subjects.map(subject => {
-        const sessions = userPerformance.filter(s => s.subject === subject);
+        const sessions = userPerformance.filter((s: any) => s.subject === subject);
         const avgPerformance = sessions.length > 0 
-          ? sessions.reduce((sum, s) => sum + (s.performance || 0), 0) / sessions.length 
+          ? sessions.reduce((sum: number, s: any) => sum + (s.performance || 0), 0) / sessions.length 
           : 0;
         
         return {

@@ -12,7 +12,7 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    return this.prisma.user.findUnique({
+    return (this.prisma as any).user.findUnique({
       where: { id },
       include: {
         studentProfile: true,
@@ -33,7 +33,7 @@ export class UsersService {
   // Eksik methodları ekleyelim
   async createUser(data: any) {
     try {
-      const user = await this.prisma.user.create({
+      const user = await (this.prisma as any).user.create({
         data: {
           email: data.email,
           password: data.password,
@@ -52,7 +52,7 @@ export class UsersService {
       const cacheKey = `user:${id}`;
       const cached = await this.cache.get(cacheKey);
       if (cached) return { message: 'User found', user: cached };
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id },
         include: {
           studentProfile: true,
@@ -69,7 +69,7 @@ export class UsersService {
 
   async getUserByEmail(email: string) {
     try {
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { email },
         include: {
           studentProfile: true,
@@ -85,7 +85,7 @@ export class UsersService {
 
   async updateUser(id: string, data: any) {
     try {
-      const user = await this.prisma.user.update({
+      const user = await (this.prisma as any).user.update({
         where: { id },
         data
       });
@@ -98,7 +98,7 @@ export class UsersService {
 
   async deleteUser(id: string) {
     try {
-      await this.prisma.user.delete({
+      await (this.prisma as any).user.delete({
         where: { id }
       });
       await this.cache.del?.(`user:${id}`);
@@ -110,7 +110,7 @@ export class UsersService {
 
   async getAllUsers() {
     try {
-      const users = await this.prisma.user.findMany({
+      const users = await (this.prisma as any).user.findMany({
         include: {
           studentProfile: true,
           parentProfile: true,
@@ -125,7 +125,7 @@ export class UsersService {
 
   async createStudentProfile(data: any) {
     try {
-      const profile = await this.prisma.studentProfile.create({
+      const profile = await (this.prisma as any).studentProfile.create({
         data: {
           userId: data.userId,
           grade: data.grade,
@@ -141,7 +141,7 @@ export class UsersService {
 
   async createParentProfile(data: any) {
     try {
-      const profile = await this.prisma.parentProfile.create({
+      const profile = await (this.prisma as any).parentProfile.create({
         data: {
           userId: data.userId,
           // children: data.children || [] // Prisma schema'da children field'ı yok
@@ -157,7 +157,7 @@ export class UsersService {
   async getUserProfile(userId: string) {
     try {
       // Spec beklentisi: hem user.findUnique çağrılsın (include ile), hem de studentProfile döndürsün
-      await this.prisma.user.findUnique({
+      await (this.prisma as any).user.findUnique({
         where: { id: userId },
         include: {
           studentProfile: true,
@@ -175,7 +175,7 @@ export class UsersService {
   async updateUserProfile(userId: string, data: any) {
     try {
       // Spec beklentisi: user.update çağrılsın ve dönen profil studentProfile.update ile gelsin
-      await this.prisma.user.update({
+      await (this.prisma as any).user.update({
         where: { id: userId },
         data
       });
@@ -210,14 +210,14 @@ export class UsersService {
 
     try {
       // Önce kullanıcının var olup olmadığını kontrol et
-      const existingUser = await this.prisma.user.findUnique({
+      const existingUser = await (this.prisma as any).user.findUnique({
         where: { id: userId },
       });
 
       if (!existingUser) {
         console.log('❌ User not found, creating new user');
         // Kullanıcı yoksa oluştur
-        const newUser = await this.prisma.user.create({
+        const newUser = await (this.prisma as any).user.create({
           data: {
             id: userId,
             email: onboardingData.email || 'temp@example.com',
@@ -230,7 +230,7 @@ export class UsersService {
       }
 
       // Kullanıcıyı güncelle
-      const updatedUser = await this.prisma.user.update({
+      const updatedUser = await (this.prisma as any).user.update({
         where: { id: userId },
         data: {
           name: onboardingData.fullName,
@@ -239,7 +239,7 @@ export class UsersService {
       });
 
       // StudentProfile oluştur veya güncelle
-      const studentProfile = await this.prisma.studentProfile.upsert({
+      const studentProfile = await (this.prisma as any).studentProfile.upsert({
         where: { userId: userId },
         update: {
           grade: parseInt(onboardingData.grade) || 0,
@@ -319,7 +319,7 @@ export class UsersService {
       }
 
       const [users, total] = await Promise.all([
-        this.prisma.user.findMany({
+        (this.prisma as any).user.findMany({
           where,
           skip,
           take: limit,
@@ -330,7 +330,7 @@ export class UsersService {
             gamificationProfile: true
           }
         }),
-        this.prisma.user.count({ where })
+        (this.prisma as any).user.count({ where })
       ]);
 
       return {
@@ -347,7 +347,7 @@ export class UsersService {
 
   async getUserByIdEnhanced(id: string) {
     try {
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id },
         include: {
           studentProfile: true,
@@ -365,7 +365,7 @@ export class UsersService {
 
   async createUserEnhanced(data: any) {
     try {
-      const user = await this.prisma.user.create({
+      const user = await (this.prisma as any).user.create({
         data: {
           email: data.email,
           password: data.password,
@@ -388,7 +388,7 @@ export class UsersService {
 
   async updateUserEnhanced(id: string, data: any) {
     try {
-      const user = await this.prisma.user.update({
+      const user = await (this.prisma as any).user.update({
         where: { id },
         data: {
           ...data,
@@ -408,7 +408,7 @@ export class UsersService {
 
   async deleteUserEnhanced(id: string) {
     try {
-      await this.prisma.user.delete({
+      await (this.prisma as any).user.delete({
         where: { id }
       });
       return { success: true, message: 'User deleted successfully' };
@@ -437,7 +437,7 @@ export class UsersService {
       const { page = 1, limit = 20 } = options;
       const skip = (page - 1) * limit;
 
-      const activities = await this.prisma.userActivity.findMany({
+      const activities = await (this.prisma as any).userActivity.findMany({
         where: { userId: id },
         skip,
         take: limit,

@@ -29,7 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     try {
       // Kullanıcının varlığını ve aktif durumunu kontrol et
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id: payload.sub },
         select: {
           id: true,

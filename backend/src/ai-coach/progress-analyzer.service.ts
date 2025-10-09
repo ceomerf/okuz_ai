@@ -233,7 +233,7 @@ export class ProgressAnalyzerService implements OnModuleInit {
   private async getPerformanceData(userId: string, startDate: Date, endDate: Date): Promise<any> {
     try {
       // Study sessions
-      const sessions = await this.prisma.studySession.findMany({
+      const sessions = await (this.prisma as any).studySession.findMany({
         where: {
           userId,
           createdAt: {
@@ -247,7 +247,7 @@ export class ProgressAnalyzerService implements OnModuleInit {
       });
 
       // Performance history
-      const performanceHistory = await this.prisma.studentPerformanceHistory.findMany({
+      const performanceHistory = await (this.prisma as any).studentPerformanceHistory.findMany({
         where: {
           userId,
           createdAt: {
@@ -258,7 +258,7 @@ export class ProgressAnalyzerService implements OnModuleInit {
       });
 
       // Study goals
-      const goals = await this.prisma.studyGoal.findMany({
+      const goals = await (this.prisma as any).studyGoal.findMany({
         where: {
           userId,
           createdAt: {
@@ -269,7 +269,7 @@ export class ProgressAnalyzerService implements OnModuleInit {
       });
 
       // Achievements
-      const achievements = await this.prisma.achievement.findMany({
+      const achievements = await (this.prisma as any).achievement.findMany({
         where: {
           userId,
           createdAt: {
@@ -639,7 +639,7 @@ export class ProgressAnalyzerService implements OnModuleInit {
 
   private async saveAnalysis(analysis: PerformanceAnalysis): Promise<void> {
     try {
-      await this.prisma.performanceAnalysis.create({
+      await (this.prisma as any).performanceAnalysis.create({
         data: {
           id: analysis.id,
           userId: analysis.userId,
@@ -662,7 +662,7 @@ export class ProgressAnalyzerService implements OnModuleInit {
 
   private async saveWeeklyReport(report: WeeklyProgressReport): Promise<void> {
     try {
-      await this.prisma.weeklyProgressReport.create({
+      await (this.prisma as any).weeklyProgressReport.create({
         data: {
           userId: report.userId,
           weekStart: report.weekStart,
@@ -694,7 +694,7 @@ export class ProgressAnalyzerService implements OnModuleInit {
       lastMonday.setHours(0, 0, 0, 0);
 
       // Tüm aktif kullanıcılar için haftalık analiz oluştur
-      const users = await this.prisma.user.findMany({
+      const users = await (this.prisma as any).user.findMany({
         where: {
           role: 'STUDENT',
         },

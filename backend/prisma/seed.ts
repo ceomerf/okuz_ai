@@ -1,215 +1,523 @@
 import { PrismaClient } from '@prisma/client';
-import { curriculum, CurriculumLevel } from './curriculum-source';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-// SUBJECT_NORMALIZATION_MAP ve MONTH_DISTRIBUTION aynı kalabilir
-
-// Ders adlarını normalize eden harita
-const SUBJECT_NORMALIZATION_MAP: Record<string, string> = {
-  'İleri Matematik': 'Matematik',
-  'İleri Fizik': 'Fizik',
-  'İleri Kimya': 'Kimya',
-  'İleri Biyoloji': 'Biyoloji',
-  'Türk Dili ve Edebiyatı': 'Türkçe',
-  'T.C. İnkılap Tarihi ve Atatürkçülük': 'Tarih',
-  'Din Kültürü ve Ahlak Bilgisi': 'Din Kültürü',
-};
-
-// Tahmini ay dağılımı (manuel olarak zenginleştirilmeli)
-const MONTH_DISTRIBUTION: Record<string, number> = {
-  'Trigonometri': 9,
-  'Vektörler': 9,
-  'Redoks': 10,
-  'Organik Bileşikler': 11,
-  'Türev': 10,
-  'İntegral': 11,
-  'Limit ve Süreklilik': 9,
-  'Logaritma': 9,
-  'Kuvvet ve Hareket': 9,
-  'İş ve Enerji': 10,
-  'Atom ve Periyodik Sistem': 9,
-  'Kimyasal Bağlar': 10,
-  'Gazlar': 11,
-  'Hücre Bölünmesi': 9,
-  'Kalıtım': 10,
-  'Ekosistem': 11,
-  'Paragrafta Anlam': 9,
-  'Cümlede Anlam': 10,
-  'Ses Bilgisi': 11,
-};
-
 async function main() {
-  // MEB konularını seed et (yerel curriculum kaynağından)
-  const mebTopicCount = await prisma.mebTopic.count();
-  if (mebTopicCount === 0) {
-    console.log('[SEED] Seeding curriculum data from local TypeScript source...');
-    const toGrade = (s: string): number => {
-      const match = s.match(/(\d+)/);
-      return match ? parseInt(match[1]) : 9;
-    };
+  console.log('🌱 Veritabanı seeding başlıyor...');
 
-    const rows: any[] = [];
-    (curriculum as CurriculumLevel[]).forEach((level) => {
-      const grade = toGrade(level.sinif_duzeyi);
-      const modelYear = '2025-2026';
-
-      (level.dersler || []).forEach((ders: any) => {
-        const officialSubjectName: string = ders.ders_adi;
-        const subject = SUBJECT_NORMALIZATION_MAP[officialSubjectName] || officialSubjectName;
-
-        if (Array.isArray(ders.temalar)) {
-          ders.temalar.forEach((tema: any) => {
-            const unit = String(tema.tema_adi || 'Genel');
-            (tema.konular || []).forEach((k: any) => {
-              let topicName: string;
-              let monthVal: number | undefined = undefined;
-              if (k && typeof k === 'object') {
-                topicName = String(k.topic || k.name || k.title || 'Konu');
-                if (typeof k.month === 'number') monthVal = k.month;
-              } else {
-                topicName = String(k);
-              }
-              if (monthVal == null) {
-                monthVal = MONTH_DISTRIBUTION[topicName];
-                if (monthVal == null) monthVal = 9;
-              }
-              rows.push({
-                grade,
-                subject,
-                unit,
-                topic: topicName,
-                month: monthVal,
-                officialSubjectName,
-                modelYear,
-                outcomes: [],
-                tytWeight: 0,
-                aytWeight: 0,
-              });
-            });
-          });
-        }
-
-        if (Array.isArray(ders.uniteler)) {
-          ders.uniteler.forEach((unite: any) => {
-            const unit = String(unite.unite_adi || 'Genel');
-            (unite.konular || []).forEach((k: any) => {
-              let topicName: string;
-              let monthVal: number | undefined = undefined;
-              if (k && typeof k === 'object') {
-                topicName = String(k.topic || k.name || k.title || 'Konu');
-                if (typeof k.month === 'number') monthVal = k.month;
-              } else {
-                topicName = String(k);
-              }
-              if (monthVal == null) {
-                monthVal = MONTH_DISTRIBUTION[topicName];
-                if (monthVal == null) monthVal = 9;
-              }
-              rows.push({
-                grade,
-                subject,
-                unit,
-                topic: topicName,
-                month: monthVal,
-                officialSubjectName,
-                modelYear,
-                outcomes: [],
-                tytWeight: 0,
-                aytWeight: 0,
-              });
-            });
-          });
-        }
-      });
-    });
-
-    const uniqKey = (r: any) => `${r.grade}|${(r.subject||'').toLowerCase()}|${(r.topic||'').toLowerCase()}`;
-    const uniqMap = new Map<string, typeof rows[number]>();
-    rows.forEach(r => { if (!uniqMap.has(uniqKey(r))) uniqMap.set(uniqKey(r), r); });
-    const uniqueRows = Array.from(uniqMap.values());
-
-    const batchSize = 1000;
-    for (let i = 0; i < uniqueRows.length; i += batchSize) {
-      const chunk = uniqueRows.slice(i, i + batchSize);
-      await prisma.mebTopic.createMany({ data: chunk });
-    }
-
-    console.log(`[SEED] ${uniqueRows.length} konu curriculum-source.ts dosyasından yüklendi.`);
-  } else {
-    console.log('[SEED] MebTopic zaten mevcut, atlanıyor.');
-  }
-
-  // Test verilerini oluştur
-  const testUser = await prisma.user.create({
-    data: {
-      email: 'test@okuz.ai',
-      password: 'hashedpassword123',
-      name: 'Test Student',
-      role: 'STUDENT',
+  // 1. Rolleri oluştur
+  console.log('📝 Roller oluşturuluyor...');
+  const adminRole = await (prisma as any).role.upsert({
+    where: { name: 'ADMIN' },
+    update: {},
+    create: {
+      name: 'ADMIN',
+      description: 'Sistem yöneticisi - tüm yetkilere sahip',
     },
   });
 
-  const testPlan = await prisma.plan.create({
-    data: {
-      userId: testUser.id,
-      title: 'Haftalık Çalışma Planı',
-      description: 'Bu hafta matematik ve fizik çalışacağım',
-      type: 'WEEKLY',
-      subjects: ['Mathematics', 'Physics'],
-      goals: ['Matematik testi çöz', 'Fizik formülleri ezberle'],
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  const teacherRole = await (prisma as any).role.upsert({
+    where: { name: 'TEACHER' },
+    update: {},
+    create: {
+      name: 'TEACHER',
+      description: 'Öğretmen - öğrencileri yönetebilir',
+    },
+  });
+
+  const studentRole = await (prisma as any).role.upsert({
+    where: { name: 'STUDENT' },
+    update: {},
+    create: {
+      name: 'STUDENT',
+      description: 'Öğrenci - kendi verilerini yönetebilir',
+    },
+  });
+
+  const parentRole = await (prisma as any).role.upsert({
+    where: { name: 'PARENT' },
+    update: {},
+    create: {
+      name: 'PARENT',
+      description: 'Veli - çocuğunun verilerini görüntüleyebilir',
+    },
+  });
+
+  // 2. İzinleri oluştur
+  console.log('🔐 İzinler oluşturuluyor...');
+  const permissions = [
+    // Kullanıcı yönetimi
+    { name: 'users.create', resource: 'users', action: 'create', description: 'Kullanıcı oluşturma' },
+    { name: 'users.read', resource: 'users', action: 'read', description: 'Kullanıcı görüntüleme' },
+    { name: 'users.update', resource: 'users', action: 'update', description: 'Kullanıcı güncelleme' },
+    { name: 'users.delete', resource: 'users', action: 'delete', description: 'Kullanıcı silme' },
+    
+    // Öğrenci yönetimi
+    { name: 'students.create', resource: 'students', action: 'create', description: 'Öğrenci oluşturma' },
+    { name: 'students.read', resource: 'students', action: 'read', description: 'Öğrenci görüntüleme' },
+    { name: 'students.update', resource: 'students', action: 'update', description: 'Öğrenci güncelleme' },
+    { name: 'students.delete', resource: 'students', action: 'delete', description: 'Öğrenci silme' },
+    
+    // Öğretmen yönetimi
+    { name: 'teachers.create', resource: 'teachers', action: 'create', description: 'Öğretmen oluşturma' },
+    { name: 'teachers.read', resource: 'teachers', action: 'read', description: 'Öğretmen görüntüleme' },
+    { name: 'teachers.update', resource: 'teachers', action: 'update', description: 'Öğretmen güncelleme' },
+    { name: 'teachers.delete', resource: 'teachers', action: 'delete', description: 'Öğretmen silme' },
+    
+    // Kurs yönetimi
+    { name: 'courses.create', resource: 'courses', action: 'create', description: 'Kurs oluşturma' },
+    { name: 'courses.read', resource: 'courses', action: 'read', description: 'Kurs görüntüleme' },
+    { name: 'courses.update', resource: 'courses', action: 'update', description: 'Kurs güncelleme' },
+    { name: 'courses.delete', resource: 'courses', action: 'delete', description: 'Kurs silme' },
+    
+    // Dashboard
+    { name: 'dashboard.read', resource: 'dashboard', action: 'read', description: 'Dashboard görüntüleme' },
+    { name: 'analytics.read', resource: 'analytics', action: 'read', description: 'Analitik görüntüleme' },
+    
+    // Sistem yönetimi
+    { name: 'system.manage', resource: 'system', action: 'manage', description: 'Sistem yönetimi' },
+    { name: 'settings.manage', resource: 'settings', action: 'manage', description: 'Ayarlar yönetimi' },
+  ];
+
+  const createdPermissions = [];
+  for (const permission of permissions) {
+    const created = await (prisma as any).permission.upsert({
+      where: { name: permission.name },
+      update: {},
+      create: permission,
+    });
+    createdPermissions.push(created);
+  }
+
+  // 3. Rol-İzin ilişkilerini oluştur
+  console.log('🔗 Rol-İzin ilişkileri oluşturuluyor...');
+  
+  // Admin - tüm izinler
+  for (const permission of createdPermissions) {
+    await (prisma as any).rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: adminRole.id,
+          permissionId: permission.id,
+        },
+      },
+      update: {},
+      create: {
+        roleId: adminRole.id,
+        permissionId: permission.id,
+      },
+    });
+  }
+
+  // Teacher - öğrenci ve kurs yönetimi
+  const teacherPermissions = createdPermissions.filter(p => 
+    p.resource === 'students' || p.resource === 'courses' || p.resource === 'dashboard'
+  );
+  for (const permission of teacherPermissions) {
+    await (prisma as any).rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: teacherRole.id,
+          permissionId: permission.id,
+        },
+      },
+      update: {},
+      create: {
+        roleId: teacherRole.id,
+        permissionId: permission.id,
+      },
+    });
+  }
+
+  // Student - sadece okuma izinleri
+  const studentPermissions = createdPermissions.filter(p => 
+    p.action === 'read' && (p.resource === 'students' || p.resource === 'courses' || p.resource === 'dashboard')
+  );
+  for (const permission of studentPermissions) {
+    await (prisma as any).rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: studentRole.id,
+          permissionId: permission.id,
+        },
+      },
+      update: {},
+      create: {
+        roleId: studentRole.id,
+        permissionId: permission.id,
+      },
+    });
+  }
+
+  // Parent - sadece öğrenci okuma izni
+  const parentPermissions = createdPermissions.filter(p => 
+    p.resource === 'students' && p.action === 'read'
+  );
+  for (const permission of parentPermissions) {
+    await (prisma as any).rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: parentRole.id,
+          permissionId: permission.id,
+        },
+      },
+      update: {},
+      create: {
+        roleId: parentRole.id,
+        permissionId: permission.id,
+      },
+    });
+  }
+
+  // 4. Varsayılan admin kullanıcısı oluştur
+  console.log('👤 Varsayılan admin kullanıcısı oluşturuluyor...');
+  const hashedPassword = await bcrypt.hash('admin123', 12);
+  
+  const adminUser = await prisma.user.upsert({
+    where: { email: 'admin@okuz.ai' },
+    update: {},
+    create: {
+      email: 'admin@okuz.ai',
+      password: hashedPassword,
+      name: 'Sistem Yöneticisi',
+      role: 'ADMIN',
+    },
+  });
+
+  // Admin kullanıcısına admin rolü ata
+  await (prisma as any).userRoleMap.upsert({
+    where: {
+      userId_roleId: {
+        userId: adminUser.id,
+        roleId: adminRole.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: adminUser.id,
+      roleId: adminRole.id,
+    },
+  });
+
+  // 5. Test kullanıcıları oluştur
+  console.log('🧪 Test kullanıcıları oluşturuluyor...');
+  
+  // Test öğretmeni
+  const teacherUser = await prisma.user.upsert({
+    where: { email: 'teacher@okuz.ai' },
+    update: {},
+    create: {
+      email: 'teacher@okuz.ai',
+      password: await bcrypt.hash('teacher123', 12),
+      name: 'Test Öğretmeni',
+      role: 'TEACHER',
+    },
+  });
+
+  await (prisma as any).userRoleMap.upsert({
+    where: {
+      userId_roleId: {
+        userId: teacherUser.id,
+        roleId: teacherRole.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: teacherUser.id,
+      roleId: teacherRole.id,
+    },
+  });
+
+  // Test öğrencisi
+  const studentUser = await prisma.user.upsert({
+    where: { email: 'student@okuz.ai' },
+    update: {},
+    create: {
+      email: 'student@okuz.ai',
+      password: await bcrypt.hash('student123', 12),
+      name: 'Test Öğrencisi',
+      role: 'STUDENT',
+      grade: 12,
+    },
+  });
+
+  await (prisma as any).userRoleMap.upsert({
+    where: {
+      userId_roleId: {
+        userId: studentUser.id,
+        roleId: studentRole.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: studentUser.id,
+      roleId: studentRole.id,
+    },
+  });
+
+  // Test velisi
+  const parentUser = await prisma.user.upsert({
+    where: { email: 'parent@okuz.ai' },
+    update: {},
+    create: {
+      email: 'parent@okuz.ai',
+      password: await bcrypt.hash('parent123', 12),
+      name: 'Test Veli',
+      role: 'PARENT',
+    },
+  });
+
+  await (prisma as any).userRoleMap.upsert({
+    where: {
+      userId_roleId: {
+        userId: parentUser.id,
+        roleId: parentRole.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: parentUser.id,
+      roleId: parentRole.id,
+    },
+  });
+
+  // 6. Test verileri oluştur
+  console.log('📊 Test verileri oluşturuluyor...');
+  
+  // Öğrenci profili
+  await prisma.studentProfile.upsert({
+    where: { userId: studentUser.id },
+    update: {},
+    create: {
+      userId: studentUser.id,
+      grade: 12,
+      field: 'Sayısal',
+      goals: ['YKS TYT', 'YKS AYT'],
+      learningStyle: 'Görsel',
+      strengths: ['Matematik', 'Fizik'],
+      weaknesses: ['Türkçe', 'Tarih'],
+      interests: ['Bilgisayar', 'Mühendislik'],
+      selectedSubjects: ['Matematik', 'Fizik', 'Kimya'],
+    },
+  });
+
+  // Gamification profili
+  await prisma.gamificationProfile.upsert({
+    where: { userId: studentUser.id },
+    update: {},
+    create: {
+      userId: studentUser.id,
+      level: 1,
+      experience: 0,
+      energy: 100,
+      maxEnergy: 100,
+      streak: 0,
+      totalPoints: 0,
+      coins: 0,
+    },
+  });
+
+  // Study streak
+  await prisma.studyStreak.upsert({
+    where: { userId: studentUser.id },
+    update: {},
+    create: {
+      userId: studentUser.id,
+      currentStreak: 0,
+      longestStreak: 0,
       isActive: true,
     },
   });
 
-  const testAchievement = await prisma.achievement.create({
-    data: {
-      userId: testUser.id,
-      title: 'İlk Çalışma Seansı',
-      description: 'İlk çalışma seansını tamamladın!',
-      type: 'MILESTONE',
-      points: 100,
-    },
+  // 7. Entity Schemas oluştur
+  console.log('📋 Entity Schemas oluşturuluyor...');
+  
+  // Students schema
+  await (prisma as any).entitySchema.upsert({
+    where: { entityName: 'students' },
+    update: {},
+    create: {
+      entityName: 'students',
+      displayName: 'Öğrenciler',
+      description: 'Öğrenci yönetimi',
+      apiEndpoint: '/api/crud/students',
+      icon: '👨‍🎓',
+      color: '#3b82f6',
+      sortOrder: 1,
+      schema: {
+        fields: [
+          { name: 'name', label: 'Ad Soyad', type: 'string', required: true, showInTable: true },
+          { name: 'email', label: 'Email', type: 'string', required: true, showInTable: true },
+          { name: 'grade', label: 'Sınıf', type: 'select', required: true, showInTable: true, options: [
+            { value: '9', label: '9. Sınıf' },
+            { value: '10', label: '10. Sınıf' },
+            { value: '11', label: '11. Sınıf' },
+            { value: '12', label: '12. Sınıf' }
+          ]},
+          { name: 'field', label: 'Alan', type: 'select', required: true, showInTable: true, options: [
+            { value: 'Sayısal', label: 'Sayısal' },
+            { value: 'Eşit Ağırlık', label: 'Eşit Ağırlık' },
+            { value: 'Sözel', label: 'Sözel' },
+            { value: 'Dil', label: 'Dil' }
+          ]},
+          { name: 'goals', label: 'Hedefler', type: 'multiselect', showInTable: false, options: [
+            { value: 'YKS_TYT', label: 'YKS TYT' },
+            { value: 'YKS_AYT', label: 'YKS AYT' },
+            { value: 'LGS', label: 'LGS' },
+            { value: 'KPSS', label: 'KPSS' }
+          ]},
+          { name: 'learningStyle', label: 'Öğrenme Stili', type: 'select', showInTable: true, options: [
+            { value: 'Görsel', label: 'Görsel' },
+            { value: 'İşitsel', label: 'İşitsel' },
+            { value: 'Kinestetik', label: 'Kinestetik' },
+            { value: 'Okuma/Yazma', label: 'Okuma/Yazma' }
+          ]},
+          { name: 'isActive', label: 'Aktif', type: 'boolean', showInTable: true }
+        ]
+      }
+    }
   });
 
-  const biologySession = await prisma.studySession.create({
-    data: {
-      planId: testPlan.id,
-      userId: testUser.id,
-      subject: 'Biyoloji',
-      topic: 'Oksijenli ve Oksijensiz Solunum',
-      duration: 60,
-      startTime: new Date('2025-09-24T08:00:00Z'),
-      endTime: new Date('2025-09-24T09:00:00Z'),
-    },
+  // Teachers schema
+  await (prisma as any).entitySchema.upsert({
+    where: { entityName: 'teachers' },
+    update: {},
+    create: {
+      entityName: 'teachers',
+      displayName: 'Öğretmenler',
+      description: 'Öğretmen yönetimi',
+      apiEndpoint: '/api/crud/teachers',
+      icon: '👨‍🏫',
+      color: '#10b981',
+      sortOrder: 2,
+      schema: {
+        fields: [
+          { name: 'name', label: 'Ad Soyad', type: 'string', required: true, showInTable: true },
+          { name: 'email', label: 'Email', type: 'string', required: true, showInTable: true },
+          { name: 'phone', label: 'Telefon', type: 'string', showInTable: true },
+          { name: 'subjects', label: 'Branşlar', type: 'multiselect', required: true, showInTable: true, options: [
+            { value: 'Matematik', label: 'Matematik' },
+            { value: 'Fizik', label: 'Fizik' },
+            { value: 'Kimya', label: 'Kimya' },
+            { value: 'Biyoloji', label: 'Biyoloji' },
+            { value: 'Türkçe', label: 'Türkçe' },
+            { value: 'Tarih', label: 'Tarih' },
+            { value: 'Coğrafya', label: 'Coğrafya' }
+          ]},
+          { name: 'experience', label: 'Deneyim (Yıl)', type: 'number', showInTable: true },
+          { name: 'education', label: 'Eğitim Durumu', type: 'select', showInTable: true, options: [
+            { value: 'Lisans', label: 'Lisans' },
+            { value: 'Yüksek Lisans', label: 'Yüksek Lisans' },
+            { value: 'Doktora', label: 'Doktora' }
+          ]},
+          { name: 'hourlyRate', label: 'Saatlik Ücret (TL)', type: 'number', showInTable: true },
+          { name: 'isActive', label: 'Aktif', type: 'boolean', showInTable: true }
+        ]
+      }
+    }
   });
 
-  const turkishSession = await prisma.studySession.create({
-    data: {
-      planId: testPlan.id,
-      userId: testUser.id,
-      subject: 'Türkçe',
-      topic: 'İstanbul Kültür Üniversitesi',
-      duration: 45,
-      startTime: new Date('2025-09-24T13:00:00Z'),
-      endTime: new Date('2025-09-24T13:45:00Z'),
-    },
+  // Courses schema
+  await (prisma as any).entitySchema.upsert({
+    where: { entityName: 'courses' },
+    update: {},
+    create: {
+      entityName: 'courses',
+      displayName: 'Kurslar',
+      description: 'Kurs yönetimi',
+      apiEndpoint: '/api/crud/courses',
+      icon: '📚',
+      color: '#f59e0b',
+      sortOrder: 3,
+      schema: {
+        fields: [
+          { name: 'title', label: 'Kurs Adı', type: 'string', required: true, showInTable: true },
+          { name: 'description', label: 'Açıklama', type: 'text', showInTable: false },
+          { name: 'subject', label: 'Ders', type: 'select', required: true, showInTable: true, options: [
+            { value: 'Matematik', label: 'Matematik' },
+            { value: 'Fizik', label: 'Fizik' },
+            { value: 'Kimya', label: 'Kimya' },
+            { value: 'Biyoloji', label: 'Biyoloji' },
+            { value: 'Türkçe', label: 'Türkçe' },
+            { value: 'Tarih', label: 'Tarih' },
+            { value: 'Coğrafya', label: 'Coğrafya' }
+          ]},
+          { name: 'grade', label: 'Sınıf', type: 'select', required: true, showInTable: true, options: [
+            { value: '9', label: '9. Sınıf' },
+            { value: '10', label: '10. Sınıf' },
+            { value: '11', label: '11. Sınıf' },
+            { value: '12', label: '12. Sınıf' },
+            { value: 'Mezun', label: 'Mezun' }
+          ]},
+          { name: 'level', label: 'Seviye', type: 'select', required: true, showInTable: true, options: [
+            { value: 'Başlangıç', label: 'Başlangıç' },
+            { value: 'Orta', label: 'Orta' },
+            { value: 'İleri', label: 'İleri' },
+            { value: 'Uzman', label: 'Uzman' }
+          ]},
+          { name: 'duration', label: 'Süre (Dakika)', type: 'number', required: true, showInTable: true },
+          { name: 'price', label: 'Fiyat (TL)', type: 'number', showInTable: true },
+          { name: 'maxStudents', label: 'Maksimum Öğrenci', type: 'number', showInTable: true },
+          { name: 'isActive', label: 'Aktif', type: 'boolean', showInTable: true },
+          { name: 'isOnline', label: 'Online', type: 'boolean', showInTable: true }
+        ]
+      }
+    }
   });
 
-  console.log('Seed data created:', {
-    testUser,
-    testPlan,
-    testAchievement,
-    biologySession,
-    turkishSession,
+  // Users schema
+  await (prisma as any).entitySchema.upsert({
+    where: { entityName: 'users' },
+    update: {},
+    create: {
+      entityName: 'users',
+      displayName: 'Kullanıcılar',
+      description: 'Kullanıcı yönetimi',
+      apiEndpoint: '/api/crud/users',
+      icon: '👥',
+      color: '#8b5cf6',
+      sortOrder: 4,
+      schema: {
+        fields: [
+          { name: 'name', label: 'Ad Soyad', type: 'string', required: true, showInTable: true },
+          { name: 'email', label: 'Email', type: 'string', required: true, showInTable: true },
+          { name: 'role', label: 'Rol', type: 'select', required: true, showInTable: true, options: [
+            { value: 'STUDENT', label: 'Öğrenci' },
+            { value: 'TEACHER', label: 'Öğretmen' },
+            { value: 'PARENT', label: 'Veli' },
+            { value: 'ADMIN', label: 'Admin' }
+          ]},
+          { name: 'subscriptionStatus', label: 'Abonelik Durumu', type: 'select', showInTable: true, options: [
+            { value: 'TRIAL', label: 'Deneme' },
+            { value: 'FREE', label: 'Ücretsiz' },
+            { value: 'PREMIUM', label: 'Premium' },
+            { value: 'FAMILY', label: 'Aile' },
+            { value: 'CANCELLED', label: 'İptal' }
+          ]},
+          { name: 'grade', label: 'Sınıf', type: 'number', showInTable: true },
+          { name: 'createdAt', label: 'Kayıt Tarihi', type: 'date', showInTable: true }
+        ]
+      }
+    }
   });
+
+  console.log('✅ Veritabanı seeding tamamlandı!');
+  console.log('📋 Oluşturulan kullanıcılar:');
+  console.log('   👤 Admin: admin@okuz.ai / admin123');
+  console.log('   👨‍🏫 Öğretmen: teacher@okuz.ai / teacher123');
+  console.log('   👨‍🎓 Öğrenci: student@okuz.ai / student123');
+  console.log('   👨‍👩‍👧‍👦 Veli: parent@okuz.ai / parent123');
+  console.log('📋 Oluşturulan Entity Schemas:');
+  console.log('   👨‍🎓 Öğrenciler (students)');
+  console.log('   👨‍🏫 Öğretmenler (teachers)');
+  console.log('   📚 Kurslar (courses)');
+  console.log('   👥 Kullanıcılar (users)');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ Seeding hatası:', e);
     process.exit(1);
   })
   .finally(async () => {

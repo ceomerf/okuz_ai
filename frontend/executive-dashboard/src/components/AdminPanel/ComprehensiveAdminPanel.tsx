@@ -81,6 +81,7 @@ import {
   ViewComfy,
 } from '@mui/icons-material';
 import AdvancedDataTable from './AdvancedDataTable';
+import { apiService } from '../../services/api.service';
 
 // Veri tipleri
 interface User {
@@ -187,78 +188,17 @@ const ComprehensiveAdminPanel: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Mock veri - gerçek API'den gelecek
-      const mockUsers: User[] = [
-        {
-          id: '1',
-          name: 'Ahmet Yılmaz',
-          email: 'ahmet@example.com',
-          role: 'admin',
-          status: 'active',
-          createdAt: '2024-01-15',
-          lastLogin: '2024-01-20',
-          subscription: 'premium',
-          performance: 95,
-        },
-        {
-          id: '2',
-          name: 'Ayşe Demir',
-          email: 'ayse@example.com',
-          role: 'teacher',
-          status: 'active',
-          createdAt: '2024-01-10',
-          lastLogin: '2024-01-19',
-          subscription: 'basic',
-          performance: 88,
-        },
-      ];
+      const [usersRes, studentsRes, teachersRes, coursesRes] = await Promise.all([
+        apiService.getUsers(1, 50),
+        apiService.getStudents(1, 50),
+        apiService.getTeachers(1, 50),
+        apiService.getCourses(1, 50),
+      ]);
 
-      const mockStudents: Student[] = [
-        {
-          id: '1',
-          name: 'Mehmet Kaya',
-          email: 'mehmet@example.com',
-          grade: 12,
-          subjects: ['Matematik', 'Fizik', 'Kimya'],
-          performance: 85,
-          attendance: 92,
-          lastActivity: '2024-01-20',
-          parentEmail: 'parent@example.com',
-          status: 'active',
-        },
-      ];
-
-      const mockTeachers: Teacher[] = [
-        {
-          id: '1',
-          name: 'Dr. Fatma Özkan',
-          email: 'fatma@example.com',
-          subjects: ['Matematik', 'Geometri'],
-          experience: 15,
-          rating: 4.8,
-          students: 45,
-          status: 'active',
-        },
-      ];
-
-      const mockCourses: Course[] = [
-        {
-          id: '1',
-          title: '12. Sınıf Matematik',
-          subject: 'Matematik',
-          grade: 12,
-          students: 25,
-          progress: 75,
-          status: 'active',
-          startDate: '2024-01-01',
-          endDate: '2024-06-30',
-        },
-      ];
-
-      setUsers(mockUsers);
-      setStudents(mockStudents);
-      setTeachers(mockTeachers);
-      setCourses(mockCourses);
+      if (usersRes.success && usersRes.data) setUsers(usersRes.data.users as any);
+      if (studentsRes.success && studentsRes.data) setStudents(studentsRes.data.students as any);
+      if (teachersRes.success && teachersRes.data) setTeachers(teachersRes.data.teachers as any);
+      if (coursesRes.success && coursesRes.data) setCourses(coursesRes.data.courses as any);
     } catch (error) {
       setSnackbar({ open: true, message: 'Veri yüklenirken hata oluştu', severity: 'error' });
     } finally {

@@ -432,7 +432,7 @@ export class EventValidatorService {
       }
 
       // Veritabanından al
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id: userId },
         select: { role: true },
       });

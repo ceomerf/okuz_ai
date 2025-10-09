@@ -6,7 +6,7 @@ export class CoachingService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getSmartCoaching(userId: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).user.findUnique({
       where: { id: userId },
       include: {
         studentProfile: true,

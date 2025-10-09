@@ -444,14 +444,14 @@ export class PlanOptimizationService {
    */
   private async identifyWeakAreas(userId: string): Promise<string[]> {
     try {
-      const examResults = await this.prisma.examResult.findMany({
+      const examResults = await (this.prisma as any).examResult.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
         take: 20,
       });
 
       const subjectScores: Record<string, number[]> = {};
-      examResults.forEach(exam => {
+      examResults.forEach((exam: any) => {
         if (!subjectScores[exam.subject]) {
           subjectScores[exam.subject] = [];
         }

@@ -8,7 +8,7 @@ export class CurriculumEngineService {
   // MEB konu önşartları ve sınıf/alan filtreleriyle konu sıralaması oluştur
   async buildPrerequisiteAwareTopicOrder(subjects: string[], grade: number, examType?: string): Promise<string[]> {
     // Basit ilk sürüm: seçilen derslere ait MebTopic'leri çek, ay ve YKS ağırlığına göre sırala
-    const topics = await this.prisma.mebTopic.findMany({
+    const topics = await (this.prisma as any).mebTopic.findMany({
       where: { subject: { in: subjects }, grade },
       orderBy: [
         { month: 'asc' },
@@ -19,8 +19,8 @@ export class CurriculumEngineService {
     });
 
     // Önşart ağı basit kontrol: prerequisite olanları sonraya itme (tam topolojik sıralama yerine minimal kısıt)
-    const prereqs = await this.prisma.topicPrerequisite.findMany({
-      where: { topicId: { in: topics.map(t => t.id) } },
+    const prereqs = await (this.prisma as any).topicPrerequisite.findMany({
+      where: { topicId: { in: topics.map((t: any) => t.id) } },
     });
     const prereqMap = new Map<string, Set<string>>();
     for (const p of prereqs) {
@@ -28,7 +28,7 @@ export class CurriculumEngineService {
       prereqMap.get(p.topicId)!.add(p.prerequisiteId);
     }
 
-    const idToTopic = new Map(topics.map(t => [t.id, t] as const));
+    const idToTopic = new Map(topics.map((t: any) => [t.id, t] as const));
     const ordered: string[] = [];
     const visited = new Set<string>();
 
@@ -45,11 +45,11 @@ export class CurriculumEngineService {
       stack.delete(id);
       visited.add(id);
       const t = idToTopic.get(id);
-      if (t) ordered.push(`${t.subject}::${t.topic}`);
+      if (t) ordered.push(`${(t as any).subject}::${(t as any).topic}`);
     };
 
     for (const t of topics) dfs(t.id, new Set());
-    return ordered.length > 0 ? ordered : topics.map(t => `${t.subject}::${t.topic}`);
+    return ordered.length > 0 ? ordered : topics.map((t: any) => `${t.subject}::${t.topic}`);
   }
 }
 

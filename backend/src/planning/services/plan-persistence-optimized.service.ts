@@ -96,7 +96,7 @@ export class PlanPersistenceOptimizedService {
       }
 
       // Optimized query ile plan ve session'ları tek sorguda getir
-      const plan = await this.prisma.plan.findFirst({
+      const plan = await (this.prisma as any).plan.findFirst({
         where: { 
           id: planId, 
           userId 
@@ -147,7 +147,7 @@ export class PlanPersistenceOptimizedService {
       this.logger.log(`Updating plan: ${planId} for user: ${userId}`);
 
       // Plan varlığını kontrol et
-      const existingPlan = await this.prisma.plan.findFirst({
+      const existingPlan = await (this.prisma as any).plan.findFirst({
         where: { id: planId, userId },
         select: { id: true, isActive: true },
       });
@@ -157,7 +157,7 @@ export class PlanPersistenceOptimizedService {
       }
 
       // Plan güncelle
-      const updatedPlan = await this.prisma.plan.update({
+      const updatedPlan = await (this.prisma as any).plan.update({
         where: { id: planId },
         data: {
           ...data,
@@ -200,7 +200,7 @@ export class PlanPersistenceOptimizedService {
       this.logger.log(`Deleting plan: ${planId} for user: ${userId}`);
 
       // Plan varlığını kontrol et
-      const existingPlan = await this.prisma.plan.findFirst({
+      const existingPlan = await (this.prisma as any).plan.findFirst({
         where: { id: planId, userId },
         select: { id: true },
       });

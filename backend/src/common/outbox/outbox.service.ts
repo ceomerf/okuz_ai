@@ -33,7 +33,7 @@ export class OutboxService {
     payload: any,
   ): Promise<void> {
     try {
-      await this.prisma.outboxEvent.create({
+      await (this.prisma as any).outboxEvent.create({
         data: {
           userId: 'system', // Default user for system events
           aggregateId,
@@ -56,7 +56,7 @@ export class OutboxService {
    * Process pending outbox events
    */
   async processPendingEvents(): Promise<void> {
-    const pendingEvents = await this.prisma.outboxEvent.findMany({
+    const pendingEvents = await (this.prisma as any).outboxEvent.findMany({
       where: {
         processed: false,
         retryCount: { lt: 3 }, // Max 3 retries
@@ -104,7 +104,7 @@ export class OutboxService {
     }
 
     // Mark as processed
-    await this.prisma.outboxEvent.update({
+    await (this.prisma as any).outboxEvent.update({
       where: { id: event.id },
       data: {
         processed: true,
@@ -198,7 +198,7 @@ export class OutboxService {
    * Increment retry count for failed events
    */
   private async incrementRetryCount(eventId: string): Promise<void> {
-    await this.prisma.outboxEvent.update({
+    await (this.prisma as any).outboxEvent.update({
       where: { id: eventId },
       data: {
         retryCount: { increment: 1 },
@@ -216,10 +216,10 @@ export class OutboxService {
     failed: number;
   }> {
     const [total, pending, processed, failed] = await Promise.all([
-      this.prisma.outboxEvent.count(),
-      this.prisma.outboxEvent.count({ where: { processed: false } }),
-      this.prisma.outboxEvent.count({ where: { processed: true } }),
-      this.prisma.outboxEvent.count({ where: { retryCount: { gte: 3 } } }),
+      (this.prisma as any).outboxEvent.count(),
+      (this.prisma as any).outboxEvent.count({ where: { processed: false } }),
+      (this.prisma as any).outboxEvent.count({ where: { processed: true } }),
+      (this.prisma as any).outboxEvent.count({ where: { retryCount: { gte: 3 } } }),
     ]);
 
     return { total, pending, processed, failed };

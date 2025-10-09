@@ -65,12 +65,12 @@ export class QueryBenchmarkService {
     const originalResults = await Promise.all(
       userIds.map(async (userId) => {
         // Her user için ayrı sorgular
-        const user = await this.prisma.user.findUnique({
+        const user = await (this.prisma as any).user.findUnique({
           where: { id: userId },
           include: { studentProfile: true },
         });
         
-        const plans = await this.prisma.plan.findMany({
+        const plans = await (this.prisma as any).plan.findMany({
           where: { userId },
           include: { studySessions: true },
         });
@@ -117,7 +117,7 @@ export class QueryBenchmarkService {
     const originalStart = Date.now();
     const originalMemoryStart = process.memoryUsage().heapUsed;
     
-    const originalResults = await this.prisma.coachStudent.findMany({
+    const originalResults = await (this.prisma as any).coachStudent.findMany({
       where: { coachId, isActive: true },
       include: {
         student: {
@@ -175,24 +175,24 @@ export class QueryBenchmarkService {
     const originalResults = await Promise.all(
       userIds.map(async (userId) => {
         // Her user için ayrı sorgular
-        const user = await this.prisma.user.findUnique({
+        const user = await (this.prisma as any).user.findUnique({
           where: { id: userId },
           include: { studentProfile: true },
         });
         
-        const studySessions = await this.prisma.studySession.findMany({
+        const studySessions = await (this.prisma as any).studySession.findMany({
           where: { userId },
           orderBy: { startTime: 'desc' },
           take: 200,
         });
         
-        const quizzes = await this.prisma.quiz.findMany({
+        const quizzes = await (this.prisma as any).quiz.findMany({
           where: { userId },
           orderBy: { createdAt: 'desc' },
           take: 100,
         });
         
-        const examResults = await this.prisma.examResult.findMany({
+        const examResults = await (this.prisma as any).examResult.findMany({
           where: { userId },
           orderBy: { createdAt: 'desc' },
           take: 50,
@@ -302,12 +302,12 @@ export class QueryBenchmarkService {
     
     const originalResults = await Promise.all(
       testUserIds.map(async (userId) => {
-        const user = await this.prisma.user.findUnique({
+        const user = await (this.prisma as any).user.findUnique({
           where: { id: userId },
           include: { studentProfile: true },
         });
         
-        const plans = await this.prisma.plan.findMany({
+        const plans = await (this.prisma as any).plan.findMany({
           where: { userId },
           include: { studySessions: true },
         });

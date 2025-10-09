@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../cache/cache.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 export interface FeatureFlag {
   key: string;
@@ -31,6 +32,7 @@ export class FeatureFlagsService {
   constructor(
     private readonly configService: ConfigService,
     private readonly cacheService: CacheService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -43,11 +45,11 @@ export class FeatureFlagsService {
       updatedAt: new Date(),
     };
 
-    await this.cacheService.set(
-      `${this.cacheKey}:${flag.key}`,
-      JSON.stringify(newFlag),
-      3600 // 1 hour cache
-    );
+    await (this.prisma as any).featureFlagEntity.upsert({
+      where: { key: flag.key },
+      update: { ...newFlag },
+      create: { ...newFlag },
+    });
 
     this.logger.log(`Feature flag created: ${flag.key}`);
     return newFlag;
@@ -68,11 +70,7 @@ export class FeatureFlagsService {
       updatedAt: new Date(),
     };
 
-    await this.cacheService.set(
-      `${this.cacheKey}:${key}`,
-      JSON.stringify(updatedFlag),
-      3600
-    );
+    await (this.prisma as any).featureFlagEntity.update({ where: { key }, data: updatedFlag });
 
     this.logger.log(`Feature flag updated: ${key}`);
     return updatedFlag;
@@ -83,11 +81,8 @@ export class FeatureFlagsService {
    */
   async getFeatureFlag(key: string): Promise<FeatureFlag | null> {
     try {
-      const cached = await this.cacheService.get(`${this.cacheKey}:${key}`);
-      if (cached) {
-        return JSON.parse(cached as string);
-      }
-      return null;
+      const flag = await (this.prisma as any).featureFlagEntity.findUnique({ where: { key } });
+      return flag ? (flag as any) : null;
     } catch (error) {
       this.logger.error(`Failed to get feature flag ${key}: ${(error as Error).message}`);
       return null;
@@ -99,17 +94,8 @@ export class FeatureFlagsService {
    */
   async getAllFeatureFlags(): Promise<FeatureFlag[]> {
     try {
-      const keys = await (this.cacheService as any).keys(`${this.cacheKey}:*`);
-      const flags: FeatureFlag[] = [];
-
-      for (const key of keys) {
-        const cached = await this.cacheService.get(key);
-        if (cached) {
-          flags.push(JSON.parse(cached as string));
-        }
-      }
-
-      return flags;
+      const flags = await (this.prisma as any).featureFlagEntity.findMany({ orderBy: { key: 'asc' } });
+      return flags as any;
     } catch (error) {
       this.logger.error(`Failed to get all feature flags: ${(error as Error).message}`);
       return [];
@@ -330,7 +316,7 @@ export class FeatureFlagsService {
    * Delete a feature flag
    */
   async deleteFeatureFlag(key: string): Promise<void> {
-    await this.cacheService.del(`${this.cacheKey}:${key}`);
+    await (this.prisma as any).featureFlagEntity.delete({ where: { key } });
     this.logger.log(`Feature flag deleted: ${key}`);
   }
 }

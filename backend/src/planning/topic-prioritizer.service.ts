@@ -9,7 +9,7 @@ export class TopicPrioritizerService {
   async prioritizeTopics(topicOrder: string[], examFocus: 'TYT' | 'AYT' | 'GENEL' = 'GENEL', topicMastery?: Record<string, number>): Promise<string[]> {
     const list = [...topicOrder];
     const mastery = topicMastery || {};
-    const items = await this.prisma.mebTopic.findMany({
+    const items = await (this.prisma as any).mebTopic.findMany({
       where: {
         OR: list.map(t => {
           const [subject, topic] = t.split('::');
@@ -18,11 +18,11 @@ export class TopicPrioritizerService {
       },
       select: { subject: true, topic: true, tytWeight: true, aytWeight: true },
     });
-    const weightMap = new Map(items.map(i => [`${i.subject}::${i.topic}`, i] as const));
+    const weightMap = new Map(items.map((i: any) => [`${i.subject}::${i.topic}`, i] as const));
 
     const score = (key: string) => {
       const data = weightMap.get(key as any);
-      const base = examFocus === 'TYT' ? (data?.tytWeight || 0) : examFocus === 'AYT' ? (data?.aytWeight || 0) : ((data?.tytWeight || 0) + (data?.aytWeight || 0));
+      const base = examFocus === 'TYT' ? ((data as any)?.tytWeight || 0) : examFocus === 'AYT' ? ((data as any)?.aytWeight || 0) : (((data as any)?.tytWeight || 0) + ((data as any)?.aytWeight || 0));
       const masteryScore = mastery[key] != null ? (100 - mastery[key]) : 10; // düşük ustalık daha yüksek öncelik
       return base * 2 + masteryScore;
     };

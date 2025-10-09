@@ -94,7 +94,7 @@ export class PlanningService {
       const planDurationDays = isWeekly ? 7 : Number((data as any)?.planDurationDays) > 0 ? Number((data as any).planDurationDays) : undefined;
 
       // CompositePlanner: müfredat + performans + YKS ağırlıkları
-      const profile = await this.prisma.user.findUnique({ where: { id: (data as any).userId }, include: { studentProfile: true } });
+      const profile = await (this.prisma as any).user.findUnique({ where: { id: (data as any).userId }, include: { studentProfile: true } });
       const grade = profile?.studentProfile?.grade || 11;
       const examFocus = (data as any)?.targetExam === 'AYT' ? 'AYT' : ( (data as any)?.targetExam === 'TYT' ? 'TYT' : 'GENEL');
       const baseOrder = await this.curriculumEngine.buildPrerequisiteAwareTopicOrder((data as any).subjects || [], grade, (data as any)?.targetExam);
@@ -219,7 +219,7 @@ export class PlanningService {
 
   // Kullanıcı bağlamını analiz et
   private async analyzeUserContext(userId: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).user.findUnique({
       where: { id: userId },
       include: {
         studentProfile: true,
@@ -272,14 +272,14 @@ export class PlanningService {
 
   // Zayıf alanları tespit et
   private async identifyWeakAreas(userId: string): Promise<string[]> {
-    const examResults = await this.prisma.examResult.findMany({
+    const examResults = await (this.prisma as any).examResult.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 20,
     });
 
     const subjectScores: Record<string, number[]> = {};
-    examResults.forEach(exam => {
+    examResults.forEach((exam: any) => {
       if (!subjectScores[exam.subject]) {
         subjectScores[exam.subject] = [];
       }
@@ -299,14 +299,14 @@ export class PlanningService {
 
   // Güçlü alanları tespit et
   private async identifyStrongAreas(userId: string): Promise<string[]> {
-    const examResults = await this.prisma.examResult.findMany({
+    const examResults = await (this.prisma as any).examResult.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 20,
     });
 
     const subjectScores: Record<string, number[]> = {};
-    examResults.forEach(exam => {
+    examResults.forEach((exam: any) => {
       if (!subjectScores[exam.subject]) {
         subjectScores[exam.subject] = [];
       }
@@ -450,7 +450,7 @@ export class PlanningService {
       throw e;
     }
     // Yedek: Prisma'dan al ve istatistikleri hesapla (unit test beklentisi)
-    const plans = await this.prisma.plan.findMany({ where: { userId }, include: { studySessions: true } as any });
+    const plans = await (this.prisma as any).plan.findMany({ where: { userId }, include: { studySessions: true } as any });
     return (plans as any[]).map((plan: any) => {
       const sessions: any[] = plan.sessions || [];
       const totalSessions = sessions.length;
@@ -541,7 +541,7 @@ export class PlanningService {
   // AI ile ilgili eksik metodlar
   async generateUstaKocPrompt(studentId: string, planParams: any): Promise<string> {
     // Usta Koç prompt üretimi
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).user.findUnique({
       where: { id: studentId },
       include: { studentProfile: true },
     });
@@ -584,7 +584,7 @@ export class PlanningService {
 
   // Konu yönetimi eksik metodlar
   async getAdaptiveTopicSequence(userId: string, subjects: string[], planDurationWeeks: number = 1): Promise<string[]> {
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).user.findUnique({
       where: { id: userId },
       include: { studentProfile: true },
     });
@@ -623,7 +623,7 @@ export class PlanningService {
 
   // Optimizasyon metodları
   async optimizePlan(planId: string, userId: string): Promise<any> {
-    const plan = await this.prisma.plan.findFirst({
+    const plan = await (this.prisma as any).plan.findFirst({
       where: { id: planId, userId },
       include: { studySessions: true },
     });
@@ -635,7 +635,7 @@ export class PlanningService {
     // Plan optimizasyonu
     const optimizedPlan = await this.performPlanOptimization(plan);
     
-    await this.prisma.plan.update({
+    await (this.prisma as any).plan.update({
       where: { id: planId },
       data: { metadata: { ...(plan.metadata as Record<string, unknown> || {}), optimized: true } },
     });
@@ -916,7 +916,7 @@ export class PlanningService {
       techniques: session.techniques || [],
     }));
 
-    await this.prisma.studySession.createMany({
+    await (this.prisma as any).studySession.createMany({
       data: sessionData,
     });
   }

@@ -11,7 +11,7 @@ export class PerformanceAnalyzerService {
     strongSubjects: string[];
     topicMastery: Record<string, number>;
   }> {
-    const sessions = await this.prisma.studySession.findMany({
+    const sessions = await (this.prisma as any).studySession.findMany({
       where: { userId },
       orderBy: { startTime: 'desc' },
       take: 200,

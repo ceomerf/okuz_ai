@@ -9,7 +9,7 @@ export class CurriculumEngineService {
 
   async getCurriculumByGrade(grade: number): Promise<any[]> {
     try {
-      return await this.prisma.mebTopic.findMany({
+      return await (this.prisma as any).mebTopic.findMany({
         where: { grade },
         orderBy: { month: 'asc' },
       });
@@ -21,7 +21,7 @@ export class CurriculumEngineService {
 
   async getCurriculumBySubject(subject: string, grade: number): Promise<any[]> {
     try {
-      return await this.prisma.mebTopic.findMany({
+      return await (this.prisma as any).mebTopic.findMany({
         where: { subject, grade },
         orderBy: { month: 'asc' },
       });
@@ -33,7 +33,7 @@ export class CurriculumEngineService {
 
   async getTopicWeights(topicId: string): Promise<any[]> {
     try {
-      return await this.prisma.topicWeight.findMany({
+      return await (this.prisma as any).topicWeight.findMany({
         where: { mebTopicId: topicId },
       });
     } catch (error) {
@@ -47,7 +47,7 @@ export class CurriculumEngineService {
    */
   async buildPrerequisiteAwareTopicOrder(subjects: string[], grade: number): Promise<any[]> {
     try {
-      const topics = await this.prisma.mebTopic.findMany({
+      const topics = await (this.prisma as any).mebTopic.findMany({
         where: {
           subject: { in: subjects },
           grade
@@ -80,7 +80,7 @@ export class CurriculumEngineService {
         
             // Önce önkoşulları ziyaret et
             for (const prereq of topic.asTopicPrerequisites) {
-              const prereqTopic = topics.find(t => t.id === prereq.prerequisiteId);
+              const prereqTopic = topics.find((t: any) => t.id === prereq.prerequisiteId);
               if (prereqTopic) {
                 visit(prereqTopic);
               }

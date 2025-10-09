@@ -71,7 +71,7 @@ export class PlanGenerationService {
       const userContext = await this.analyzeUserContext(data.userId);
       
       // 2. Müfredat ve performans analizi
-      const profile = await this.prisma.user.findUnique({ 
+      const profile = await (this.prisma as any).user.findUnique({ 
         where: { id: data.userId }, 
         include: { studentProfile: true } 
       });
@@ -163,7 +163,7 @@ export class PlanGenerationService {
     userContext: any, 
     topicOrder: string[]
   ): Promise<string> {
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).user.findUnique({
       where: { id: data.userId },
       include: { studentProfile: true },
     });
@@ -262,7 +262,7 @@ export class PlanGenerationService {
    * Kullanıcı bağlamını analiz et
    */
   private async analyzeUserContext(userId: string): Promise<any> {
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).user.findUnique({
       where: { id: userId },
       include: {
         studentProfile: true,
@@ -317,14 +317,14 @@ export class PlanGenerationService {
    * Zayıf alanları tespit et
    */
   private async identifyWeakAreas(userId: string): Promise<string[]> {
-    const examResults = await this.prisma.examResult.findMany({
+    const examResults = await (this.prisma as any).examResult.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 20,
     });
 
     const subjectScores: Record<string, number[]> = {};
-    examResults.forEach(exam => {
+    examResults.forEach((exam: any) => {
       if (!subjectScores[exam.subject]) {
         subjectScores[exam.subject] = [];
       }
@@ -346,14 +346,14 @@ export class PlanGenerationService {
    * Güçlü alanları tespit et
    */
   private async identifyStrongAreas(userId: string): Promise<string[]> {
-    const examResults = await this.prisma.examResult.findMany({
+    const examResults = await (this.prisma as any).examResult.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 20,
     });
 
     const subjectScores: Record<string, number[]> = {};
-    examResults.forEach(exam => {
+    examResults.forEach((exam: any) => {
       if (!subjectScores[exam.subject]) {
         subjectScores[exam.subject] = [];
       }
