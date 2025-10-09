@@ -86,10 +86,12 @@ export class PlanningService {
    */
   async rescheduleSingle(data: { sessionId: string; newStartTime: string; userId: string; reason?: string }) {
     try {
-      this.loggingService.log('Rescheduling single session', { 
-        sessionId: data.sessionId, 
-        userId: data.userId 
-      });
+      if (this.loggingService) {
+        this.loggingService.log('Rescheduling single session', { 
+          sessionId: data.sessionId, 
+          userId: data.userId 
+        });
+      }
 
       // Oturumu bul ve güncelle
       const session = await (this.prisma as any).studySession.update({
@@ -106,12 +108,17 @@ export class PlanningService {
         message: 'Session rescheduled successfully'
       };
     } catch (error) {
-      this.loggingService.error('Failed to reschedule session', { 
-        sessionId: data.sessionId, 
-        userId: data.userId,
-        error: error instanceof Error ? error instanceof Error ? error.message : "Unknown error" : 'Unknown error'
-      });
-      throw this.exceptionService.handlePlanningError(error, 'Failed to reschedule session');
+      if (this.loggingService) {
+        this.loggingService.error('Failed to reschedule session', { 
+          sessionId: data.sessionId, 
+          userId: data.userId,
+          error: error instanceof Error ? error instanceof Error ? error.message : "Unknown error" : 'Unknown error'
+        });
+      }
+      if (this.exceptionService) {
+        throw this.exceptionService.handlePlanningError(error, 'Failed to reschedule session');
+      }
+      throw error;
     }
   }
 
