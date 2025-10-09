@@ -155,17 +155,35 @@ class ApiService {
 
   // Authentication
   async login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
-    const response = await this.request<LoginResponse>('/auth/login', {
+    const response = await this.request<any>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
 
     if (response.success && response.data) {
-      this.token = response.data.accessToken;
-      localStorage.setItem('admin_token', response.data.accessToken);
-      if (response.data.refreshToken) {
-        localStorage.setItem('refresh_token', response.data.refreshToken);
+      // Backend'den gelen response formatını frontend formatına çevir
+      const loginData = {
+        accessToken: response.data.access_token || response.data.accessToken,
+        refreshToken: response.data.refreshToken,
+        user: {
+          id: response.data.user.id,
+          email: response.data.user.email,
+          name: response.data.user.name,
+          roles: [response.data.user.role],
+          permissions: [] // Admin için tüm izinler
+        }
+      };
+      
+      this.token = loginData.accessToken;
+      localStorage.setItem('admin_token', loginData.accessToken);
+      if (loginData.refreshToken) {
+        localStorage.setItem('refresh_token', loginData.refreshToken);
       }
+
+      return {
+        data: loginData,
+        success: true
+      };
     }
 
     return response;
