@@ -37,6 +37,7 @@ import { SystemModule } from './system/system.module';
 import { RbacModule } from './rbac/rbac.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { AuditModule } from './audit/audit.module';
 import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 
 @Module({
@@ -119,6 +120,7 @@ import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
     ReferralModule,
     SystemModule,
     RbacModule,
+    AuditModule,
     FeatureFlagsModule,
   ],
   controllers: [AppController],
