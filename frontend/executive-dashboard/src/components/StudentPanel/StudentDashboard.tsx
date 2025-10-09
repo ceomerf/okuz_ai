@@ -4,7 +4,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
   Button,
   Chip,
   LinearProgress,
@@ -125,71 +124,63 @@ const StudentDashboard: React.FC = () => {
       </Box>
 
       {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
-                  <Grade />
-                </Avatar>
-                <Box>
-                  <Typography variant="h4">{studentStats.averageGrade}%</Typography>
-                  <Typography color="text.secondary">Ortalama Not</Typography>
-                </Box>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 3, mb: 3 }}>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
+                <Grade />
+              </Avatar>
+              <Box>
+                <Typography variant="h4">{studentStats.averageGrade}%</Typography>
+                <Typography color="text.secondary">Ortalama Not</Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+            </Box>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Avatar sx={{ bgcolor: 'success.main', mr: 2 }}>
-                  <Assignment />
-                </Avatar>
-                <Box>
-                  <Typography variant="h4">{studentStats.completedAssignments}</Typography>
-                  <Typography color="text.secondary">Tamamlanan Ödev</Typography>
-                </Box>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Avatar sx={{ bgcolor: 'success.main', mr: 2 }}>
+                <Assignment />
+              </Avatar>
+              <Box>
+                <Typography variant="h4">{studentStats.completedAssignments}</Typography>
+                <Typography color="text.secondary">Tamamlanan Ödev</Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+            </Box>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Avatar sx={{ bgcolor: 'warning.main', mr: 2 }}>
-                  <Schedule />
-                </Avatar>
-                <Box>
-                  <Typography variant="h4">{studentStats.studyHours}</Typography>
-                  <Typography color="text.secondary">Çalışma Saati</Typography>
-                </Box>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Avatar sx={{ bgcolor: 'warning.main', mr: 2 }}>
+                <Schedule />
+              </Avatar>
+              <Box>
+                <Typography variant="h4">{studentStats.studyHours}</Typography>
+                <Typography color="text.secondary">Çalışma Saati</Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+            </Box>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Avatar sx={{ bgcolor: 'info.main', mr: 2 }}>
-                  <TrendingUp />
-                </Avatar>
-                <Box>
-                  <Typography variant="h4">{studentStats.streak}</Typography>
-                  <Typography color="text.secondary">Günlük Seri</Typography>
-                </Box>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Avatar sx={{ bgcolor: 'info.main', mr: 2 }}>
+                <TrendingUp />
+              </Avatar>
+              <Box>
+                <Typography variant="h4">{studentStats.streak}</Typography>
+                <Typography color="text.secondary">Günlük Seri</Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
 
       {/* Tabs */}
       <Card>
@@ -207,9 +198,9 @@ const StudentDashboard: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Yaklaşan Ödevler
           </Typography>
-          <Grid container spacing={2}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2 }}>
             {upcomingAssignments.map((assignment) => (
-              <Grid item xs={12} md={4} key={assignment.id}>
+              <Box key={assignment.id}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -236,9 +227,9 @@ const StudentDashboard: React.FC = () => {
                     </Button>
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </TabPanel>
 
         {/* Notlar Tab */}
@@ -277,9 +268,9 @@ const StudentDashboard: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Günlük Çalışma Planı
           </Typography>
-          <Grid container spacing={2}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2 }}>
             {studyPlan.map((item) => (
-              <Grid item xs={12} md={4} key={item.id}>
+              <Box key={item.id}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -307,15 +298,15 @@ const StudentDashboard: React.FC = () => {
                     </Button>
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </TabPanel>
 
         {/* İlerleme Tab */}
         <TabPanel value={currentTab} index={3}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
+            <Box>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -337,9 +328,9 @@ const StudentDashboard: React.FC = () => {
                   </Typography>
                 </CardContent>
               </Card>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} md={6}>
+            <Box>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -363,8 +354,8 @@ const StudentDashboard: React.FC = () => {
                   </List>
                 </CardContent>
               </Card>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </TabPanel>
       </Card>
     </Box>

@@ -4,7 +4,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
   Button,
   Chip,
   LinearProgress,
@@ -112,71 +111,63 @@ const TeacherDashboard: React.FC = () => {
       </Box>
 
       {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
-                  <People />
-                </Avatar>
-                <Box>
-                  <Typography variant="h4">{teacherStats.totalStudents}</Typography>
-                  <Typography color="text.secondary">Toplam Öğrenci</Typography>
-                </Box>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 3, mb: 3 }}>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
+                <People />
+              </Avatar>
+              <Box>
+                <Typography variant="h4">{teacherStats.totalStudents}</Typography>
+                <Typography color="text.secondary">Toplam Öğrenci</Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+            </Box>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Avatar sx={{ bgcolor: 'success.main', mr: 2 }}>
-                  <School />
-                </Avatar>
-                <Box>
-                  <Typography variant="h4">{teacherStats.activeClasses}</Typography>
-                  <Typography color="text.secondary">Aktif Sınıf</Typography>
-                </Box>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Avatar sx={{ bgcolor: 'success.main', mr: 2 }}>
+                <School />
+              </Avatar>
+              <Box>
+                <Typography variant="h4">{teacherStats.activeClasses}</Typography>
+                <Typography color="text.secondary">Aktif Sınıf</Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+            </Box>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Avatar sx={{ bgcolor: 'warning.main', mr: 2 }}>
-                  <Assignment />
-                </Avatar>
-                <Box>
-                  <Typography variant="h4">{teacherStats.completedAssignments}</Typography>
-                  <Typography color="text.secondary">Tamamlanan Ödev</Typography>
-                </Box>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Avatar sx={{ bgcolor: 'warning.main', mr: 2 }}>
+                <Assignment />
+              </Avatar>
+              <Box>
+                <Typography variant="h4">{teacherStats.completedAssignments}</Typography>
+                <Typography color="text.secondary">Tamamlanan Ödev</Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+            </Box>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Avatar sx={{ bgcolor: 'info.main', mr: 2 }}>
-                  <Grade />
-                </Avatar>
-                <Box>
-                  <Typography variant="h4">{teacherStats.averageGrade}%</Typography>
-                  <Typography color="text.secondary">Ortalama Not</Typography>
-                </Box>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Avatar sx={{ bgcolor: 'info.main', mr: 2 }}>
+                <Grade />
+              </Avatar>
+              <Box>
+                <Typography variant="h4">{teacherStats.averageGrade}%</Typography>
+                <Typography color="text.secondary">Ortalama Not</Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
 
       {/* Tabs */}
       <Card>
@@ -227,9 +218,9 @@ const TeacherDashboard: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Bugünkü Dersler
           </Typography>
-          <Grid container spacing={2}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2 }}>
             {upcomingClasses.map((classItem) => (
-              <Grid item xs={12} md={4} key={classItem.id}>
+              <Box key={classItem.id}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -244,9 +235,9 @@ const TeacherDashboard: React.FC = () => {
                     </Typography>
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </TabPanel>
 
         {/* Ödevler Tab */}
@@ -254,9 +245,9 @@ const TeacherDashboard: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Ödev Durumu
           </Typography>
-          <Grid container spacing={2}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2 }}>
             {assignments.map((assignment) => (
-              <Grid item xs={12} md={4} key={assignment.id}>
+              <Box key={assignment.id}>
                 <Card>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
@@ -281,15 +272,15 @@ const TeacherDashboard: React.FC = () => {
                     </Box>
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </TabPanel>
 
         {/* Analitik Tab */}
         <TabPanel value={currentTab} index={3}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
+            <Box>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -311,9 +302,9 @@ const TeacherDashboard: React.FC = () => {
                   </Typography>
                 </CardContent>
               </Card>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} md={6}>
+            <Box>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -336,8 +327,8 @@ const TeacherDashboard: React.FC = () => {
                   </Typography>
                 </CardContent>
               </Card>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </TabPanel>
       </Card>
     </Box>

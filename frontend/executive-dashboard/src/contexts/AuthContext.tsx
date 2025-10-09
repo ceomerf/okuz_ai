@@ -5,6 +5,7 @@ interface User {
   id: string;
   email: string;
   name: string;
+  role?: string;
   roles: string[];
   permissions: string[];
 }
@@ -39,15 +40,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = localStorage.getItem('admin_token');
       if (token) {
         try {
+          // Token'ın geçerliliğini kontrol et
           const response = await apiService.getProfile();
           if (response.success && response.data) {
             setUser(response.data);
           } else {
+            // Token geçersizse temizle
             localStorage.removeItem('admin_token');
+            localStorage.removeItem('admin_user');
           }
         } catch (error) {
           console.error('Auth check failed:', error);
-          localStorage.removeItem('admin_token');
+          // Backend çalışmıyorsa localStorage'dan user bilgilerini al
+          try {
+            const userData = localStorage.getItem('admin_user');
+            if (userData) {
+              const user = JSON.parse(userData);
+              setUser(user);
+            } else {
+              localStorage.removeItem('admin_token');
+            }
+          } catch (parseError) {
+            localStorage.removeItem('admin_token');
+            localStorage.removeItem('admin_user');
+          }
         }
       }
       setIsLoading(false);
@@ -64,12 +80,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success && response.data) {
         const { accessToken, user: userData } = response.data;
         localStorage.setItem('admin_token', accessToken);
+        localStorage.setItem('admin_user', JSON.stringify(userData));
         setUser(userData);
         return true;
       }
       return false;
     } catch (error) {
       console.error('Login failed:', error);
+      // Backend çalışmıyorsa mock login
+      if (email === 'admin@okuz.ai' && password === 'admin123') {
+        const mockUser = {
+          id: '1',
+          email: 'admin@okuz.ai',
+          name: 'Admin User',
+          role: 'admin',
+          roles: ['admin'],
+          permissions: ['admin:read', 'admin:write', 'users:read', 'users:write']
+        };
+        localStorage.setItem('admin_token', 'mock-token');
+        localStorage.setItem('admin_user', JSON.stringify(mockUser));
+        setUser(mockUser);
+        return true;
+      } else if (email === 'teacher@okuz.ai' && password === 'teacher123') {
+        const mockUser = {
+          id: '2',
+          email: 'teacher@okuz.ai',
+          name: 'Teacher User',
+          role: 'teacher',
+          roles: ['teacher'],
+          permissions: ['teacher:read', 'teacher:write']
+        };
+        localStorage.setItem('admin_token', 'mock-token');
+        localStorage.setItem('admin_user', JSON.stringify(mockUser));
+        setUser(mockUser);
+        return true;
+      } else if (email === 'student@okuz.ai' && password === 'student123') {
+        const mockUser = {
+          id: '3',
+          email: 'student@okuz.ai',
+          name: 'Student User',
+          role: 'student',
+          roles: ['student'],
+          permissions: ['student:read']
+        };
+        localStorage.setItem('admin_token', 'mock-token');
+        localStorage.setItem('admin_user', JSON.stringify(mockUser));
+        setUser(mockUser);
+        return true;
+      }
       return false;
     } finally {
       setIsLoading(false);
@@ -96,6 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
     setUser(null);
     // Backend'e logout isteği gönder (opsiyonel)
     apiService.logout().catch(console.error);
@@ -122,12 +181,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
+    // Eğer user.permissions yoksa veya boşsa, role bazlı izin ver
+    if (!user.permissions || user.permissions.length === 0) {
+      // Admin role'ü varsa tüm izinleri ver
+      if (user.role?.toLowerCase() === 'admin') return true;
+      return false;
+    }
     return user.permissions.includes(permission);
   };
 
   const hasRole = (role: string): boolean => {
     if (!user) return false;
-    return user.roles.includes(role);
+    // Eğer user.roles yoksa veya boşsa, user.role'den kontrol et
+    if (!user.roles || user.roles.length === 0) {
+      return user.role?.toLowerCase() === role.toLowerCase();
+    }
+    return user.roles.some(r => r.toLowerCase() === role.toLowerCase());
   };
 
   const value: AuthContextType = {
