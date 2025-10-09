@@ -204,8 +204,23 @@ const LoginPage: React.FC = () => {
               </Box>
             </Box>
 
+            {/* Debug Butonu */}
+            <Box sx={{ mt: 2, textAlign: 'center' }}>
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.href = '/login?clear=true';
+                }}
+                sx={{ color: 'text.secondary', fontSize: '0.75rem' }}
+              >
+                🔧 Cache Temizle & Yeniden Başlat
+              </Button>
+            </Box>
+
             {/* Kayıt Ol Linki */}
-            <Box sx={{ mt: 3, textAlign: 'center' }}>
+            <Box sx={{ mt: 1, textAlign: 'center' }}>
               <Typography variant="body2">
                 Hesabınız yok mu?{' '}
                 <Link

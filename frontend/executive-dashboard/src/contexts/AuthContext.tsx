@@ -47,6 +47,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
+      // Eğer login sayfasındaysak, authentication kontrolü yapma
+      if (window.location.pathname === '/login' || window.location.pathname === '/register') {
+        setIsLoading(false);
+        return;
+      }
+
       const token = localStorage.getItem('admin_token');
       if (token) {
         try {

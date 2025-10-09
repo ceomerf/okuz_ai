@@ -87,28 +87,28 @@ const MainDashboard: React.FC = () => {
 
   // Rol/izin bazlı görünür sekmeleri hesapla
   const views: Array<{ label: string; render: React.ReactNode; visible: boolean }> = [
-    // Genel Dashboard'lar
+    // Genel Dashboard'lar - Herkes görebilir
     { label: 'Basit Dashboard', render: <SimpleDashboard />, visible: true },
     { label: 'Gelişmiş Dashboard', render: <AdvancedDashboard />, visible: true },
     
-    // Role-based Panels
+    // Role-based Panels - Rol bazlı görünürlük
     { label: 'Öğretmen Paneli', render: <TeacherDashboard />, visible: hasRole('teacher') || hasRole('admin') },
     { label: 'Öğrenci Paneli', render: <StudentDashboard />, visible: hasRole('student') || hasRole('admin') },
     { label: 'Veli Paneli', render: <ParentDashboard />, visible: hasRole('parent') || hasRole('admin') },
     
-    // Admin içerikleri
-    { label: 'Admin Panel (Mock)', render: <ComprehensiveAdminPanel />, visible: hasRole('admin') || hasPermission('admin:read') },
-    { label: 'Admin Panel (Gerçek Veri)', render: <RealDataAdminPanel />, visible: hasRole('admin') || hasPermission('admin:read') },
-    { label: 'Gelişmiş Admin Panel', render: <EnhancedAdminPanel />, visible: hasRole('admin') || hasPermission('admin:read') },
-    { label: 'Kullanıcı Yönetimi', render: <UserManagementPanel />, visible: hasRole('admin') || hasPermission('users:read') },
-    { label: 'Sistem Sağlığı', render: <SystemHealthDashboard />, visible: hasRole('admin') || hasPermission('system:read') },
-    { label: 'Öğrenci Yönetimi', render: <StudentManagementPanel />, visible: hasRole('admin') || hasPermission('students:read') },
-    { label: 'Veli Yönetimi', render: <ParentManagementPanel />, visible: hasRole('admin') || hasPermission('parents:read') },
-    { label: 'Koç Yönetimi', render: <CoachManagementPanel />, visible: hasRole('admin') || hasPermission('coaches:read') },
-    { label: 'RBAC Yönetimi', render: <RbacManagementPanel />, visible: hasRole('admin') || hasPermission('rbac:manage') },
-    { label: 'Audit Log', render: <AuditLogPanel />, visible: hasRole('admin') || hasPermission('audit:read') },
-    { label: 'Feature Flags', render: <FeatureFlagsPanel />, visible: hasRole('admin') || hasPermission('flags:manage') },
-    { label: 'Bildirimler', render: <NotificationsPanel />, visible: hasRole('admin') || hasPermission('notifications:manage') },
+    // Admin içerikleri - Sadece admin görebilir
+    { label: 'Admin Panel (Mock)', render: <ComprehensiveAdminPanel />, visible: hasRole('admin') },
+    { label: 'Admin Panel (Gerçek Veri)', render: <RealDataAdminPanel />, visible: hasRole('admin') },
+    { label: 'Gelişmiş Admin Panel', render: <EnhancedAdminPanel />, visible: hasRole('admin') },
+    { label: 'Kullanıcı Yönetimi', render: <UserManagementPanel />, visible: hasRole('admin') },
+    { label: 'Sistem Sağlığı', render: <SystemHealthDashboard />, visible: hasRole('admin') },
+    { label: 'Öğrenci Yönetimi', render: <StudentManagementPanel />, visible: hasRole('admin') },
+    { label: 'Veli Yönetimi', render: <ParentManagementPanel />, visible: hasRole('admin') },
+    { label: 'Koç Yönetimi', render: <CoachManagementPanel />, visible: hasRole('admin') },
+    { label: 'RBAC Yönetimi', render: <RbacManagementPanel />, visible: hasRole('admin') },
+    { label: 'Audit Log', render: <AuditLogPanel />, visible: hasRole('admin') },
+    { label: 'Feature Flags', render: <FeatureFlagsPanel />, visible: hasRole('admin') },
+    { label: 'Bildirimler', render: <NotificationsPanel />, visible: hasRole('admin') },
   ];
 
   const visibleViews = views.filter(v => v.visible);
