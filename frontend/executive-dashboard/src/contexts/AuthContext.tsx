@@ -91,19 +91,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      const response = await apiService.login(email, password);
       
-      if (response.success && response.data) {
-        const { accessToken, user: userData } = response.data;
-        localStorage.setItem('admin_token', accessToken);
-        localStorage.setItem('admin_user', JSON.stringify(userData));
-        setUser(userData);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Login failed:', error);
-      // Backend çalışmıyorsa mock login
+      // Önce mock login kontrolü yap
       if (email === 'admin@okuz.ai' && password === 'admin123') {
         const mockUser = {
           id: '1',
@@ -144,6 +133,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(mockUser);
         return true;
       }
+      
+      // Mock login başarısızsa backend'e istek at
+      const response = await apiService.login(email, password);
+      
+      if (response.success && response.data) {
+        const { accessToken, user: userData } = response.data;
+        localStorage.setItem('admin_token', accessToken);
+        localStorage.setItem('admin_user', JSON.stringify(userData));
+        setUser(userData);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Login failed:', error);
       return false;
     } finally {
       setIsLoading(false);
