@@ -238,7 +238,6 @@ async function main() {
       password: await bcrypt.hash('student123', 12),
       name: 'Test Öğrencisi',
       role: 'STUDENT',
-      grade: 12,
     },
   });
 
@@ -298,7 +297,6 @@ async function main() {
       strengths: ['Matematik', 'Fizik'],
       weaknesses: ['Türkçe', 'Tarih'],
       interests: ['Bilgisayar', 'Mühendislik'],
-      selectedSubjects: ['Matematik', 'Fizik', 'Kimya'],
     },
   });
 
@@ -318,17 +316,7 @@ async function main() {
     },
   });
 
-  // Study streak
-  await prisma.studyStreak.upsert({
-    where: { userId: studentUser.id },
-    update: {},
-    create: {
-      userId: studentUser.id,
-      currentStreak: 0,
-      longestStreak: 0,
-      isActive: true,
-    },
-  });
+  // Study streak modeli şemada yoksa atlandı
 
   // 7. Entity Schemas oluştur
   console.log('📋 Entity Schemas oluşturuluyor...');

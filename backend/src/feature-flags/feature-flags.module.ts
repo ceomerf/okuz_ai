@@ -6,7 +6,7 @@ import { FeatureFlagsController } from './feature-flags.controller';
 import { FeatureFlagsService } from '../common/feature-flags/feature-flags.service';
 
 @Module({
-  imports: [ConfigModule, CacheModule, PrismaModule],
+  imports: [ConfigModule, CacheModule.register(), PrismaModule],
   controllers: [FeatureFlagsController],
   providers: [FeatureFlagsService],
   exports: [FeatureFlagsService],
