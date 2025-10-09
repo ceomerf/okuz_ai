@@ -27,7 +27,6 @@ import { WebSocketMetricsService } from '../monitoring/websocket-metrics.service
     ConnectionManagerService,
     EventValidatorService,
     WebSocketMetricsService,
-    EventEmitter2,
   ],
   exports: [
     RealtimeGateway,
