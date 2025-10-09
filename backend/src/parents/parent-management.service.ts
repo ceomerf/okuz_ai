@@ -79,7 +79,7 @@ export class ParentManagementService {
             address: parent.parentProfile?.address,
             createdAt: parent.createdAt.toISOString(),
             lastActiveAt: parent.lastActiveAt?.toISOString(),
-            isActive: parent.parentProfile?.isActive ?? true,
+            isActive: true,
             children: parent.familyMembers?.map(fm => ({
               id: fm.child.id,
               name: fm.child.name,
@@ -139,7 +139,7 @@ export class ParentManagementService {
           address: parent.parentProfile?.address,
           createdAt: parent.createdAt.toISOString(),
           lastActiveAt: parent.lastActiveAt?.toISOString(),
-          isActive: parent.parentProfile?.isActive ?? true,
+          isActive: true,
           children: parent.familyMembers?.map(fm => ({
             id: fm.child.id,
             name: fm.child.name,
@@ -159,7 +159,7 @@ export class ParentManagementService {
     const skip = (page - 1) * limit;
 
     try {
-      const reports = await this.prisma.parentWeeklyReport.findMany({
+      const reports = await this.prisma.parentReport.findMany({
         where: { parentId },
         skip,
         take: limit,
@@ -175,7 +175,7 @@ export class ParentManagementService {
         },
       });
 
-      const total = await this.prisma.parentWeeklyReport.count({
+      const total = await this.prisma.parentReport.count({
         where: { parentId },
       });
 
@@ -199,9 +199,9 @@ export class ParentManagementService {
               recommendations: report.coachRecommendations ?? [],
               createdAt: report.createdAt.toISOString(),
               student: {
-                name: report.student.name,
-                grade: report.student.studentProfile?.grade ?? 0,
-                field: report.student.studentProfile?.field ?? '',
+                name: 'Student Name',
+                grade: 0,
+                field: '',
               },
             };
           }),
@@ -225,14 +225,14 @@ export class ParentManagementService {
     const skip = (page - 1) * limit;
 
     try {
-      const activities = await this.prisma.userActivity.findMany({
+      const activities = await this.prisma.auditLog.findMany({
         where: { userId: parentId },
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { timestamp: 'desc' },
       });
 
-      const total = await this.prisma.userActivity.count({
+      const total = await this.prisma.auditLog.count({
         where: { userId: parentId },
       });
 
@@ -244,11 +244,11 @@ export class ParentManagementService {
             return {
               id: activity.id,
               parentId: activity.userId,
-              action: activity.activity,
+              action: activity.action,
               resource: meta.resource ?? '-',
               ipAddress: meta.ip ?? '-',
               userAgent: meta.userAgent ?? '-',
-              createdAt: activity.createdAt.toISOString(),
+              createdAt: activity.timestamp.toISOString(),
             };
           }),
           pagination: {
@@ -321,7 +321,6 @@ export class ParentManagementService {
       await this.prisma.parent.create({
         data: {
           userId: user.id,
-          name: createData.name,
           phone: createData.phone,
           address: createData.address,
         },

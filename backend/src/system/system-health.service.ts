@@ -175,7 +175,7 @@ export class SystemHealthService {
       
       const requestCount = await this.prisma.auditLog.count({
         where: {
-          createdAt: {
+          timestamp: {
             gte: oneHourAgo,
           },
           action: {
@@ -198,14 +198,14 @@ export class SystemHealthService {
       const [totalRequests, errorRequests] = await Promise.all([
         this.prisma.auditLog.count({
           where: {
-            createdAt: {
+            timestamp: {
               gte: oneHourAgo,
             },
           },
         }),
         this.prisma.auditLog.count({
           where: {
-            createdAt: {
+            timestamp: {
               gte: oneHourAgo,
             },
             action: {

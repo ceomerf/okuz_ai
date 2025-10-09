@@ -28,7 +28,7 @@ export class CurriculumManagementService {
     if (search) {
       where.OR = [
         { subject: { contains: search, mode: 'insensitive' } },
-        { topic: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -81,21 +81,20 @@ export class CurriculumManagementService {
   }
 
   async createCurriculum(createData: {
+    name: string;
     subject: string;
-    topic: string;
     grade: number;
+    topics: any;
     description?: string;
-    month?: number;
-    outcomes?: string[];
-    tytWeight?: number;
-    aytWeight?: number;
   }) {
     try {
       const curriculum = await this.prisma.curriculum.create({
         data: {
+          name: createData.name,
           subject: createData.subject,
-          topic: createData.topic,
           grade: createData.grade,
+          topics: createData.topics,
+          description: createData.description,
         },
       });
 
@@ -163,8 +162,9 @@ export class CurriculumManagementService {
       // Mock tree structure
       const tree = {
         id: curriculum.id,
+        name: curriculum.name,
         subject: curriculum.subject,
-        topic: curriculum.topic,
+        topics: curriculum.topics,
         grade: curriculum.grade,
         children: [
           {
@@ -198,21 +198,20 @@ export class CurriculumManagementService {
   }
 
   async createTopic(createData: {
+    name: string;
     subject: string;
-    topic: string;
     grade: number;
+    topics: any;
     description?: string;
-    month?: number;
-    outcomes?: string[];
-    tytWeight?: number;
-    aytWeight?: number;
   }) {
     try {
       const topic = await this.prisma.curriculum.create({
         data: {
+          name: createData.name,
           subject: createData.subject,
-          topic: createData.topic,
           grade: createData.grade,
+          topics: createData.topics,
+          description: createData.description,
         },
       });
 

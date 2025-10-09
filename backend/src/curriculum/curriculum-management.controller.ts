@@ -34,14 +34,11 @@ export class CurriculumManagementController {
 
   @Post()
   async createCurriculum(@Body() createData: {
+    name: string;
     subject: string;
-    topic: string;
     grade: number;
+    topics: any;
     description?: string;
-    month?: number;
-    outcomes?: string[];
-    tytWeight?: number;
-    aytWeight?: number;
   }) {
     return this.curriculumService.createCurriculum(createData);
   }
@@ -77,14 +74,11 @@ export class CurriculumManagementController {
   async createTopic(
     @Param('id') id: string,
     @Body() createData: {
+      name: string;
       subject: string;
-      topic: string;
       grade: number;
+      topics: any;
       description?: string;
-      month?: number;
-      outcomes?: string[];
-      tytWeight?: number;
-      aytWeight?: number;
     },
   ) {
     return this.curriculumService.createTopic(createData);

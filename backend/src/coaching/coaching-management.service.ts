@@ -25,7 +25,7 @@ export class CoachingManagementService {
     try {
       const coaches = await this.prisma.user.findMany({
         where: {
-          role: 'COACH' as any,
+          role: 'COACH',
           ...where,
         },
         skip,
@@ -47,7 +47,7 @@ export class CoachingManagementService {
 
       const total = await this.prisma.user.count({
         where: {
-          role: 'COACH' as any,
+          role: 'COACH',
           ...where,
         },
       });
@@ -90,7 +90,7 @@ export class CoachingManagementService {
         },
       });
 
-      if (!coach || coach.role !== 'COACH' as any) {
+      if (!coach || coach.role !== 'COACH') {
         throw new NotFoundException('Koç bulunamadı');
       }
 
@@ -114,7 +114,7 @@ export class CoachingManagementService {
       const coach = await this.prisma.user.update({
         where: { id: createData.userId },
         data: {
-          role: 'COACH' as any,
+          role: 'COACH',
         },
         include: {
           coachStudents: {
@@ -371,7 +371,7 @@ export class CoachingManagementService {
       weekAgo.setDate(weekAgo.getDate() - 7);
       stats.recentAssignments = await this.prisma.coachStudent.count({
         where: {
-          assignedAt: {
+          createdAt: {
             gte: weekAgo,
           },
         },
@@ -447,7 +447,7 @@ export class CoachingManagementService {
         },
       });
 
-      if (!coach || coach.role !== 'COACH' as any) {
+      if (!coach || coach.role !== 'COACH') {
         throw new NotFoundException('Koç bulunamadı');
       }
 

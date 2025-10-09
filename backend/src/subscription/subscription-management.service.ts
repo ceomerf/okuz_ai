@@ -123,7 +123,7 @@ export class SubscriptionManagementService {
             subscription: { planType: planId as any },
             status: 'COMPLETED',
           },
-          _sum: { amount: true },
+          _count: { id: true },
         }),
         this.prisma.payment.aggregate({
           where: {
@@ -133,12 +133,12 @@ export class SubscriptionManagementService {
               gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Son 30 gün
             },
           },
-          _sum: { amount: true },
+          _count: { id: true },
         }),
         this.prisma.subscription.aggregate({
           where: { planType: planId as any },
-          _avg: {
-            amount: true,
+          _count: {
+            id: true,
           },
         }),
       ]);
@@ -149,9 +149,9 @@ export class SubscriptionManagementService {
           totalSubscriptions,
           activeSubscriptions,
           cancelledSubscriptions,
-          totalRevenue: totalRevenue._sum?.amount || 0,
-          monthlyRevenue: monthlyRevenue._sum?.amount || 0,
-          averageSubscriptionDuration: averageSubscriptionDuration._avg?.amount || 0,
+          totalRevenue: totalRevenue._count?.id || 0,
+          monthlyRevenue: monthlyRevenue._count?.id || 0,
+          averageSubscriptionDuration: averageSubscriptionDuration._count?.id || 0,
           conversionRate: totalSubscriptions > 0 ? (activeSubscriptions / totalSubscriptions) * 100 : 0,
         },
       };
@@ -686,7 +686,6 @@ export class SubscriptionManagementService {
           by: ['planType'],
           where,
           _count: { id: true },
-          _sum: { amount: true },
         }),
         this.prisma.subscription.groupBy({
           by: ['status'],
@@ -709,7 +708,7 @@ export class SubscriptionManagementService {
           planBreakdown: planBreakdown.map(plan => ({
             planType: plan.planType,
             count: plan._count.id,
-            revenue: plan._sum.amount || 0,
+            revenue: 0,
           })),
           statusBreakdown: statusBreakdown.map(status => ({
             status: status.status,

@@ -68,7 +68,6 @@ export class ParentsManagementService {
                 id: true,
                 name: true,
                 email: true,
-                createdAt: true,
                 lastActiveAt: true,
               },
             },
@@ -167,15 +166,15 @@ export class ParentsManagementService {
           where: { userId: parentId },
           skip,
           take: limit,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { timestamp: 'desc' },
           select: {
             id: true,
             action: true,
-            resource: true,
-            resourceId: true,
+            entityType: true,
+            entityId: true,
             ipAddress: true,
             userAgent: true,
-            createdAt: true,
+            timestamp: true,
             metadata: true,
           },
         }),
@@ -220,7 +219,6 @@ export class ParentsManagementService {
       const parent = await this.prisma.parent.create({
         data: {
           userId: user.id,
-          name: createData.name,
           phone: createData.phone,
           address: createData.address,
         },
@@ -327,7 +325,7 @@ export class ParentsManagementService {
         };
       }
 
-      const reports = await this.prisma.parentWeeklyReport.findMany({
+      const reports = await this.prisma.parentReport.findMany({
         where,
         orderBy: { weekStart: 'desc' },
         include: {

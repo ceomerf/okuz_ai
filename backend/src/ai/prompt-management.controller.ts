@@ -35,11 +35,10 @@ export class PromptManagementController {
   @Post()
   async createPrompt(@Body() createData: {
     name: string;
-    type: string;
+    category: string;
     template: string;
     variables: string[];
     description?: string;
-    tags?: string[];
     isActive?: boolean;
   }) {
     return this.promptManagementService.createPrompt(createData);

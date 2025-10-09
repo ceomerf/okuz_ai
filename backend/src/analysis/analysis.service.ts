@@ -81,7 +81,7 @@ export class AnalysisService {
         }),
         readClient.studySession.count({
           where: {
-            status: 'COMPLETED',
+            isCompleted: true,
             completedAt: {
               gte: dateRange.start,
               lte: dateRange.end,
@@ -96,7 +96,7 @@ export class AnalysisService {
             },
           },
           _avg: {
-            performance: true,
+            score: true,
           },
         }),
       ]);
@@ -106,7 +106,7 @@ export class AnalysisService {
         activeUsers,
         totalPlans,
         completedSessions,
-        averagePerformance: averagePerformance._avg.performance || 0,
+        averagePerformance: averagePerformance._avg.score || 0,
         period: {
           start: dateRange.start,
           end: dateRange.end,
@@ -128,10 +128,10 @@ export class AnalysisService {
       }
 
       const breakdown = await readClient.analysis.groupBy({
-        by: ['subject', 'difficulty'],
+        by: ['subject'],
         where: whereClause,
         _avg: {
-          performance: true,
+          score: true,
         },
         _count: {
           id: true,
@@ -143,9 +143,8 @@ export class AnalysisService {
 
       return breakdown.map(item => ({
         subject: item.subject,
-        difficulty: item.difficulty,
-        averagePerformance: item._avg.performance,
-        totalAttempts: item._count.id,
+        averagePerformance: item._avg?.score || 0,
+        totalAttempts: item._count?.id || 0,
       }));
     });
   }
@@ -169,7 +168,7 @@ export class AnalysisService {
           orderBy: { createdAt: 'desc' },
           take: 10,
           select: {
-            performance: true,
+            score: true,
             createdAt: true,
             subject: true,
           },
@@ -180,7 +179,7 @@ export class AnalysisService {
           by: ['subject'],
           where: {
             userId,
-            performance: { gte: 80 },
+            score: { gte: 80 },
           },
           _count: { id: true },
           orderBy: { _count: { id: 'desc' } },
@@ -192,7 +191,7 @@ export class AnalysisService {
           by: ['subject'],
           where: {
             userId,
-            performance: { lt: 60 },
+            score: { lt: 60 },
           },
           _count: { id: true },
           orderBy: { _count: { id: 'desc' } },
@@ -201,7 +200,7 @@ export class AnalysisService {
         
         // Study patterns
         readClient.studySession.groupBy({
-          by: ['dayOfWeek'],
+          by: ['subject'],
           where: { userId },
           _count: { id: true },
           orderBy: { _count: { id: 'desc' } },
@@ -210,11 +209,11 @@ export class AnalysisService {
 
       return {
         recentPerformance,
-        strengths: strengths.map(s => ({ subject: s.subject, count: s._count.id })),
-        weaknesses: weaknesses.map(w => ({ subject: w.subject, count: w._count.id })),
+        strengths: strengths.map(s => ({ subject: s.subject, count: s._count?.id || 0 })),
+        weaknesses: weaknesses.map(w => ({ subject: w.subject, count: w._count?.id || 0 })),
         studyPatterns: studyPatterns.map(p => ({ 
-          dayOfWeek: p.dayOfWeek, 
-          sessionCount: p._count.id 
+          subject: p.subject, 
+          sessionCount: p._count?.id || 0 
         })),
       };
     });
@@ -235,7 +234,7 @@ export class AnalysisService {
         // User's own stats
         readClient.analysis.aggregate({
           where: { userId },
-          _avg: { performance: true },
+          _avg: { score: true },
           _count: { id: true },
         }),
         
@@ -249,30 +248,30 @@ export class AnalysisService {
             where: {
               user: { grade: user.grade },
             },
-            _avg: { performance: true },
+            _avg: { score: true },
             _count: { id: true },
           });
         }),
         
         // Global stats
         readClient.analysis.aggregate({
-          _avg: { performance: true },
+          _avg: { score: true },
           _count: { id: true },
         }),
       ]);
 
       return {
         user: {
-          averagePerformance: userStats._avg.performance || 0,
-          totalAttempts: userStats._count.id,
+          averagePerformance: userStats._avg?.score || 0,
+          totalAttempts: userStats._count?.id || 0,
         },
         peers: peerStats ? {
-          averagePerformance: peerStats._avg.performance || 0,
-          totalAttempts: peerStats._count.id,
+          averagePerformance: peerStats._avg?.score || 0,
+          totalAttempts: peerStats._count?.id || 0,
         } : null,
         global: {
-          averagePerformance: globalStats._avg.performance || 0,
-          totalAttempts: globalStats._count.id,
+          averagePerformance: globalStats._avg?.score || 0,
+          totalAttempts: globalStats._count?.id || 0,
         },
       };
     });

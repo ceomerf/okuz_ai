@@ -14,6 +14,7 @@ enum UserRole {
   STUDENT
   PARENT
   TEACHER
+  COACH
   ADMIN
 }
 
@@ -89,6 +90,7 @@ model User {
   // Profile relations
   studentProfile StudentProfile?
   parentProfile  ParentProfile?
+  student        Student?
 
   // Invites
   sentInvites     Invite[] @relation("Inviter")
@@ -130,6 +132,29 @@ model User {
   // RBAC relations
   userRoles         UserRoleMap[]
   temporaryUserRoles TemporaryUserRole[]
+
+  // AI relations
+  aiRequestLogs     AiRequestLog[]
+  analyses          Analysis[]
+
+  // Coaching relations
+  coachStudents     CoachStudent[] @relation("Coach")
+  studentCoaches    CoachStudent[] @relation("Student")
+
+  // Parent relations
+  parent            Parent?
+  parentReports     ParentReport[] @relation("ParentReport")
+  studentReports    ParentReport[] @relation("StudentReport")
+
+  // Quiz relations
+  quizResults       QuizResult[]
+
+  // Additional fields
+  lastActiveAt      DateTime?
+  grade            Int?
+
+  // Authentication
+  refreshTokens    RefreshToken[]
 }
 
 model StudentProfile {
@@ -146,6 +171,21 @@ model StudentProfile {
   updatedAt     DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  grade     Int
+  field     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([grade])
+  @@index([field])
 }
 
 model ParentProfile {
@@ -186,6 +226,8 @@ model Plan {
   startDate   DateTime
   endDate     DateTime
   isActive    Boolean  @default(true)
+  status      String   @default("ACTIVE")
+  duration    Int?
   metadata    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -211,6 +253,9 @@ model StudySession {
   endTime     DateTime?
   isCompleted Boolean   @default(false)
   performance Int? // 0-100
+  status      String    @default("PENDING")
+  dayOfWeek   String?
+  completedAt DateTime?
   notes       String?
   metadata    Json?
   createdAt   DateTime  @default(now())
@@ -467,6 +512,21 @@ model Payment {
   @@index([subscriptionId])
 }
 
+/// Authentication Models
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
 /// RBAC Models
 model Role {
   id              String           @id @default(cuid())
@@ -620,4 +680,186 @@ model EmailLog {
 
   @@index([createdAt])
   @@index([templateName])
+}
+
+/// AI Management Models
+model AiRequestLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  model       String
+  promptType  String?
+  prompt      String
+  response    String?
+  tokensUsed  Int      @default(0)
+  duration    Int      @default(0) // milliseconds
+  success     Boolean  @default(true)
+  error       String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([model])
+  @@index([createdAt])
+}
+
+model AiPromptTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  template    String
+  variables   String[]
+  category    String
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model Analysis {
+  id              String   @id @default(cuid())
+  userId          String
+  type            String
+  subject         String
+  difficulty      String?
+  data            Json
+  insights        Json?
+  recommendations Json?
+  score           Int?
+  performance     Int?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model CoachStudent {
+  id        String   @id @default(cuid())
+  coachId   String
+  studentId String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  coach   User @relation("Coach", fields: [coachId], references: [id], onDelete: Cascade)
+  student User @relation("Student", fields: [studentId], references: [id], onDelete: Cascade)
+  notes   CoachNote[]
+
+  @@unique([coachId, studentId])
+  @@index([coachId])
+  @@index([studentId])
+}
+
+model CoachNote {
+  id              String   @id @default(cuid())
+  coachStudentId  String
+  title           String
+  content         String
+  type            String   @default("general")
+  priority        String   @default("medium")
+  isPrivate       Boolean  @default(false)
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  coachStudent CoachStudent @relation(fields: [coachStudentId], references: [id], onDelete: Cascade)
+
+  @@index([coachStudentId])
+  @@index([createdAt])
+}
+
+model Curriculum {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  subject     String
+  grade       Int
+  topics      Json
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([subject])
+  @@index([grade])
+  @@index([isActive])
+}
+
+model Badge {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  points      Int      @default(0)
+  rarity      String?
+  category    String?
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([rarity])
+  @@index([isActive])
+}
+
+model Parent {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  phone     String?
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ParentReport {
+  id                    String   @id @default(cuid())
+  parentId              String
+  studentId             String
+  weekStart             DateTime
+  weekEnd               DateTime
+  report                Json
+  metadata              Json?
+  totalStudyTime        Int?
+  completedSessions     Int?
+  coachRecommendations  Json?
+  createdAt             DateTime @default(now())
+
+  parent  User @relation("ParentReport", fields: [parentId], references: [id], onDelete: Cascade)
+  student User @relation("StudentReport", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([parentId])
+  @@index([studentId])
+  @@index([weekStart])
+}
+
+model QuizResult {
+  id          String    @id @default(cuid())
+  userId      String
+  quizId      String?
+  score       Int
+  totalScore  Int
+  duration    Int       @default(0)
+  answers     Json?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([completedAt])
 }

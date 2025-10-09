@@ -82,24 +82,22 @@ export class PromptManagementService {
 
   async createPrompt(createData: {
     name: string;
-    type: string;
+    category: string;
     template: string;
     variables: string[];
     description?: string;
-    tags?: string[];
     isActive?: boolean;
   }) {
     try {
       const prompt = await this.prisma.aiPromptTemplate.create({
         data: {
           name: createData.name,
-          type: createData.type,
+          category: createData.category,
           template: createData.template,
           variables: createData.variables,
           description: createData.description,
-          tags: createData.tags || [],
           isActive: createData.isActive !== undefined ? createData.isActive : true,
-          version: '1.0',
+          version: 1,
         },
       });
 
@@ -115,11 +113,10 @@ export class PromptManagementService {
 
   async updatePrompt(id: string, updateData: {
     name?: string;
-    type?: string;
+    category?: string;
     template?: string;
     variables?: string[];
     description?: string;
-    tags?: string[];
     isActive?: boolean;
   }) {
     try {
@@ -301,13 +298,12 @@ export class PromptManagementService {
       const duplicatedPrompt = await this.prisma.aiPromptTemplate.create({
         data: {
           name: `${originalPrompt.name} (Copy)`,
-          type: originalPrompt.type,
+          category: originalPrompt.category,
           template: originalPrompt.template,
           variables: originalPrompt.variables,
           description: originalPrompt.description,
-          tags: originalPrompt.tags,
           isActive: false,
-          version: '1.0',
+          version: 1,
         },
       });
 

@@ -175,7 +175,7 @@ export class StudentsManagementService {
         }),
         this.prisma.quizResult.findMany({
           where: { userId: studentId },
-          orderBy: { completedAt: 'desc' },
+          orderBy: { createdAt: 'desc' },
           take: 10,
         }),
         this.prisma.examResult.findMany({
@@ -400,7 +400,7 @@ export class StudentsManagementService {
         this.prisma.quizResult.findMany({
           where: {
             userId: studentId,
-            completedAt: { gte: thirtyDaysAgo },
+            createdAt: { gte: thirtyDaysAgo },
           },
         }),
         this.prisma.achievement.findMany({
@@ -417,7 +417,7 @@ export class StudentsManagementService {
         ? studySessions.reduce((sum, session) => sum + (session.performance || 0), 0) / studySessions.length 
         : 0;
       const averageQuizScore = quizResults.length > 0 
-        ? quizResults.reduce((sum, result) => sum + result.percentage, 0) / quizResults.length 
+        ? quizResults.reduce((sum, result) => sum + (result.score / result.totalScore * 100), 0) / quizResults.length 
         : 0;
       const completionRate = studySessions.length > 0 
         ? (studySessions.filter(s => s.isCompleted).length / studySessions.length) * 100 

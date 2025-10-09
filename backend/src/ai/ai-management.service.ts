@@ -33,7 +33,7 @@ export class AIManagementService {
       const stats = await this.prisma.aiRequestLog.aggregate({
         where,
         _count: { id: true },
-        _sum: { totalTokens: true },
+        _sum: { tokensUsed: true },
         _avg: { duration: true },
       });
 
@@ -47,9 +47,9 @@ export class AIManagementService {
       return {
         success: true,
         data: {
-          totalRequests: stats._count.id || 0,
-          totalTokens: stats._sum.totalTokens || 0,
-          averageDuration: stats._avg.duration || 0,
+          totalRequests: stats._count?.id || 0,
+          totalTokens: stats._sum?.tokensUsed || 0,
+          averageDuration: stats._avg?.duration || 0,
           dailyStats,
         },
       };
@@ -95,10 +95,9 @@ export class AIManagementService {
         orderBy: { id: 'desc' },
         select: {
           id: true,
-          model: true,
           promptType: true,
           duration: true,
-          totalTokens: true,
+          tokensUsed: true,
         },
       });
 
@@ -180,7 +179,7 @@ export class AIManagementService {
 
       const costs = await this.prisma.aiRequestLog.aggregate({
         where,
-        _sum: { totalTokens: true },
+        _sum: { tokensUsed: true },
         _count: { id: true },
       });
 
@@ -194,7 +193,7 @@ export class AIManagementService {
       return {
         success: true,
         data: {
-          totalCost: (costs._sum.totalTokens || 0) * 0.0001, // Mock cost calculation
+          totalCost: (costs._sum.tokensUsed || 0) * 0.0001, // Mock cost calculation
           totalRequests: costs._count.id || 0,
           dailyCosts,
         },
