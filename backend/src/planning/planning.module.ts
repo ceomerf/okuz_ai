@@ -23,7 +23,7 @@ import { AssessmentService } from './assessment.service';
 import { CoachingService } from './coaching.service';
 import { SolverService } from '../services/solver.service';
 import { MetricsService } from '../monitoring/metrics.service';
-@// import { CacheModule } from '../common/cache/cache.module';
+// import { CacheModule } from '../common/cache/cache.module';
 import { CacheService } from '../common/cache/cache.service';
 import { OpenAIService } from '../services/openai.service';
 import { ConfigModule } from '@nestjs/config';
@@ -45,7 +45,7 @@ import { ExceptionService } from '../common/exceptions/exception.service';
 @Module({
   imports: [
     PrismaModule, 
-    CacheModule, 
+    // CacheModule, 
     ConfigModule, 
     AuthModule, 
     RealtimeModule, 

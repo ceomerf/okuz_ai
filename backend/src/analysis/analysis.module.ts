@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-@// import { CacheModule } from '@nestjs/cache-manager';
+// import { CacheModule } from '@nestjs/cache-manager';
 import { AnalysisController } from './analysis.controller';
 import { AnalysisService } from './analysis.service';
 import { PrismaModule } from '../common/prisma/prisma.module';
@@ -12,7 +12,7 @@ import { ConfigModule } from '@nestjs/config';
   imports: [
     PrismaModule,
     // GeminiModule, // DEVRE DIŞI - OPENAI KULLANILIYOR
-    CacheModule.register({ ttl: 120, max: 200 }),
+    // CacheModule.register({ ttl: 120, max: 200 }),
     MonitoringModule,
     ConfigModule,
   ],

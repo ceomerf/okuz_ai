@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-@// import { CacheModule } from '@nestjs/cache-manager';
+// import { CacheModule } from '@nestjs/cache-manager';
 import { HttpModule } from '@nestjs/axios';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { AIModule } from '../ai/ai.module';
@@ -17,7 +17,7 @@ import { ContextAwareCoachingService } from './context-aware-coaching.service';
 @Module({
   imports: [
     ConfigModule,
-    CacheModule,
+    // CacheModule,
     HttpModule,
     PrismaModule,
     AIModule,
