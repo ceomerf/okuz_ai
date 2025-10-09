@@ -71,7 +71,6 @@ export class PlanningService {
     private readonly adaptiveInsights: AdaptiveInsightsService,
     private readonly adaptiveStrategy: AdaptiveStrategyService,
     private readonly queue: QueueService,
-    private readonly prometheus: PrometheusService,
     private readonly curriculumEngine: CurriculumEngineService,
     private readonly performanceAnalyzer: PerformanceAnalyzerService,
     private readonly topicPrioritizer: TopicPrioritizerService,
@@ -79,6 +78,7 @@ export class PlanningService {
     private readonly loggingService: LoggingService,
     private readonly exceptionService: ExceptionService,
     @Optional() private readonly cache?: CacheService,
+    @Optional() private readonly prometheus?: PrometheusService,
   ) {}
 
   /**
@@ -477,7 +477,9 @@ export class PlanningService {
       }
       const data = await (this.topicManagement as any).getMebTopics(subject, grade);
       await (this.cache as any).set?.(cacheKey, data, { ttl: 60 * 60 });
-      this.prometheus.incrementPlanGenerationSuccess('MEB_TOPICS', 'system');
+      if (this.prometheus) {
+        this.prometheus.incrementPlanGenerationSuccess('MEB_TOPICS', 'system');
+      }
       return data;
     } catch (error) {
       this.loggingService.error('Failed to get MEB topics', { subject, grade, error: error instanceof Error ? error instanceof Error ? error.message : "Unknown error" : String(error) });
