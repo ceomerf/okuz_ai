@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_GUARD } from '@nestjs/core';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
@@ -85,6 +86,7 @@ import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
         },
       ],
     }),
+    EventEmitterModule.forRoot(),
     PrismaModule,
     ScheduleModule.forRoot(),
     // GeminiModule, // DEVRE DIŞI - OPENAI KULLANILIYOR

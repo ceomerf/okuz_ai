@@ -16,7 +16,6 @@ import { BulkNotificationService } from './bulk-notification.service';
 @Module({
   imports: [
     ConfigModule,
-    EventEmitterModule.forRoot(),
     // CacheModule,
     PrismaModule,
     MetricsModule,
