@@ -19,7 +19,7 @@ import { AdaptiveStrategyService } from './adaptive-strategy.service';
 import { CacheService } from '../common/cache/cache.service';
 import { QueueService } from '../services/queue.service';
 import { CurriculumEngineService } from './services/curriculum-engine.service';
-import { PerformanceAnalyzerService } from './performance-analyzer.service';
+import { PerformanceAnalyzerService } from './services/performance-analyzer.service';
 import { TopicPrioritizerService } from './topic-prioritizer.service';
 import { AIService } from '../ai/ai.service';
 import { LoggingService } from '../common/logging/logging.service';

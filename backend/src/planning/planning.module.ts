@@ -31,7 +31,7 @@ import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { MonitoringModule } from '../monitoring/monitoring.module';
 import { CurriculumEngineService } from './services/curriculum-engine.service';
-import { PerformanceAnalyzerService } from './performance-analyzer.service';
+import { PerformanceAnalyzerService } from './services/performance-analyzer.service';
 import { TopicPrioritizerService } from './topic-prioritizer.service';
 import { OutboxService } from '../services/outbox.service';
 import { OutboxWorker } from '../services/outbox.worker';
