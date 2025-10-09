@@ -4,7 +4,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 import { MetricsService } from '../monitoring/metrics.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ConnectionManagerService } from '../realtime/connection-manager.service';
+// import { ConnectionManagerService } from '../realtime/connection-manager.service'; // Kaldırıldı
 import * as webpush from 'web-push';
 
 export interface PushNotificationPayload {
@@ -61,7 +61,6 @@ export class PushNotificationService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly metrics: MetricsService,
-    private readonly connectionManager: ConnectionManagerService,
     @Optional() private readonly cache?: CacheService,
   ) {
     // VAPID keys
@@ -388,31 +387,16 @@ export class PushNotificationService {
   }
 
   /**
-   * WebSocket üzerinden notification gönder
+   * WebSocket üzerinden notification gönder - DEVRE DIŞI
    */
   async sendRealtimeNotification(
     userId: string,
     payload: PushNotificationPayload
   ): Promise<boolean> {
     try {
-      // WebSocket bağlantısı kontrol et
-      if (!this.connectionManager.isUserConnected(userId)) {
-        this.logger.warn(`User ${userId} not connected via WebSocket`);
-        return false;
-      }
-
-      // WebSocket üzerinden gönder
-      const success = await this.connectionManager.sendToUser(userId, 'notification', {
-        type: 'push',
-        ...payload,
-        timestamp: new Date(),
-      });
-
-      if (success) {
-        this.logger.log(`Realtime notification sent to user ${userId}`);
-      }
-
-      return success;
+      // ConnectionManagerService kaldırıldı - bu özellik devre dışı
+      this.logger.warn(`Realtime notification feature disabled - ConnectionManagerService removed`);
+      return false;
     } catch (error) {
       this.logger.error(`Failed to send realtime notification: ${this.getErrorMessage(error)}`);
       return false;
