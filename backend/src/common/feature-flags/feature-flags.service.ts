@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../cache/cache.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -31,8 +31,8 @@ export class FeatureFlagsService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly cacheService: CacheService,
     private readonly prisma: PrismaService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   /**
@@ -225,7 +225,7 @@ export class FeatureFlagsService {
   }> {
     try {
       const statsKey = `feature_flag_stats:${flagKey}`;
-      const cached = await this.cacheService.get(statsKey);
+      const cached = await this.cacheService?.get(statsKey);
       
       if (cached) {
         return JSON.parse(cached as string);
@@ -278,7 +278,7 @@ export class FeatureFlagsService {
         ? (updatedStats.enabledCount / updatedStats.totalEvaluations) * 100 
         : 0;
 
-      await this.cacheService.set(statsKey, JSON.stringify(updatedStats), 3600);
+      await this.cacheService?.set(statsKey, JSON.stringify(updatedStats), 3600);
     } catch (error) {
       this.logger.error(`Failed to record feature flag evaluation: ${(error as Error).message}`);
     }

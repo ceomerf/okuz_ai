@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 
@@ -6,7 +6,7 @@ import { CacheService } from '../common/cache/cache.service';
 export class SystemHealthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cacheService: CacheService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   async getSystemHealth() {
@@ -43,7 +43,7 @@ export class SystemHealthService {
     try {
       // Cache'den metrikleri al (10 saniye cache)
       const cacheKey = 'system:metrics';
-      const cachedMetrics = await this.cacheService.get(cacheKey);
+      const cachedMetrics = await this.cacheService?.get(cacheKey);
       
       if (cachedMetrics) {
         return {
@@ -80,7 +80,7 @@ export class SystemHealthService {
       };
 
       // Cache'e kaydet (10 saniye)
-      await this.cacheService.set(cacheKey, metrics, 10);
+      await this.cacheService?.set(cacheKey, metrics, 10);
 
       return {
         success: true,
@@ -132,7 +132,7 @@ export class SystemHealthService {
 
   private async checkRedisHealth(): Promise<string> {
     try {
-      await this.cacheService.get('health:check');
+      await this.cacheService?.get('health:check');
       return 'OK';
     } catch (error) {
       return 'ERROR';

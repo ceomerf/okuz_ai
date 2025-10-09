@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, InternalServerErrorException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { CacheService } from '../common/cache/cache.service';
@@ -69,10 +69,10 @@ export class AIOrchestrator {
     private readonly configService: ConfigService,
     private readonly aiConfig: AIConfigService,
     private readonly promptRegistry: PromptRegistry,
-    private readonly cache: CacheService,
     private readonly prisma: PrismaService,
     private readonly metrics: MetricsService,
     private readonly aiLogger: AILoggerService,
+    @Optional() private readonly cache?: CacheService,
   ) {
     this.initializeOpenAI();
     this.setupFallbackStrategies();
@@ -174,7 +174,7 @@ export class AIOrchestrator {
       // Cache kontrolü
       if (options.cache !== false) {
         const cacheKey = this.generateCacheKey(request);
-        const cached = await this.cache.get<AIResponse>(cacheKey);
+        const cached = await this.cache?.get<AIResponse>(cacheKey);
         if (cached) {
           this.logger.log(`Cache hit for request: ${requestId}`);
           return cached;
@@ -187,7 +187,7 @@ export class AIOrchestrator {
       // Cache'e kaydet
       if (options.cache !== false) {
         const cacheTTL = options.cacheTTL || this.aiConfig.getDefaultCacheTTL();
-        await this.cache.set(this.generateCacheKey(request), response, cacheTTL);
+        await this.cache?.set(this.generateCacheKey(request), response, cacheTTL);
       }
 
       // Logging
@@ -364,14 +364,14 @@ export class AIOrchestrator {
 
     // Redis ile rate limiting kontrolü
     const key = `rate_limit:${userId}:${promptType || 'default'}`;
-    const current = await this.cache.get<number>(key) || 0;
+    const current = await this.cache?.get<number>(key) || 0;
 
     if (current >= config.requestsPerMinute) {
       throw new BadRequestException('Rate limit exceeded. Please try again later.');
     }
 
     // Counter'ı artır
-    await this.cache.set(key, current + 1, 60); // 1 dakika TTL
+    await this.cache?.set(key, current + 1, 60); // 1 dakika TTL
   }
 
   /**

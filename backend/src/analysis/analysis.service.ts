@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { DatabaseService } from '../common/database/database.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 
@@ -7,8 +7,8 @@ export class AnalysisService {
   private readonly logger = new Logger(AnalysisService.name);
 
   constructor(
-    private readonly databaseService: DatabaseService,
     private readonly prismaService: PrismaService, // Fallback for compatibility
+    @Optional() private readonly databaseService?: DatabaseService,
   ) {}
 
   /**
@@ -17,7 +17,7 @@ export class AnalysisService {
   async getUserPerformanceAnalytics(userId: string, dateRange: { start: Date; end: Date }) {
     this.logger.log(`Getting performance analytics for user ${userId} using read replica`);
     
-    return this.databaseService.executeRead(async (readClient) => {
+    return this.databaseService?.executeRead(async (readClient) => {
       return readClient.analysis.findMany({
         where: {
           userId,
@@ -48,7 +48,7 @@ export class AnalysisService {
   async getSystemAnalytics(dateRange: { start: Date; end: Date }) {
     this.logger.log('Getting system analytics using read replica');
     
-    return this.databaseService.executeRead(async (readClient) => {
+    return this.databaseService?.executeRead(async (readClient) => {
       const [
         totalUsers,
         activeUsers,
@@ -121,7 +121,7 @@ export class AnalysisService {
   async getPerformanceBreakdown(userId: string, subject?: string) {
     this.logger.log(`Getting performance breakdown for user ${userId} using read replica`);
     
-    return this.databaseService.executeRead(async (readClient) => {
+    return this.databaseService?.executeRead(async (readClient) => {
       const whereClause: any = { userId };
       if (subject) {
         whereClause.subject = subject;
@@ -155,7 +155,7 @@ export class AnalysisService {
   async getLearningInsights(userId: string) {
     this.logger.log(`Getting learning insights for user ${userId} using read replica`);
     
-    return this.databaseService.executeRead(async (readClient) => {
+    return this.databaseService?.executeRead(async (readClient) => {
       const [
         recentPerformance,
         strengths,
@@ -225,7 +225,7 @@ export class AnalysisService {
   async getComparativeAnalytics(userId: string) {
     this.logger.log(`Getting comparative analytics for user ${userId} using read replica`);
     
-    return this.databaseService.executeRead(async (readClient) => {
+    return this.databaseService?.executeRead(async (readClient) => {
       const [
         userStats,
         peerStats,

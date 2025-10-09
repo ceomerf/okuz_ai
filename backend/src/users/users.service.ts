@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 import { PlanningService } from '../planning/planning.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService, private readonly cache: CacheService, private readonly planningService: PlanningService) {}
+  constructor(private readonly prisma: PrismaService, private readonly planningService: PlanningService, @Optional() private readonly cache?: CacheService) {}
 
   async findAll() {
     return { message: 'Users service implementation' };
@@ -50,7 +50,7 @@ export class UsersService {
   async getUser(id: string) {
     try {
       const cacheKey = `user:${id}`;
-      const cached = await this.cache.get(cacheKey);
+      const cached = await this.cache?.get(cacheKey);
       if (cached) return { message: 'User found', user: cached };
       const user = await (this.prisma as any).user.findUnique({
         where: { id },
@@ -60,7 +60,7 @@ export class UsersService {
           gamificationProfile: true
         }
       });
-      if (user) await this.cache.set(cacheKey, user, 3600);
+      if (user) await this.cache?.set(cacheKey, user, 3600);
       return { message: 'User found', user };
     } catch (error) {
       throw new Error('Failed to get user');
@@ -89,7 +89,7 @@ export class UsersService {
         where: { id },
         data
       });
-      await this.cache.del?.(`user:${id}`);
+      await this.cache?.del(`user:${id}`);
       return { message: 'User updated successfully', user };
     } catch (error) {
       throw new Error('Failed to update user');
@@ -101,7 +101,7 @@ export class UsersService {
       await (this.prisma as any).user.delete({
         where: { id }
       });
-      await this.cache.del?.(`user:${id}`);
+      await this.cache?.del(`user:${id}`);
       return { message: 'User deleted successfully' };
     } catch (error) {
       throw new Error('Failed to delete user');
@@ -132,7 +132,7 @@ export class UsersService {
           field: data.field || 'General',
         }
       });
-      await this.cache.del?.(`user:${data.userId}`);
+      await this.cache?.del(`user:${data.userId}`);
       return { message: 'Student profile created', profile };
     } catch (error) {
       throw new Error('Failed to create student profile');
@@ -147,7 +147,7 @@ export class UsersService {
           // children: data.children || [] // Prisma schema'da children field'ı yok
         }
       });
-      await this.cache.del?.(`user:${data.userId}`);
+      await this.cache?.del(`user:${data.userId}`);
       return { message: 'Parent profile created', profile };
     } catch (error) {
       throw new Error('Failed to create parent profile');
@@ -183,7 +183,7 @@ export class UsersService {
         where: { userId },
         data,
       });
-      await this.cache.del?.(`user:${userId}`);
+      await this.cache?.del(`user:${userId}`);
       return { message: 'User profile updated', profile: updatedStudent };
     } catch (error) {
       throw new Error('Failed to update user profile');

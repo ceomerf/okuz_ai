@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, InternalServerErrorException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { AIConfigService } from './ai-config.service';
@@ -47,7 +47,7 @@ export class AIService {
     private readonly configService: ConfigService,
     private readonly aiConfig: AIConfigService,
     private readonly promptRegistry: PromptRegistry,
-    private readonly cache: CacheService,
+    @Optional() private readonly cache?: CacheService,
   ) {
     this.initializeOpenAI();
   }
@@ -95,7 +95,7 @@ export class AIService {
       // Cache kontrolü
       if (options.cache !== false) {
         const cacheKey = this.generateCacheKey(normalizedRequest);
-        const cached = await this.cache.get<AIResponse>(cacheKey); // DÜZELTME: tipli cache get
+        const cached = await this.cache?.get<AIResponse>(cacheKey); // DÜZELTME: tipli cache get
         if (cached) {
           this.logger.log(`Cache hit for request: ${requestId}`);
           return cached;
@@ -113,7 +113,7 @@ export class AIService {
       // Cache'e kaydet
       if (options.cache !== false) {
         const cacheTTL = options.cacheTTL || this.aiConfig.getDefaultCacheTTL();
-        await this.cache.set(this.generateCacheKey(normalizedRequest), response, cacheTTL);
+        await this.cache?.set(this.generateCacheKey(normalizedRequest), response, cacheTTL);
       }
 
       // Logging
@@ -229,7 +229,7 @@ export class AIService {
     if (!userId) return;
 
     const rateLimitKey = `ai:rate_limit:${userId}`;
-    const currentCount = Number(await this.cache.get(rateLimitKey) || 0);
+    const currentCount = Number(await this.cache?.get(rateLimitKey) || 0);
     const rateLimit = this.aiConfig.getRateLimit();
 
     if (currentCount >= rateLimit) {
@@ -237,7 +237,7 @@ export class AIService {
     }
 
     // Rate limit counter'ı artır
-    await this.cache.set(rateLimitKey, currentCount + 1, 3600); // 1 saat
+    await this.cache?.set(rateLimitKey, currentCount + 1, 3600); // 1 saat
   }
 
   /**

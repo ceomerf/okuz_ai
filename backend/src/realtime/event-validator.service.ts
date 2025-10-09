@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, UnauthorizedException, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 import { JwtService } from '@nestjs/jwt';
@@ -38,10 +38,10 @@ export class EventValidatorService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
     private readonly jwtService: JwtService,
     private readonly eventEmitter: EventEmitter2,
     private readonly connectionManager: ConnectionManagerService,
+    @Optional() private readonly cache?: CacheService,
   ) {
     this.initializeEventSchemas();
   }
@@ -426,7 +426,7 @@ export class EventValidatorService {
   private async getUserPermissions(userId: string): Promise<string[]> {
     try {
       // Cache'den al
-      const cached = await this.cache.get(`user_permissions:${userId}`);
+      const cached = await this.cache?.get(`user_permissions:${userId}`);
       if (cached) {
         return JSON.parse(cached as string);
       }
@@ -445,7 +445,7 @@ export class EventValidatorService {
       const permissions = this.getRolePermissions(user.role);
       
       // Cache'e kaydet
-      await this.cache.set(`user_permissions:${userId}`, JSON.stringify(permissions), 300); // 5 dakika
+      await this.cache?.set(`user_permissions:${userId}`, JSON.stringify(permissions), 300); // 5 dakika
 
       return permissions;
     } catch (error) {

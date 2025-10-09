@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 
 @Injectable()
 export class InteractionService {
-  constructor(private readonly prisma: PrismaService, private readonly cache: CacheService) {}
+  constructor(private readonly prisma: PrismaService, @Optional() private readonly cache?: CacheService) {}
 
   async createInteraction(interactionData: any) {
     const interaction = await (this.prisma as any).interaction.create({
@@ -22,7 +22,7 @@ export class InteractionService {
       where: { id },
       data: updateData,
     });
-    await this.cache.del?.(`interaction:${id}`);
+    await this.cache?.del(`interaction:${id}`);
     return interaction;
   }
 
@@ -60,7 +60,7 @@ export class InteractionService {
 
   async getInteraction(id: string) {
     const cacheKey = `interaction:${id}`;
-    const cached = await this.cache.get<any>(cacheKey);
+    const cached = await this.cache?.get<any>(cacheKey);
     if (cached) {
       return cached as any;
     }
@@ -68,7 +68,7 @@ export class InteractionService {
       where: { id },
     });
     if (interaction) {
-      await this.cache.set(cacheKey, interaction, 3600);
+      await this.cache?.set(cacheKey, interaction, 3600);
     }
     return interaction as any;
   }
@@ -91,7 +91,7 @@ export class InteractionService {
     await (this.prisma as any).interaction.delete({
       where: { id },
     });
-    await this.cache.del?.(`interaction:${id}`);
+    await this.cache?.del(`interaction:${id}`);
     return { message: 'Interaction deleted', id } as any;
   }
 

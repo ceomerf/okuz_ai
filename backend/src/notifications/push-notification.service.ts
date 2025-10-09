@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
@@ -60,10 +60,10 @@ export class PushNotificationService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
     private readonly metrics: MetricsService,
     private readonly eventEmitter: EventEmitter2,
     private readonly connectionManager: ConnectionManagerService,
+    @Optional() private readonly cache?: CacheService,
   ) {
     // VAPID keys
     this.vapidKeys = {
