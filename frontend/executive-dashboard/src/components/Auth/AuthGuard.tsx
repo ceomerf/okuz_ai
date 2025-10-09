@@ -65,7 +65,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
           Bu sayfaya erişim için <strong>{requiredRole}</strong> rolü gereklidir.
         </Typography>
         <Typography variant="body2" color="text.secondary" textAlign="center">
-          Mevcut rolünüz: <strong>{user?.role}</strong>
+          Mevcut rolünüz: <strong>{user?.roles?.[0]}</strong>
         </Typography>
       </Box>
     );
