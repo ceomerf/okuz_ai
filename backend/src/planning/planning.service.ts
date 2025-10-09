@@ -78,7 +78,7 @@ export class PlanningService {
     private readonly exceptionService: ExceptionService,
     @Optional() private readonly cache?: CacheService,
     @Optional() private readonly prometheus?: PrometheusService,
-    @Optional() private readonly curriculumEngine?: CurriculumEngineService,
+    private readonly curriculumEngine: CurriculumEngineService,
   ) {}
 
   /**
