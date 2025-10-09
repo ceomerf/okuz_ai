@@ -97,7 +97,7 @@ export class PlanningService {
       const profile = await (this.prisma as any).user.findUnique({ where: { id: (data as any).userId }, include: { studentProfile: true } });
       const grade = profile?.studentProfile?.grade || 11;
       const examFocus = (data as any)?.targetExam === 'AYT' ? 'AYT' : ( (data as any)?.targetExam === 'TYT' ? 'TYT' : 'GENEL');
-      const baseOrder = await this.curriculumEngine.buildPrerequisiteAwareTopicOrder((data as any).subjects || [], grade, (data as any)?.targetExam);
+      const baseOrder = await this.curriculumEngine.buildPrerequisiteAwareTopicOrder((data as any).subjects || [], grade);
       const perf = await this.performanceAnalyzer.analyzeUserPerformance((data as any).userId);
       const prioritized = await this.topicPrioritizer.prioritizeTopics(baseOrder, examFocus as any, perf.topicMastery);
 
