@@ -69,12 +69,16 @@ export class PushNotificationService {
       privateKey: this.configService.get<string>('VAPID_PRIVATE_KEY') || '',
     };
 
-    // Web-push konfigürasyonu
-    webpush.setVapidDetails(
-      'mailto:admin@okuz.ai',
-      this.vapidKeys.publicKey,
-      this.vapidKeys.privateKey
-    );
+    // Web-push konfigürasyonu (sadece key'ler varsa)
+    if (this.vapidKeys.publicKey && this.vapidKeys.privateKey) {
+      webpush.setVapidDetails(
+        'mailto:admin@okuz.ai',
+        this.vapidKeys.publicKey,
+        this.vapidKeys.privateKey
+      );
+    } else {
+      this.logger.warn('VAPID keys not configured - push notifications disabled');
+    }
 
     this.logger.log('PushNotificationService initialized');
   }
