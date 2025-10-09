@@ -29,7 +29,6 @@ import { BulkNotificationService } from './bulk-notification.service';
     EmailService,
     NotificationPreferenceService,
     BulkNotificationService,
-    EventEmitter2,
   ],
   exports: [
     NotificationsService,
