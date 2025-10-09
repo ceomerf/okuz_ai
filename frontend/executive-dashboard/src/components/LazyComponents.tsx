@@ -21,9 +21,9 @@ export const LazyStudents = lazy(() => import('./Dynamic/DynamicEntityPage'));
 export const LazyTeachers = lazy(() => import('./Dynamic/DynamicEntityPage'));
 export const LazyCourses = lazy(() => import('./Dynamic/DynamicEntityPage'));
 export const LazyUsers = lazy(() => import('./Dynamic/DynamicEntityPage'));
-export const LazyAnalytics = lazy(() => import('./Analytics/AnalyticsPage'));
-export const LazyReports = lazy(() => import('./Reports/ReportsPage'));
-export const LazySettings = lazy(() => import('./Settings/SettingsPage'));
+export const LazyAnalytics = lazy(() => import('./Dashboard/AdvancedDashboard'));
+export const LazyReports = lazy(() => import('./Dashboard/AdvancedDashboard'));
+export const LazySettings = lazy(() => import('./Dashboard/AdvancedDashboard'));
 
 // Higher-order component for lazy loading with suspense
 export const withLazyLoading = <P extends object>(

@@ -19,7 +19,6 @@ import {
   Switch,
   FormControlLabel,
   Paper,
-  Box,
   Fab,
   Menu,
   ListItemIcon,
@@ -92,7 +91,7 @@ const DynamicDashboard: React.FC = () => {
       
       const response = await apiService.request(`/api/analytics/dashboard/${dashboardId}`);
       if (response.success) {
-        setDashboard(response.data);
+        setDashboard(response.data as any);
       } else {
         setError('Dashboard yüklenemedi');
       }
@@ -527,8 +526,8 @@ const WidgetDialog: React.FC<WidgetDialogProps> = ({
         {widget ? 'Widget Düzenle' : 'Yeni Widget'}
       </DialogTitle>
       <DialogContent>
-        <Box container spacing={2} sx={{ mt: 1 }}>
-          <Box xs={12} sm={6}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1 }}>
+          <Box sx={{ flex: '1 1 50%' }}>
             <TextField
               fullWidth
               label="Widget Başlığı"
@@ -538,7 +537,7 @@ const WidgetDialog: React.FC<WidgetDialogProps> = ({
             />
           </Box>
           
-          <Box xs={12} sm={6}>
+          <Box sx={{ flex: '1 1 50%' }}>
             <FormControl fullWidth>
               <InputLabel>Widget Tipi</InputLabel>
               <Select
@@ -556,7 +555,7 @@ const WidgetDialog: React.FC<WidgetDialogProps> = ({
             </FormControl>
           </Box>
           
-          <Box xs={12}>
+          <Box sx={{ width: '100%' }}>
             <TextField
               fullWidth
               label="Açıklama"
@@ -567,7 +566,7 @@ const WidgetDialog: React.FC<WidgetDialogProps> = ({
             />
           </Box>
           
-          <Box xs={12}>
+          <Box sx={{ width: '100%' }}>
             <TextField
               fullWidth
               label="SQL Sorgusu"
@@ -579,7 +578,7 @@ const WidgetDialog: React.FC<WidgetDialogProps> = ({
             />
           </Box>
           
-          <Box xs={12} sm={6}>
+          <Box sx={{ flex: '1 1 50%' }}>
             <TextField
               fullWidth
               label="Yenileme Süresi (saniye)"

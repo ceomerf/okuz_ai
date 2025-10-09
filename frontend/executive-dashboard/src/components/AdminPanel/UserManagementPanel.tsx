@@ -297,7 +297,7 @@ const UserManagementPanel: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }} alignItems="center">
-            <Box item sx={{ flex: '1 1 25%' }}>
+            <Box sx={{ flex: '1 1 25%' }}>
               <TextField
                 fullWidth
                 label="Arama"
@@ -308,7 +308,7 @@ const UserManagementPanel: React.FC = () => {
                 }}
               />
             </Box>
-            <Box sx={{ width: '100%' }} md={2}>
+            <Box sx={{ width: '100%' }} >
               <FormControl fullWidth>
                 <InputLabel>Rol</InputLabel>
                 <Select
@@ -324,7 +324,7 @@ const UserManagementPanel: React.FC = () => {
                 </Select>
               </FormControl>
             </Box>
-            <Box sx={{ width: '100%' }} md={2}>
+            <Box sx={{ width: '100%' }} >
               <FormControl fullWidth>
                 <InputLabel>Durum</InputLabel>
                 <Select
@@ -338,7 +338,7 @@ const UserManagementPanel: React.FC = () => {
                 </Select>
               </FormControl>
             </Box>
-            <Box sx={{ width: '100%' }} md={2}>
+            <Box sx={{ width: '100%' }} >
                 <Button
                   variant="outlined"
                   startIcon={<FilterList />}
@@ -348,7 +348,7 @@ const UserManagementPanel: React.FC = () => {
                 Filtreler
               </Button>
             </Box>
-            <Box item sx={{ flex: '1 1 25%' }}>
+            <Box sx={{ flex: '1 1 25%' }}>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button
                   variant="outlined"
@@ -616,7 +616,7 @@ const UserManagementPanel: React.FC = () => {
 
           <TabPanel value={currentTab} index={0}>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-              <Box sx={{ width: '100%' }} md={6}>
+              <Box sx={{ width: '100%' }} >
                 <Paper sx={{ p: 2 }}>
                   <Typography variant="h6" gutterBottom>
                     Profil Bilgileri
@@ -646,7 +646,7 @@ const UserManagementPanel: React.FC = () => {
                   </List>
                 </Paper>
               </Box>
-              <Box sx={{ width: '100%' }} md={6}>
+              <Box sx={{ width: '100%' }} >
                 <Paper sx={{ p: 2 }}>
                   <Typography variant="h6" gutterBottom>
                     Sistem Bilgileri

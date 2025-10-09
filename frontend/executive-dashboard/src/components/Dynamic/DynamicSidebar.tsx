@@ -70,7 +70,7 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
       
       const response = await apiService.request('/api/schemas');
       if (response.success) {
-        setSchemas(response.data);
+        setSchemas(response.data as any);
       } else {
         setError('Schema listesi yüklenemedi');
       }

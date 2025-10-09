@@ -85,7 +85,7 @@ const DynamicEntityPage: React.FC = () => {
       
       const response = await apiService.request(`/api/schemas/${entityName}`);
       if (response.success) {
-        setSchema(response.data);
+        setSchema(response.data as any);
       } else {
         setError('Schema yüklenemedi');
       }
@@ -107,7 +107,7 @@ const DynamicEntityPage: React.FC = () => {
       );
       
       if (response.success) {
-        setData(response.data);
+        setData(response.data as any);
       } else {
         setError('Veri yüklenemedi');
       }

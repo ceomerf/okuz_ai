@@ -117,7 +117,7 @@ class ApiService {
     this.token = localStorage.getItem('admin_token');
   }
 
-  private async request<T>(
+  async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {

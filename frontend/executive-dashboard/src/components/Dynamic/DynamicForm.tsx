@@ -308,9 +308,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       </DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
-          <Box container spacing={2}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             {schema.fields.map((field) => (
-              <Box xs={12} sm={field.type === 'boolean' ? 12 : 6} key={field.name}>
+              <Box sx={{ flex: field.type === 'boolean' ? '1 1 100%' : '1 1 50%' }} key={field.name}>
                 {renderField(field)}
               </Box>
             ))}
