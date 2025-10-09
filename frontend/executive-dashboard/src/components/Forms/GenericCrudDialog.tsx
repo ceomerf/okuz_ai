@@ -16,7 +16,7 @@ import {
   Typography,
   Alert,
   CircularProgress,
-  Grid,
+  Box,
   Chip,
   Autocomplete,
 } from '@mui/material';
@@ -284,13 +284,13 @@ const GenericCrudDialog: React.FC<GenericCrudDialogProps> = ({
       </DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
-          <Grid container spacing={2}>
+          <Box container spacing={2}>
             {fields.map((field) => (
-              <Grid item xs={12} sm={field.type === 'switch' ? 12 : 6} key={field.name}>
+              <Box xs={12} sm={field.type === 'switch' ? 12 : 6} key={field.name}>
                 {renderField(field)}
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </Box>
       </DialogContent>
       <DialogActions>

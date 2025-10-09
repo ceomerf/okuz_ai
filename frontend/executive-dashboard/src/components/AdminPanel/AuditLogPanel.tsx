@@ -66,20 +66,28 @@ const AuditLogPanel: React.FC = () => {
       <Typography variant="h4" sx={{ mb: 2 }}>Denetim Kayıtları</Typography>
       <Card sx={{ mb: 2 }}>
         <CardContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={3}><TextField label="Kullanıcı ID" fullWidth value={filters.actorUserId || ''} onChange={(e) => setFilters(prev => ({ ...prev, actorUserId: e.target.value || undefined }))} /></Grid>
-            <Grid item xs={12} md={3}><TextField label="Aksiyon" fullWidth value={filters.actionType || ''} onChange={(e) => setFilters(prev => ({ ...prev, actionType: e.target.value || undefined }))} /></Grid>
-            <Grid item xs={12} md={3}><TextField label="Varlık" fullWidth value={filters.targetEntity || ''} onChange={(e) => setFilters(prev => ({ ...prev, targetEntity: e.target.value || undefined }))} /></Grid>
-            <Grid item xs={12} md={3}><TextField type="date" label="Başlangıç" InputLabelProps={{ shrink: true }} fullWidth value={filters.from || ''} onChange={(e) => setFilters(prev => ({ ...prev, from: e.target.value || undefined }))} /></Grid>
-            <Grid item xs={12} md={3}><TextField type="date" label="Bitiş" InputLabelProps={{ shrink: true }} fullWidth value={filters.to || ''} onChange={(e) => setFilters(prev => ({ ...prev, to: e.target.value || undefined }))} /></Grid>
-            <Grid item xs={12} md={6}>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button variant="outlined" onClick={() => setPage(1)}>Filtrele</Button>
-                <Button variant="contained" onClick={() => handleExport('csv')}>CSV</Button>
-                <Button variant="contained" onClick={() => handleExport('json')}>JSON</Button>
-              </Box>
-            </Grid>
-          </Grid>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+              <TextField label="Kullanıcı ID" fullWidth value={filters.actorUserId || ''} onChange={(e) => setFilters(prev => ({ ...prev, actorUserId: e.target.value || undefined }))} />
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+              <TextField label="Aksiyon" fullWidth value={filters.actionType || ''} onChange={(e) => setFilters(prev => ({ ...prev, actionType: e.target.value || undefined }))} />
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+              <TextField label="Varlık" fullWidth value={filters.targetEntity || ''} onChange={(e) => setFilters(prev => ({ ...prev, targetEntity: e.target.value || undefined }))} />
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+              <TextField type="date" label="Başlangıç" InputLabelProps={{ shrink: true }} fullWidth value={filters.from || ''} onChange={(e) => setFilters(prev => ({ ...prev, from: e.target.value || undefined }))} />
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+              <TextField type="date" label="Bitiş" InputLabelProps={{ shrink: true }} fullWidth value={filters.to || ''} onChange={(e) => setFilters(prev => ({ ...prev, to: e.target.value || undefined }))} />
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Button variant="outlined" onClick={() => setPage(1)}>Filtrele</Button>
+              <Button variant="contained" onClick={() => handleExport('csv')}>CSV</Button>
+              <Button variant="contained" onClick={() => handleExport('json')}>JSON</Button>
+            </Box>
+          </Box>
         </CardContent>
       </Card>
 
@@ -117,16 +125,16 @@ const AuditLogPanel: React.FC = () => {
       <Dialog open={diffOpen} onClose={() => setDiffOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Değişiklik Diff</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ flex: 1 }}>
               <Typography variant="subtitle1">Önceki</Typography>
               <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(selectedLog?.prev || {}, null, 2)}</pre>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: 1 }}>
               <Typography variant="subtitle1">Sonraki</Typography>
               <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(selectedLog?.next || {}, null, 2)}</pre>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDiffOpen(false)}>Kapat</Button>

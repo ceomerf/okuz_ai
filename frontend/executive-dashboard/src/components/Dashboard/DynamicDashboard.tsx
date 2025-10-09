@@ -19,7 +19,7 @@ import {
   Switch,
   FormControlLabel,
   Paper,
-  Grid,
+  Box,
   Fab,
   Menu,
   ListItemIcon,
@@ -42,7 +42,7 @@ import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { apiService } from '../../services/api.service';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const ResponsiveBoxLayout = WidthProvider(Responsive);
 
 interface Widget {
   id: string;
@@ -385,9 +385,9 @@ const DynamicDashboard: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Dashboard Grid */}
+      {/* Dashboard Box */}
       <Box sx={{ position: 'relative' }}>
-        <ResponsiveGridLayout
+        <ResponsiveBoxLayout
           className="layout"
           layouts={dashboard.layout}
           onLayoutChange={handleLayoutChange}
@@ -436,7 +436,7 @@ const DynamicDashboard: React.FC = () => {
               </Box>
             </div>
           ))}
-        </ResponsiveGridLayout>
+        </ResponsiveBoxLayout>
         
         {/* Add Widget FAB */}
         {editMode && (
@@ -527,8 +527,8 @@ const WidgetDialog: React.FC<WidgetDialogProps> = ({
         {widget ? 'Widget Düzenle' : 'Yeni Widget'}
       </DialogTitle>
       <DialogContent>
-        <Grid container spacing={2} sx={{ mt: 1 }}>
-          <Grid item xs={12} sm={6}>
+        <Box container spacing={2} sx={{ mt: 1 }}>
+          <Box xs={12} sm={6}>
             <TextField
               fullWidth
               label="Widget Başlığı"
@@ -536,9 +536,9 @@ const WidgetDialog: React.FC<WidgetDialogProps> = ({
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               required
             />
-          </Grid>
+          </Box>
           
-          <Grid item xs={12} sm={6}>
+          <Box xs={12} sm={6}>
             <FormControl fullWidth>
               <InputLabel>Widget Tipi</InputLabel>
               <Select
@@ -554,9 +554,9 @@ const WidgetDialog: React.FC<WidgetDialogProps> = ({
                 <MenuItem value="KPI_CARD">KPI Kartı</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
+          </Box>
           
-          <Grid item xs={12}>
+          <Box xs={12}>
             <TextField
               fullWidth
               label="Açıklama"
@@ -565,9 +565,9 @@ const WidgetDialog: React.FC<WidgetDialogProps> = ({
               multiline
               rows={2}
             />
-          </Grid>
+          </Box>
           
-          <Grid item xs={12}>
+          <Box xs={12}>
             <TextField
               fullWidth
               label="SQL Sorgusu"
@@ -577,9 +577,9 @@ const WidgetDialog: React.FC<WidgetDialogProps> = ({
               rows={4}
               placeholder="SELECT COUNT(*) as total FROM users WHERE..."
             />
-          </Grid>
+          </Box>
           
-          <Grid item xs={12} sm={6}>
+          <Box xs={12} sm={6}>
             <TextField
               fullWidth
               label="Yenileme Süresi (saniye)"
@@ -587,8 +587,8 @@ const WidgetDialog: React.FC<WidgetDialogProps> = ({
               value={formData.refreshRate}
               onChange={(e) => setFormData({ ...formData, refreshRate: Number(e.target.value) })}
             />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={loading}>

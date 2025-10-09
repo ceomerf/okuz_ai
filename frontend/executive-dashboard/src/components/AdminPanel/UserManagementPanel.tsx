@@ -32,7 +32,6 @@ import {
   Badge,
   Tabs,
   Tab,
-  Grid,
   Paper,
   Divider,
   List,
@@ -297,8 +296,8 @@ const UserManagementPanel: React.FC = () => {
       {/* Filters */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={3}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }} alignItems="center">
+            <Box item sx={{ flex: '1 1 25%' }}>
               <TextField
                 fullWidth
                 label="Arama"
@@ -308,8 +307,8 @@ const UserManagementPanel: React.FC = () => {
                   startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />,
                 }}
               />
-            </Grid>
-            <Grid item xs={12} md={2}>
+            </Box>
+            <Box sx={{ width: '100%' }} md={2}>
               <FormControl fullWidth>
                 <InputLabel>Rol</InputLabel>
                 <Select
@@ -324,8 +323,8 @@ const UserManagementPanel: React.FC = () => {
                   <MenuItem value="PARENT">Veli</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid item xs={12} md={2}>
+            </Box>
+            <Box sx={{ width: '100%' }} md={2}>
               <FormControl fullWidth>
                 <InputLabel>Durum</InputLabel>
                 <Select
@@ -338,8 +337,8 @@ const UserManagementPanel: React.FC = () => {
                   <MenuItem value="inactive">Pasif</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid item xs={12} md={2}>
+            </Box>
+            <Box sx={{ width: '100%' }} md={2}>
                 <Button
                   variant="outlined"
                   startIcon={<FilterList />}
@@ -348,8 +347,8 @@ const UserManagementPanel: React.FC = () => {
                 >
                 Filtreler
               </Button>
-            </Grid>
-            <Grid item xs={12} md={3}>
+            </Box>
+            <Box item sx={{ flex: '1 1 25%' }}>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button
                   variant="outlined"
@@ -382,8 +381,8 @@ const UserManagementPanel: React.FC = () => {
                   İçe Aktar
                 </Button>
               </Box>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </CardContent>
       </Card>
 
@@ -616,8 +615,8 @@ const UserManagementPanel: React.FC = () => {
           </Box>
 
           <TabPanel value={currentTab} index={0}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ width: '100%' }} md={6}>
                 <Paper sx={{ p: 2 }}>
                   <Typography variant="h6" gutterBottom>
                     Profil Bilgileri
@@ -646,8 +645,8 @@ const UserManagementPanel: React.FC = () => {
                     </ListItem>
                   </List>
                 </Paper>
-              </Grid>
-              <Grid item xs={12} md={6}>
+              </Box>
+              <Box sx={{ width: '100%' }} md={6}>
                 <Paper sx={{ p: 2 }}>
                   <Typography variant="h6" gutterBottom>
                     Sistem Bilgileri
@@ -675,8 +674,8 @@ const UserManagementPanel: React.FC = () => {
                     </ListItem>
                   </List>
                 </Paper>
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
           </TabPanel>
 
           <TabPanel value={currentTab} index={1}>

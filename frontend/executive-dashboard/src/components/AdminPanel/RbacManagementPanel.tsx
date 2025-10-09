@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Card, CardContent, Typography, Grid, TextField, Button, Chip, Table, TableHead, TableRow, TableCell, TableBody, Checkbox, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Card, CardContent, Typography, TextField, Button, Chip, Table, TableHead, TableRow, TableCell, TableBody, Checkbox, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { rbacManagementApi, Role, Permission } from '../../services/rbacManagementApi';
 import { useNotification } from '../../hooks/useNotification';
 import ConfirmDialog from '../Shared/ConfirmDialog';
@@ -94,8 +94,8 @@ const RbacManagementPanel: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" sx={{ mb: 2 }}>RBAC Yönetimi</Typography>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={4}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ flex: '1 1 33%' }}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -110,9 +110,9 @@ const RbacManagementPanel: React.FC = () => {
               ))}
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={8}>
+        <Box sx={{ width: '100%' }} >
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>İzin Denetim Matrisi</Typography>
@@ -153,8 +153,8 @@ const RbacManagementPanel: React.FC = () => {
               </Box>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       {/* Create Role */}
       <Dialog open={createRoleOpen} onClose={() => setCreateRoleOpen(false)}>

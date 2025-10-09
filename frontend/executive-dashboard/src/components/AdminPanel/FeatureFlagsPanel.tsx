@@ -62,8 +62,8 @@ const FeatureFlagsPanel: React.FC = () => {
         <Button variant="outlined" onClick={load}>Yenile</Button>
       </Box>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={7}>
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ flex: '1 1 70%' }}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>Features</Typography>
@@ -84,9 +84,9 @@ const FeatureFlagsPanel: React.FC = () => {
               ))}
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={5}>
+        <Box sx={{ flex: '1 1 30%' }}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>Remote Config</Typography>
@@ -103,8 +103,8 @@ const FeatureFlagsPanel: React.FC = () => {
               </Box>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       <NotificationComponent />
     </Box>

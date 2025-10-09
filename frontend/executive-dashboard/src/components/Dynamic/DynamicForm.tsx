@@ -18,7 +18,6 @@ import {
   CircularProgress,
   Chip,
   Autocomplete,
-  Grid,
 } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 
@@ -309,13 +308,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       </DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
-          <Grid container spacing={2}>
+          <Box container spacing={2}>
             {schema.fields.map((field) => (
-              <Grid item xs={12} sm={field.type === 'boolean' ? 12 : 6} key={field.name}>
+              <Box xs={12} sm={field.type === 'boolean' ? 12 : 6} key={field.name}>
                 {renderField(field)}
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </Box>
       </DialogContent>
       <DialogActions>
