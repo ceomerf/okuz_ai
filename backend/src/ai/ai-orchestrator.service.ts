@@ -70,8 +70,8 @@ export class AIOrchestrator {
     private readonly aiConfig: AIConfigService,
     private readonly promptRegistry: PromptRegistry,
     private readonly prisma: PrismaService,
-    private readonly metrics: MetricsService,
-    private readonly aiLogger: AILoggerService,
+    @Optional() private readonly metrics?: MetricsService,
+    @Optional() private readonly aiLogger?: AILoggerService,
     @Optional() private readonly cache?: CacheService,
   ) {
     this.initializeOpenAI();
@@ -427,27 +427,31 @@ export class AIOrchestrator {
   ): Promise<void> {
     try {
       // AI Logger'a kaydet
-      await this.aiLogger.logAIRequest({
-        // DÜZELTME: AILogEntry şemasına uygun veri gönderimi
-        requestId: response.requestId,
-        userId: request.userId,
-        promptType: request.promptType || 'default',
-        model: response.model,
-        prompt: request.prompt,
-        response: response.content,
-        usage: {
-          promptTokens: response.usage.promptTokens,
-          completionTokens: response.usage.completionTokens,
-          totalTokens: response.usage.totalTokens,
-        },
-        duration,
-        success: true,
-        timestamp: new Date(),
-      });
+      if (this.aiLogger) {
+        await this.aiLogger.logAIRequest({
+          // DÜZELTME: AILogEntry şemasına uygun veri gönderimi
+          requestId: response.requestId,
+          userId: request.userId,
+          promptType: request.promptType || 'default',
+          model: response.model,
+          prompt: request.prompt,
+          response: response.content,
+          usage: {
+            promptTokens: response.usage.promptTokens,
+            completionTokens: response.usage.completionTokens,
+            totalTokens: response.usage.totalTokens,
+          },
+          duration,
+          success: true,
+          timestamp: new Date(),
+        });
+      }
 
       // Metrics service'e kaydet
-      this.metrics.recordGeminiUsage(request.userId, request.promptType, response.model, 'chat.completions', response.usage.totalTokens);
-      this.metrics.recordGeminiCallDuration(request.userId, request.promptType, response.model, 'chat.completions', duration, true);
+      if (this.metrics) {
+        this.metrics.recordGeminiUsage(request.userId, request.promptType, response.model, 'chat.completions', response.usage.totalTokens);
+        this.metrics.recordGeminiCallDuration(request.userId, request.promptType, response.model, 'chat.completions', duration, true);
+      }
     } catch (error) {
       this.logger.error(`Failed to record metrics`, { error: (error instanceof Error ? error.message : String(error)) });
     }

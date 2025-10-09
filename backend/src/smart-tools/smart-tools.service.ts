@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { MetricsService } from '../monitoring/metrics.service';
 import { QuestionSolverService, SolveQuestionData } from './question-solver.service';
 import { ContentGeneratorService } from './content-generator.service';
@@ -11,7 +11,7 @@ export class SmartToolsService {
   constructor(
     private readonly questionSolver: QuestionSolverService,
     private readonly contentGenerator: ContentGeneratorService,
-    private readonly metrics: MetricsService,
+    @Optional() private readonly metrics?: MetricsService,
   ) {}
 
   // Soru çözme işlemleri - QuestionSolverService'e delegasyon

@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { PlanType } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PlanningFacade } from './planning-facade.service';
@@ -70,7 +70,6 @@ export class PlanningService {
     private readonly dossier: DigitalDossierService,
     private readonly adaptiveInsights: AdaptiveInsightsService,
     private readonly adaptiveStrategy: AdaptiveStrategyService,
-    private readonly cache: CacheService,
     private readonly queue: QueueService,
     private readonly prometheus: PrometheusService,
     private readonly curriculumEngine: CurriculumEngineService,
@@ -79,6 +78,7 @@ export class PlanningService {
     private readonly aiService: AIService,
     private readonly loggingService: LoggingService,
     private readonly exceptionService: ExceptionService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   /**
