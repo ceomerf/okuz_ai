@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -318,177 +318,7 @@ async function main() {
 
   // Study streak modeli şemada yoksa atlandı
 
-  // 7. Entity Schemas oluştur
-  console.log('📋 Entity Schemas oluşturuluyor...');
-  
-  // Students schema
-  await (prisma as any).entitySchema.upsert({
-    where: { entityName: 'students' },
-    update: {},
-    create: {
-      entityName: 'students',
-      displayName: 'Öğrenciler',
-      description: 'Öğrenci yönetimi',
-      apiEndpoint: '/api/crud/students',
-      icon: '👨‍🎓',
-      color: '#3b82f6',
-      sortOrder: 1,
-      schema: {
-        fields: [
-          { name: 'name', label: 'Ad Soyad', type: 'string', required: true, showInTable: true },
-          { name: 'email', label: 'Email', type: 'string', required: true, showInTable: true },
-          { name: 'grade', label: 'Sınıf', type: 'select', required: true, showInTable: true, options: [
-            { value: '9', label: '9. Sınıf' },
-            { value: '10', label: '10. Sınıf' },
-            { value: '11', label: '11. Sınıf' },
-            { value: '12', label: '12. Sınıf' }
-          ]},
-          { name: 'field', label: 'Alan', type: 'select', required: true, showInTable: true, options: [
-            { value: 'Sayısal', label: 'Sayısal' },
-            { value: 'Eşit Ağırlık', label: 'Eşit Ağırlık' },
-            { value: 'Sözel', label: 'Sözel' },
-            { value: 'Dil', label: 'Dil' }
-          ]},
-          { name: 'goals', label: 'Hedefler', type: 'multiselect', showInTable: false, options: [
-            { value: 'YKS_TYT', label: 'YKS TYT' },
-            { value: 'YKS_AYT', label: 'YKS AYT' },
-            { value: 'LGS', label: 'LGS' },
-            { value: 'KPSS', label: 'KPSS' }
-          ]},
-          { name: 'learningStyle', label: 'Öğrenme Stili', type: 'select', showInTable: true, options: [
-            { value: 'Görsel', label: 'Görsel' },
-            { value: 'İşitsel', label: 'İşitsel' },
-            { value: 'Kinestetik', label: 'Kinestetik' },
-            { value: 'Okuma/Yazma', label: 'Okuma/Yazma' }
-          ]},
-          { name: 'isActive', label: 'Aktif', type: 'boolean', showInTable: true }
-        ]
-      }
-    }
-  });
-
-  // Teachers schema
-  await (prisma as any).entitySchema.upsert({
-    where: { entityName: 'teachers' },
-    update: {},
-    create: {
-      entityName: 'teachers',
-      displayName: 'Öğretmenler',
-      description: 'Öğretmen yönetimi',
-      apiEndpoint: '/api/crud/teachers',
-      icon: '👨‍🏫',
-      color: '#10b981',
-      sortOrder: 2,
-      schema: {
-        fields: [
-          { name: 'name', label: 'Ad Soyad', type: 'string', required: true, showInTable: true },
-          { name: 'email', label: 'Email', type: 'string', required: true, showInTable: true },
-          { name: 'phone', label: 'Telefon', type: 'string', showInTable: true },
-          { name: 'subjects', label: 'Branşlar', type: 'multiselect', required: true, showInTable: true, options: [
-            { value: 'Matematik', label: 'Matematik' },
-            { value: 'Fizik', label: 'Fizik' },
-            { value: 'Kimya', label: 'Kimya' },
-            { value: 'Biyoloji', label: 'Biyoloji' },
-            { value: 'Türkçe', label: 'Türkçe' },
-            { value: 'Tarih', label: 'Tarih' },
-            { value: 'Coğrafya', label: 'Coğrafya' }
-          ]},
-          { name: 'experience', label: 'Deneyim (Yıl)', type: 'number', showInTable: true },
-          { name: 'education', label: 'Eğitim Durumu', type: 'select', showInTable: true, options: [
-            { value: 'Lisans', label: 'Lisans' },
-            { value: 'Yüksek Lisans', label: 'Yüksek Lisans' },
-            { value: 'Doktora', label: 'Doktora' }
-          ]},
-          { name: 'hourlyRate', label: 'Saatlik Ücret (TL)', type: 'number', showInTable: true },
-          { name: 'isActive', label: 'Aktif', type: 'boolean', showInTable: true }
-        ]
-      }
-    }
-  });
-
-  // Courses schema
-  await (prisma as any).entitySchema.upsert({
-    where: { entityName: 'courses' },
-    update: {},
-    create: {
-      entityName: 'courses',
-      displayName: 'Kurslar',
-      description: 'Kurs yönetimi',
-      apiEndpoint: '/api/crud/courses',
-      icon: '📚',
-      color: '#f59e0b',
-      sortOrder: 3,
-      schema: {
-        fields: [
-          { name: 'title', label: 'Kurs Adı', type: 'string', required: true, showInTable: true },
-          { name: 'description', label: 'Açıklama', type: 'text', showInTable: false },
-          { name: 'subject', label: 'Ders', type: 'select', required: true, showInTable: true, options: [
-            { value: 'Matematik', label: 'Matematik' },
-            { value: 'Fizik', label: 'Fizik' },
-            { value: 'Kimya', label: 'Kimya' },
-            { value: 'Biyoloji', label: 'Biyoloji' },
-            { value: 'Türkçe', label: 'Türkçe' },
-            { value: 'Tarih', label: 'Tarih' },
-            { value: 'Coğrafya', label: 'Coğrafya' }
-          ]},
-          { name: 'grade', label: 'Sınıf', type: 'select', required: true, showInTable: true, options: [
-            { value: '9', label: '9. Sınıf' },
-            { value: '10', label: '10. Sınıf' },
-            { value: '11', label: '11. Sınıf' },
-            { value: '12', label: '12. Sınıf' },
-            { value: 'Mezun', label: 'Mezun' }
-          ]},
-          { name: 'level', label: 'Seviye', type: 'select', required: true, showInTable: true, options: [
-            { value: 'Başlangıç', label: 'Başlangıç' },
-            { value: 'Orta', label: 'Orta' },
-            { value: 'İleri', label: 'İleri' },
-            { value: 'Uzman', label: 'Uzman' }
-          ]},
-          { name: 'duration', label: 'Süre (Dakika)', type: 'number', required: true, showInTable: true },
-          { name: 'price', label: 'Fiyat (TL)', type: 'number', showInTable: true },
-          { name: 'maxStudents', label: 'Maksimum Öğrenci', type: 'number', showInTable: true },
-          { name: 'isActive', label: 'Aktif', type: 'boolean', showInTable: true },
-          { name: 'isOnline', label: 'Online', type: 'boolean', showInTable: true }
-        ]
-      }
-    }
-  });
-
-  // Users schema
-  await (prisma as any).entitySchema.upsert({
-    where: { entityName: 'users' },
-    update: {},
-    create: {
-      entityName: 'users',
-      displayName: 'Kullanıcılar',
-      description: 'Kullanıcı yönetimi',
-      apiEndpoint: '/api/crud/users',
-      icon: '👥',
-      color: '#8b5cf6',
-      sortOrder: 4,
-      schema: {
-        fields: [
-          { name: 'name', label: 'Ad Soyad', type: 'string', required: true, showInTable: true },
-          { name: 'email', label: 'Email', type: 'string', required: true, showInTable: true },
-          { name: 'role', label: 'Rol', type: 'select', required: true, showInTable: true, options: [
-            { value: 'STUDENT', label: 'Öğrenci' },
-            { value: 'TEACHER', label: 'Öğretmen' },
-            { value: 'PARENT', label: 'Veli' },
-            { value: 'ADMIN', label: 'Admin' }
-          ]},
-          { name: 'subscriptionStatus', label: 'Abonelik Durumu', type: 'select', showInTable: true, options: [
-            { value: 'TRIAL', label: 'Deneme' },
-            { value: 'FREE', label: 'Ücretsiz' },
-            { value: 'PREMIUM', label: 'Premium' },
-            { value: 'FAMILY', label: 'Aile' },
-            { value: 'CANCELLED', label: 'İptal' }
-          ]},
-          { name: 'grade', label: 'Sınıf', type: 'number', showInTable: true },
-          { name: 'createdAt', label: 'Kayıt Tarihi', type: 'date', showInTable: true }
-        ]
-      }
-    }
-  });
+  // Entity Schemas kısmı kaldırıldı - model mevcut değil
 
   console.log('✅ Veritabanı seeding tamamlandı!');
   console.log('📋 Oluşturulan kullanıcılar:');
@@ -496,11 +326,7 @@ async function main() {
   console.log('   👨‍🏫 Öğretmen: teacher@okuz.ai / teacher123');
   console.log('   👨‍🎓 Öğrenci: student@okuz.ai / student123');
   console.log('   👨‍👩‍👧‍👦 Veli: parent@okuz.ai / parent123');
-  console.log('📋 Oluşturulan Entity Schemas:');
-  console.log('   👨‍🎓 Öğrenciler (students)');
-  console.log('   👨‍🏫 Öğretmenler (teachers)');
-  console.log('   📚 Kurslar (courses)');
-  console.log('   👥 Kullanıcılar (users)');
+  // Entity Schemas kısmı kaldırıldı
 }
 
 main()
