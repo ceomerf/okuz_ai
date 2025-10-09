@@ -71,7 +71,6 @@ export class PlanningService {
     private readonly adaptiveInsights: AdaptiveInsightsService,
     private readonly adaptiveStrategy: AdaptiveStrategyService,
     private readonly queue: QueueService,
-    private readonly curriculumEngine: CurriculumEngineService,
     private readonly performanceAnalyzer: PerformanceAnalyzerService,
     private readonly topicPrioritizer: TopicPrioritizerService,
     private readonly aiService: AIService,
@@ -79,6 +78,7 @@ export class PlanningService {
     private readonly exceptionService: ExceptionService,
     @Optional() private readonly cache?: CacheService,
     @Optional() private readonly prometheus?: PrometheusService,
+    @Optional() private readonly curriculumEngine?: CurriculumEngineService,
   ) {}
 
   /**
