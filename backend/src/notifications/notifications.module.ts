@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { EventEmitterModule } from '@nestjs/event-emitter';
+import { EventEmitterModule, EventEmitter2 } from '@nestjs/event-emitter';
 // import { CacheModule } from '@nestjs/cache-manager';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { MetricsModule } from '../monitoring/metrics.module';
@@ -29,6 +29,7 @@ import { BulkNotificationService } from './bulk-notification.service';
     EmailService,
     NotificationPreferenceService,
     BulkNotificationService,
+    EventEmitter2,
   ],
   exports: [
     NotificationsService,
