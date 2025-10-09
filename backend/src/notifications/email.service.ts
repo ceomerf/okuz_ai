@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
@@ -62,9 +62,9 @@ export class EmailService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
-    private readonly metrics: MetricsService,
-    private readonly eventEmitter: EventEmitter2,
+    @Optional() private readonly cache?: CacheService,
+    @Optional() private readonly metrics?: MetricsService,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
   ) {
     // Email transporter oluştur
     this.transporter = nodemailer.createTransport({
@@ -142,17 +142,21 @@ export class EmailService {
       const deliveryTime = Date.now() - startTime;
 
       // Metrikleri güncelle
-      this.metrics.incrementCounter('emails_sent_total');
-      this.metrics.observeHistogram('email_delivery_time_ms', deliveryTime);
+      if (this.metrics) {
+        this.metrics.incrementCounter('emails_sent_total');
+        this.metrics.observeHistogram('email_delivery_time_ms', deliveryTime);
+      }
 
       // Event emit
-      this.eventEmitter.emit('email.sent', {
-        messageId: result.messageId,
-        to: message.to,
-        subject: message.subject,
-        deliveryTime,
-        timestamp: new Date(),
-      });
+      if (this.eventEmitter) {
+        this.eventEmitter.emit('email.sent', {
+          messageId: result.messageId,
+          to: message.to,
+          subject: message.subject,
+          deliveryTime,
+          timestamp: new Date(),
+        });
+      }
 
       this.logger.log(`Email sent successfully: ${result.messageId}`);
       
@@ -167,7 +171,9 @@ export class EmailService {
       this.logger.error(`Failed to send email: ${error instanceof Error ? error.message : String(error)}`);
       
       // Metrikleri güncelle
-      this.metrics.incrementCounter('emails_failed_total');
+      if (this.metrics) {
+        this.metrics.incrementCounter('emails_failed_total');
+      }
       
       return {
         success: false,
@@ -538,9 +544,11 @@ export class EmailService {
   }> {
     try {
       // Cache'den istatistikleri al
-      const stats = await this.cache.get('email_stats');
-      if (stats) {
-        return JSON.parse(stats as string);
+      if (this.cache) {
+        const stats = await this.cache.get('email_stats');
+        if (stats) {
+          return JSON.parse(stats as string);
+        }
       }
 
       // Veritabanından istatistikleri al
@@ -573,7 +581,9 @@ export class EmailService {
       };
 
       // Cache'e kaydet
-      await this.cache.set('email_stats', JSON.stringify(result), 300); // 5 dakika
+      if (this.cache) {
+        await this.cache.set('email_stats', JSON.stringify(result), 300); // 5 dakika
+      }
 
       return result;
     } catch (error) {
