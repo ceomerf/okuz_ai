@@ -37,6 +37,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Token'ı localStorage'dan kontrol et
   useEffect(() => {
     const checkAuth = async () => {
+      // Önce tüm localStorage'ı temizle (geliştirme için)
+      const urlParams = new URLSearchParams(window.location.search);
+      const clearCache = urlParams.get('clear') === 'true';
+      
+      if (clearCache) {
+        localStorage.clear();
+        window.location.href = '/login';
+        return;
+      }
+
       const token = localStorage.getItem('admin_token');
       if (token) {
         try {
