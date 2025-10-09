@@ -23,6 +23,9 @@ import RbacManagementPanel from './components/AdminPanel/RbacManagementPanel';
 import AuditLogPanel from './components/AdminPanel/AuditLogPanel';
 import FeatureFlagsPanel from './components/AdminPanel/FeatureFlagsPanel';
 import NotificationsPanel from './components/AdminPanel/NotificationsPanel';
+import TeacherDashboard from './components/TeacherPanel/TeacherDashboard';
+import StudentDashboard from './components/StudentPanel/StudentDashboard';
+import ParentDashboard from './components/ParentPanel/ParentDashboard';
 import DynamicEntityPage from './components/Dynamic/DynamicEntityPage';
 import DynamicSidebar from './components/Dynamic/DynamicSidebar';
 
@@ -84,8 +87,15 @@ const MainDashboard: React.FC = () => {
 
   // Rol/izin bazlı görünür sekmeleri hesapla
   const views: Array<{ label: string; render: React.ReactNode; visible: boolean }> = [
+    // Genel Dashboard'lar
     { label: 'Basit Dashboard', render: <SimpleDashboard />, visible: true },
     { label: 'Gelişmiş Dashboard', render: <AdvancedDashboard />, visible: true },
+    
+    // Role-based Panels
+    { label: 'Öğretmen Paneli', render: <TeacherDashboard />, visible: hasRole('teacher') || hasRole('admin') },
+    { label: 'Öğrenci Paneli', render: <StudentDashboard />, visible: hasRole('student') || hasRole('admin') },
+    { label: 'Veli Paneli', render: <ParentDashboard />, visible: hasRole('parent') || hasRole('admin') },
+    
     // Admin içerikleri
     { label: 'Admin Panel (Mock)', render: <ComprehensiveAdminPanel />, visible: hasRole('admin') || hasPermission('admin:read') },
     { label: 'Admin Panel (Gerçek Veri)', render: <RealDataAdminPanel />, visible: hasRole('admin') || hasPermission('admin:read') },

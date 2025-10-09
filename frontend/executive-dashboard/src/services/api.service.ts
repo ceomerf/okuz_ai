@@ -155,7 +155,7 @@ class ApiService {
 
   // Authentication
   async login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
-    const response = await this.request<any>('/auth/login', {
+    const response = await this.request<any>('/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -190,7 +190,7 @@ class ApiService {
   }
 
   async register(name: string, email: string, password: string, role?: string): Promise<ApiResponse<any>> {
-    return this.request('/auth/register', {
+    return this.request('/v1/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password, role }),
     });

@@ -17,6 +17,49 @@ export class AuthService {
     @Optional() private readonly cacheService?: CacheService,
   ) {}
 
+  private getUserPermissions(role: string): string[] {
+    const rolePermissions: { [key: string]: string[] } = {
+      ADMIN: [
+        'admin:read',
+        'admin:write',
+        'users:read',
+        'users:write',
+        'system:read',
+        'system:write',
+        'students:read',
+        'students:write',
+        'parents:read',
+        'parents:write',
+        'coaches:read',
+        'coaches:write',
+        'rbac:manage',
+        'audit:read',
+        'flags:manage',
+        'notifications:manage'
+      ],
+      TEACHER: [
+        'students:read',
+        'assignments:read',
+        'assignments:write',
+        'grades:read',
+        'grades:write'
+      ],
+      STUDENT: [
+        'assignments:read',
+        'grades:read',
+        'profile:read',
+        'profile:write'
+      ],
+      PARENT: [
+        'children:read',
+        'reports:read',
+        'notifications:read'
+      ]
+    };
+
+    return rolePermissions[role] || [];
+  }
+
   private async issueTokens(user: { id: string; email: string; role?: string }) {
     const now = Math.floor(Date.now() / 1000);
     const payload: { 
@@ -195,6 +238,8 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
+        roles: [user.role], // Frontend için roles array
+        permissions: this.getUserPermissions(user.role), // Role bazlı permissions
       },
       tokens: {
         accessToken,
