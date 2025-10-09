@@ -5,6 +5,7 @@ import { HttpModule } from '@nestjs/axios';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { AIModule } from '../ai/ai.module';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { CacheModule } from '../common/cache/cache.module';
 import { RealTimeAICoachService } from './realtime-ai-coach.service';
 import { ProgressAnalyzerService } from './progress-analyzer.service';
 import { ProactiveCoachingService } from './proactive-coaching.service';
@@ -17,7 +18,7 @@ import { ContextAwareCoachingService } from './context-aware-coaching.service';
 @Module({
   imports: [
     ConfigModule,
-    // CacheModule,
+    CacheModule,
     HttpModule,
     PrismaModule,
     AIModule,

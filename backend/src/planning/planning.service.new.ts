@@ -8,7 +8,7 @@ import { PlanOptimizationService } from './services/plan-optimization.service';
 import { PlanPersistenceService } from './services/plan-persistence.service';
 import { ScheduleAdjustmentService } from './schedule-adjustment.service';
 import { AiAnalysisService } from './ai-analysis.service';
-import { TopicManagementService } from './topic-management.service';
+import { TopicManagementService } from './services/topic-management.service';
 import { ProgressTrackingService } from './progress-tracking.service';
 import { AssessmentService } from './assessment.service';
 import { CoachingService } from './coaching.service';

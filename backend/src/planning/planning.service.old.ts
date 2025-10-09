@@ -9,7 +9,7 @@ import { PlanOptimizationService } from './services/plan-optimization.service';
 import { PlanPersistenceService } from './services/plan-persistence.service';
 import { ScheduleAdjustmentService } from './schedule-adjustment.service';
 import { AiAnalysisService } from './ai-analysis.service';
-import { TopicManagementService } from './topic-management.service';
+import { TopicManagementService } from './services/topic-management.service';
 import { ProgressTrackingService } from './progress-tracking.service';
 import { AssessmentService } from './assessment.service';
 import { CoachingService } from './coaching.service';
@@ -20,7 +20,7 @@ import { CacheService } from '../common/cache/cache.service';
 import { QueueService } from '../services/queue.service';
 import { CurriculumEngineService } from './services/curriculum-engine.service';
 import { PerformanceAnalyzerService } from './services/performance-analyzer.service';
-import { TopicPrioritizerService } from './topic-prioritizer.service';
+import { TopicPrioritizerService } from './services/topic-prioritizer.service';
 import { AIService } from '../ai/ai.service';
 import { LoggingService } from '../common/logging/logging.service';
 import { ExceptionService } from '../common/exceptions/exception.service';
@@ -99,7 +99,7 @@ export class PlanningService {
       const examFocus = (data as any)?.targetExam === 'AYT' ? 'AYT' : ( (data as any)?.targetExam === 'TYT' ? 'TYT' : 'GENEL');
       const baseOrder = await this.curriculumEngine.buildPrerequisiteAwareTopicOrder((data as any).subjects || [], grade);
       const perf = await this.performanceAnalyzer.analyzeUserPerformance((data as any).userId);
-      const prioritized = await this.topicPrioritizer.prioritizeTopics(baseOrder, examFocus as any, perf.topicMastery);
+      const prioritized = await this.topicPrioritizer.prioritizeTopicsLegacy(baseOrder, examFocus as any, perf.topicMastery);
 
       let planResult = await this.planGeneration.generatePlan?.({
         userId: (data as any).userId,
@@ -599,8 +599,10 @@ export class PlanningService {
     );
 
     const allTopics: string[] = [];
-    Object.values(topicPool).forEach(topics => {
-      allTopics.push(...topics);
+    Object.values(topicPool).forEach((topics: any) => {
+      if (Array.isArray(topics)) {
+        allTopics.push(...topics);
+      }
     });
 
     // Adaptive sequence logic

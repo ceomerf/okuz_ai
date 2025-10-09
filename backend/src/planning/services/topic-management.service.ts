@@ -152,4 +152,87 @@ export class TopicManagementService {
       throw new Error('Failed to get adaptive sequence');
     }
   }
+
+  // Legacy methods for backward compatibility
+  async buildCurriculumTopicPool(
+    subjects: string[],
+    grade: number,
+    overrideTopics?: Record<string, string[]>,
+    dateWindow?: { startDate?: Date; endDate?: Date }
+  ): Promise<Record<string, string[]>> {
+    const pool: Record<string, string[]> = {};
+    
+    for (const subject of subjects) {
+      if (overrideTopics?.[subject]) {
+        pool[subject] = overrideTopics[subject];
+        continue;
+      }
+
+      const monthFilter: Record<string, unknown> = {};
+      if (dateWindow?.startDate) {
+        const startMonth = dateWindow.startDate.getMonth() + 1;
+        const endMonth = (dateWindow.endDate?.getMonth() ?? -1) + 1 || startMonth;
+        monthFilter.month = { gte: startMonth, lte: endMonth };
+      }
+
+      const where: Record<string, unknown> = {
+        subject,
+        grade,
+        ...monthFilter,
+      };
+
+      const topics = await (this.prisma as any).topic.findMany({
+        where,
+        select: { topic: true },
+        orderBy: { month: 'asc' },
+      });
+
+      if (topics.length > 0) {
+        pool[subject] = topics.map((t: any) => t.topic);
+      } else {
+        // Fallback: tüm konuları al
+        const relaxedWhere1 = { subject, grade };
+        const relaxedWhere2 = { subject };
+        
+        const fallbackTopics = await (this.prisma as any).topic.findMany({
+          where: relaxedWhere1,
+          select: { topic: true },
+        });
+
+        if (fallbackTopics.length === 0) {
+          const allTopics = await (this.prisma as any).topic.findMany({
+            where: relaxedWhere2,
+            select: { topic: true },
+          });
+          pool[subject] = allTopics.map((t: any) => t.topic);
+        } else {
+          pool[subject] = fallbackTopics.map((t: any) => t.topic);
+        }
+      }
+    }
+
+    return pool;
+  }
+
+  generateSyntheticTopics(
+    subject: string,
+    grade: number,
+    dateWindow?: { startDate?: Date; endDate?: Date }
+  ): string[] {
+    const baseTopics = [
+      `${subject} Temel Kavramlar`,
+      `${subject} Problem Çözme`,
+      `${subject} Uygulamalar`,
+      `${subject} Analiz`,
+      `${subject} Sentez`
+    ];
+
+    if (dateWindow?.startDate && dateWindow?.endDate) {
+      const startMonth = dateWindow.startDate.getMonth() + 1;
+      const endMonth = dateWindow.endDate.getMonth() + 1;
+      return baseTopics.slice(0, Math.min(endMonth - startMonth + 1, baseTopics.length));
+    }
+
+    return baseTopics;
+  }
 }

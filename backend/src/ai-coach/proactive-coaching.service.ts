@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 // import { EventBusService } from '../common/events/event-bus.service';
@@ -47,10 +47,10 @@ export class ProactiveCoachingService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
-    private readonly eventBus: any,
     private readonly behaviorAnalysis: BehaviorAnalysisService,
     private readonly emotionalAI: EmotionalAiService,
     private readonly contextAware: ContextAwareCoachingService,
+    @Optional() private readonly eventBus?: any,
   ) {}
 
   /**
