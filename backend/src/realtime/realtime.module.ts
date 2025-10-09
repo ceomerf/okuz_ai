@@ -1,9 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
-import { EventEmitterModule } from '@nestjs/event-emitter';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-// import { CacheModule } from '@nestjs/cache-manager';
+@// import { CacheModule } from '@nestjs/cache-manager';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { RealtimeGateway } from './realtime.gateway';
 import { CoachingUpdatesGateway } from './coaching-updates.gateway';
@@ -16,8 +14,7 @@ import { WebSocketMetricsService } from '../monitoring/websocket-metrics.service
   imports: [
     ConfigModule,
     JwtModule,
-    EventEmitterModule,
-    // CacheModule,
+    CacheModule,
     PrismaModule,
     MetricsModule,
   ],
@@ -27,7 +24,6 @@ import { WebSocketMetricsService } from '../monitoring/websocket-metrics.service
     ConnectionManagerService,
     EventValidatorService,
     WebSocketMetricsService,
-    EventEmitter2,
   ],
   exports: [
     RealtimeGateway,

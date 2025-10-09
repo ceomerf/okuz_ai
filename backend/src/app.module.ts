@@ -9,7 +9,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './common/prisma/prisma.module';
 // import { GeminiModule } from './services/gemini.module'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 import { QueueModule } from './services/queue.module';
-// import { CacheModule as CommonCacheModule } from './common/cache/cache.module';
+// @// import { CacheModule as CommonCacheModule } from './common/cache/cache.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { StudentsModule } from './students/students.module';

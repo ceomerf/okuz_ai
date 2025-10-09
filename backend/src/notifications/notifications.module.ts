@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { EventEmitterModule } from '@nestjs/event-emitter';
-// import { CacheModule } from '@nestjs/cache-manager';
+@// import { CacheModule } from '@nestjs/cache-manager';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { MetricsModule } from '../monitoring/metrics.module';
 import { RealtimeModule } from '../realtime/realtime.module';
@@ -16,8 +15,7 @@ import { BulkNotificationService } from './bulk-notification.service';
 @Module({
   imports: [
     ConfigModule,
-    EventEmitterModule,
-    // CacheModule,
+    CacheModule,
     PrismaModule,
     MetricsModule,
     RealtimeModule,

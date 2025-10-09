@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-// import { CacheModule } from '@nestjs/cache-manager';
+@// import { CacheModule } from '@nestjs/cache-manager';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { SentryService } from './sentry.service';
 import { APIMetricsService } from './api-metrics.service';
@@ -11,7 +11,7 @@ import { WebSocketMetricsService } from './websocket-metrics.service';
 @Module({
   imports: [
     ConfigModule,
-    // CacheModule,
+    CacheModule,
     PrismaModule,
   ],
   providers: [
