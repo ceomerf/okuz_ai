@@ -150,6 +150,7 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
       <Box sx={{ height: height - 57 }}> {/* Subtract header height */}
         <List
           height={height - 57}
+          width="100%"
           itemCount={data.length}
           itemSize={53} // Approximate row height
           itemData={itemData}
