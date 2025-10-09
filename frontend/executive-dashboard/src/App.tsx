@@ -121,7 +121,7 @@ const MainDashboard: React.FC = () => {
             🚀 Okuz AI - Yönetim Paneli
           </Typography>
           <Typography variant="body2" sx={{ mr: 2 }}>
-            Hoş geldin, {user?.name} ({user?.role})
+            Hoş geldin, {user?.name} ({user?.roles?.[0]})
           </Typography>
           <Button color="inherit" onClick={logout}>
             Çıkış
