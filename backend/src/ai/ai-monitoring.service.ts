@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AIConfigService } from './ai-config.service'; // DÜZELTME: cost hesaplamak için eklendi
 import { CacheService } from '../common/cache/cache.service';
@@ -64,9 +64,9 @@ export class AIMonitoringService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
     private readonly metrics: MetricsService,
     private readonly aiConfig: AIConfigService, // DÜZELTME
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   /**

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { CacheModule } from '../common/cache/cache.module';
+// import { CacheModule } from '../common/cache/cache.module';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { MonitoringModule } from '../monitoring/monitoring.module';
 import { QueueModule } from '../services/queue.module';
@@ -23,7 +23,7 @@ import { AIService } from './ai.service';
 @Module({
   imports: [
     ConfigModule,
-    CacheModule,
+    // CacheModule,
     PrismaModule,
     MonitoringModule,
     QueueModule,

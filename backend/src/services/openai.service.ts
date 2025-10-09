@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MetricsService } from '../monitoring/metrics.service';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -14,7 +14,7 @@ export class OpenAIService {
     private readonly configService: ConfigService,
     private readonly metrics: MetricsService,
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
+    @Optional() private readonly cache?: CacheService,
   ) {
     this.apiKey = this.configService.get<string>('OPENAI_API_KEY')!;
     if (!this.apiKey) {
@@ -32,7 +32,7 @@ export class OpenAIService {
     // Cache kontrolü
     if (userId) {
       const cacheKey = `openai:${crypto.createHash('md5').update(prompt).digest('hex')}`;
-      const cached = await this.cache.get(cacheKey);
+      const cached = await this.cache?.get(cacheKey);
       if (cached) {
         this.metrics.recordCacheHit('openai', true);
         return cached;
@@ -75,7 +75,7 @@ export class OpenAIService {
       // Cache'e kaydet
       if (userId && content) {
         const cacheKey = `openai:${crypto.createHash('md5').update(prompt).digest('hex')}`;
-        await this.cache.set(cacheKey, content, opts?.cacheTtlSeconds || 3600);
+        await this.cache?.set(cacheKey, content, opts?.cacheTtlSeconds || 3600);
       }
 
       // Metrics kaydet

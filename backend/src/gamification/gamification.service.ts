@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 // import { GeminiService } from '../services/gemini.service'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 import { OpenAIService } from '../services/openai.service';
@@ -44,7 +44,7 @@ export class GamificationService {
     private readonly prisma: PrismaService,
     // private readonly geminiService: GeminiService, // DEVRE DIŞI - OPENAI KULLANILIYOR
     private readonly openaiService: OpenAIService,
-    private readonly cache: CacheService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   // XP hesaplama algoritması - performansa ve zorluk seviyesine göre
@@ -1047,13 +1047,13 @@ export class GamificationService {
 
   async getUserAchievements(userId: string) {
     const cacheKey = `achievements:${userId}`;
-    const cached = await this.cache.get(cacheKey);
+    const cached = await this.cache?.get(cacheKey);
     if (cached) return cached;
     const list = await (this.prisma as any).achievement.findMany({
       where: { userId },
       orderBy: { unlockedAt: 'desc' },
     });
-    await this.cache.set(cacheKey, list, 3600);
+    await this.cache?.set(cacheKey, list, 3600);
     return list;
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 import { AIOrchestrator } from './ai-orchestrator.service';
@@ -63,9 +63,9 @@ export class PromptTestingService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
     private readonly aiOrchestrator: AIOrchestrator,
     private readonly promptVersioning: PromptVersioningService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   /**
@@ -107,7 +107,7 @@ export class PromptTestingService {
       const cacheKey = `test_suite:${testSuiteId}`;
       
       // Cache kontrolü
-      const cached = await this.cache.get<TestSuite>(cacheKey);
+      const cached = await this.cache?.get<TestSuite>(cacheKey);
       if (cached) {
         return cached;
       }
@@ -118,7 +118,7 @@ export class PromptTestingService {
 
       if (testSuite) {
         // Cache'e kaydet
-        await this.cache.set(cacheKey, testSuite, 3600); // 1 saat
+        await this.cache?.set(cacheKey, testSuite, 3600); // 1 saat
       }
 
       return testSuite as any;
@@ -449,7 +449,7 @@ export class PromptTestingService {
       });
 
       // Cache'i temizle
-      await this.cache.del(`test_suite:${testSuiteId}`);
+      await this.cache?.del(`test_suite:${testSuiteId}`);
 
       this.logger.log(`Test suite deactivated: ${testSuiteId}`);
     } catch (error) {
@@ -468,7 +468,7 @@ export class PromptTestingService {
       });
 
       // Cache'i temizle
-      await this.cache.del(`test_suite:${testSuiteId}`);
+      await this.cache?.del(`test_suite:${testSuiteId}`);
 
       this.logger.log(`Test suite deleted: ${testSuiteId}`);
     } catch (error) {

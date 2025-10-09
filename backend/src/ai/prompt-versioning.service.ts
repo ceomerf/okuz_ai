@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 
@@ -50,7 +50,7 @@ export class PromptVersioningService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   /**
@@ -80,7 +80,7 @@ export class PromptVersioningService {
       });
 
       // Cache'i temizle
-      await this.cache.del(`prompt:template:${template.id}`);
+      await this.cache?.del(`prompt:template:${template.id}`);
 
       this.logger.log(`Prompt template created: ${template.id}`);
       return template;
@@ -130,7 +130,7 @@ export class PromptVersioningService {
       });
 
       // Cache'i temizle
-      await this.cache.del(`prompt:template:${templateId}`);
+      await this.cache?.del(`prompt:template:${templateId}`);
 
       this.logger.log(`Prompt template updated: ${templateId} to version ${newVersion}`);
       return updatedTemplate;
@@ -148,7 +148,7 @@ export class PromptVersioningService {
       const cacheKey = `prompt:template:${templateId}:${version || 'latest'}`;
       
       // Cache kontrolü
-      const cached = await this.cache.get<PromptTemplate>(cacheKey);
+      const cached = await this.cache?.get<PromptTemplate>(cacheKey);
       if (cached) {
         return cached;
       }
@@ -165,7 +165,7 @@ export class PromptVersioningService {
 
       if (template) {
         // Cache'e kaydet
-        await this.cache.set(cacheKey, template, 3600); // 1 saat
+        await this.cache?.set(cacheKey, template, 3600); // 1 saat
       }
 
       return template;
@@ -183,7 +183,7 @@ export class PromptVersioningService {
       const cacheKey = `prompt:template:name:${name}:${version || 'latest'}`;
       
       // Cache kontrolü
-      const cached = await this.cache.get<PromptTemplate>(cacheKey);
+      const cached = await this.cache?.get<PromptTemplate>(cacheKey);
       if (cached) {
         return cached;
       }
@@ -200,7 +200,7 @@ export class PromptVersioningService {
 
       if (template) {
         // Cache'e kaydet
-        await this.cache.set(cacheKey, template, 3600); // 1 saat
+        await this.cache?.set(cacheKey, template, 3600); // 1 saat
       }
 
       return template;
@@ -367,7 +367,7 @@ export class PromptVersioningService {
       });
 
       // Cache'i temizle
-      await this.cache.del(`prompt:template:${templateId}`);
+      await this.cache?.del(`prompt:template:${templateId}`);
 
       this.logger.log(`Prompt template deactivated: ${templateId}`);
     } catch (error) {
@@ -386,7 +386,7 @@ export class PromptVersioningService {
       });
 
       // Cache'i temizle
-      await this.cache.del(`prompt:template:${templateId}`);
+      await this.cache?.del(`prompt:template:${templateId}`);
 
       this.logger.log(`Prompt template deleted: ${templateId}`);
     } catch (error) {

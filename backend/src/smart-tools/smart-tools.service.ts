@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrometheusService } from '../common/metrics/prometheus.service';
+import { MetricsService } from '../monitoring/metrics.service';
 import { QuestionSolverService, SolveQuestionData } from './question-solver.service';
 import { ContentGeneratorService } from './content-generator.service';
 import { Response } from 'express';
@@ -11,39 +11,39 @@ export class SmartToolsService {
   constructor(
     private readonly questionSolver: QuestionSolverService,
     private readonly contentGenerator: ContentGeneratorService,
-    private readonly prometheus: PrometheusService,
+    private readonly metrics: MetricsService,
   ) {}
 
   // Soru çözme işlemleri - QuestionSolverService'e delegasyon
   async solveQuestion(data: SolveQuestionData) {
     this.logger.log(`Soru çözme isteği - Konu: ${data.subject}`);
-    this.prometheus.incrementSmartToolUsage('question_solver', data.userId || 'anonymous');
+    this.logger.log(`Smart tool usage: question_solver by ${data.userId || 'anonymous'}`);
     return this.questionSolver.solveQuestion(data);
   }
 
   // İçerik üretimi işlemleri - ContentGeneratorService'e delegasyon
   async quickChatStream(data: { message: string; subject?: string; grade?: string }, res: Response) {
     this.logger.log(`Hızlı sohbet isteği - Konu: ${data.subject}`);
-    this.prometheus.incrementSmartToolUsage('quick_chat', 'anonymous');
+    this.logger.log(`Smart tool usage: quick_chat by anonymous`);
     return this.contentGenerator.quickChatStream(data, res);
   }
 
   async generateFlashcards(data: { topic: string; count: number; userId?: string }) {
     this.logger.log(`Flashcard üretim isteği - Konu: ${data.topic}, Sayı: ${data.count}`);
-    this.prometheus.incrementSmartToolUsage('flashcard_generator', data.userId || 'anonymous');
+    this.logger.log(`Smart tool usage: flashcard_generator by ${data.userId || 'anonymous'}`);
     return this.contentGenerator.generateFlashcards(data);
   }
 
   async generateStudyPlan(data: { subjects: string[]; duration: number; userId?: string }) {
     this.logger.log(`Çalışma planı üretim isteği - Konular: ${data.subjects.join(', ')}, Süre: ${data.duration} gün`);
-    this.prometheus.incrementSmartToolUsage('study_plan_generator', data.userId || 'anonymous');
+    this.logger.log(`Smart tool usage: study_plan_generator by ${data.userId || 'anonymous'}`);
     return this.contentGenerator.generateStudyPlan(data);
   }
 
   // Diğer smart tools metodları buraya eklenebilir
   async generateQuiz(data: { topic: string; difficulty: string; count: number; userId?: string }) {
     this.logger.log(`Quiz üretim isteği - Konu: ${data.topic}, Zorluk: ${data.difficulty}, Sayı: ${data.count}`);
-    this.prometheus.incrementSmartToolUsage('quiz_generator', data.userId || 'anonymous');
+    this.logger.log(`Smart tool usage: quiz_generator by ${data.userId || 'anonymous'}`);
     
     // Bu metod da ContentGeneratorService'e taşınabilir
     return {

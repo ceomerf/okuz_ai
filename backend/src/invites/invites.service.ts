@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -18,7 +18,7 @@ export interface AcceptInviteDto {
 export class InvitesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cacheService: CacheService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   async createInvite(inviteData: CreateInviteDto) {
@@ -41,7 +41,7 @@ export class InvitesService {
       });
 
       // Cache the invite
-      await this.cacheService.set(`invite:${invite.id}`, invite, 7 * 24 * 60 * 60); // 7 days
+      await this.cacheService?.set(`invite:${invite.id}`, invite, 7 * 24 * 60 * 60); // 7 days
 
       return invite;
     } catch (error) {
@@ -52,7 +52,7 @@ export class InvitesService {
   async getInvite(id: string) {
     try {
       // Try cache first
-      const cached = await this.cacheService.get(`invite:${id}`);
+      const cached = await this.cacheService?.get(`invite:${id}`);
       if (cached) {
         return cached;
       }
@@ -67,7 +67,7 @@ export class InvitesService {
       }
 
       // Cache the result
-      await this.cacheService.set(`invite:${id}`, invite, 7 * 24 * 60 * 60);
+      await this.cacheService?.set(`invite:${id}`, invite, 7 * 24 * 60 * 60);
 
       return invite;
     } catch (error) {
@@ -124,7 +124,7 @@ export class InvitesService {
       });
 
       // Remove from cache
-      await this.cacheService.del(`invite:${inviteId}`);
+      await this.cacheService?.del(`invite:${inviteId}`);
 
       return updatedInvite;
     } catch (error) {
@@ -146,7 +146,7 @@ export class InvitesService {
       });
 
       // Remove from cache
-      await this.cacheService.del(`invite:${inviteId}`);
+      await this.cacheService?.del(`invite:${inviteId}`);
 
       return updatedInvite;
     } catch (error) {
@@ -192,7 +192,7 @@ export class InvitesService {
       });
 
       // Remove from cache
-      await this.cacheService.del(`invite:${inviteId}`);
+      await this.cacheService?.del(`invite:${inviteId}`);
       
       return { message: 'Invite deleted successfully', id: inviteId };
     } catch (error) {

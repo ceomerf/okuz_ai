@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Optional } from '@nestjs/common';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
@@ -49,9 +49,9 @@ export class ConnectionManagerService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
     private readonly metrics: MetricsService,
     private readonly eventEmitter: EventEmitter2,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   async onModuleInit() {
