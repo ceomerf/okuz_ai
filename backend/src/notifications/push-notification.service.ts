@@ -61,7 +61,7 @@ export class PushNotificationService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly metrics: MetricsService,
-    private readonly eventEmitter: EventEmitter2,
+    @Inject(EventEmitter2) private readonly eventEmitter: EventEmitter2,
     private readonly connectionManager: ConnectionManagerService,
     @Optional() private readonly cache?: CacheService,
   ) {
