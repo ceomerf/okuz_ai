@@ -61,7 +61,6 @@ export class PushNotificationService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly metrics: MetricsService,
-    @Inject(EventEmitter2) private readonly eventEmitter: EventEmitter2,
     private readonly connectionManager: ConnectionManagerService,
     @Optional() private readonly cache?: CacheService,
   ) {
@@ -135,13 +134,13 @@ export class PushNotificationService {
 
       this.logger.log(`Registered new device for user ${userId}: ${newDevice.id}`);
       
-      // Event emit
-      this.eventEmitter.emit('device.registered', {
-        userId,
-        deviceId: newDevice.id,
-        platform,
-        timestamp: new Date(),
-      });
+      // Event emit - EventEmitter2 kaldırıldı
+      // this.eventEmitter.emit('device.registered', {
+      //   userId,
+      //   deviceId: newDevice.id,
+      //   platform,
+      //   timestamp: new Date(),
+      // });
 
       return this.mapToDeviceInfo(newDevice);
     } catch (error) {
@@ -161,11 +160,11 @@ export class PushNotificationService {
 
       this.logger.log(`Unregistered device: ${deviceId}`);
       
-      // Event emit
-      this.eventEmitter.emit('device.unregistered', {
-        deviceId,
-        timestamp: new Date(),
-      });
+      // Event emit - EventEmitter2 kaldırıldı
+      // this.eventEmitter.emit('device.unregistered', {
+      //   deviceId,
+      //   timestamp: new Date(),
+      // });
     } catch (error) {
       this.logger.error(`Failed to unregister device: ${this.getErrorMessage(error)}`);
       throw new BadRequestException('Failed to unregister device');
@@ -258,15 +257,15 @@ export class PushNotificationService {
       this.metrics.incrementCounter('push_notifications_failed_total', result.failed);
       this.metrics.observeHistogram('push_notification_delivery_time_ms', result.deliveryTime);
 
-      // Event emit
-      this.eventEmitter.emit('notification.sent', {
-        userId,
-        type: 'push',
-        title: payload.title,
-        sent: result.sent,
-        failed: result.failed,
-        timestamp: new Date(),
-      });
+      // Event emit - EventEmitter2 kaldırıldı
+      // this.eventEmitter.emit('notification.sent', {
+      //   userId,
+      //   type: 'push',
+      //   title: payload.title,
+      //   sent: result.sent,
+      //   failed: result.failed,
+      //   timestamp: new Date(),
+      // });
 
       this.logger.log(`Push notification sent to user ${userId}: ${result.sent} sent, ${result.failed} failed`);
       
