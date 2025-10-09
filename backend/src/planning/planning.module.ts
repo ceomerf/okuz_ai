@@ -30,6 +30,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { MonitoringModule } from '../monitoring/monitoring.module';
+import { SubscriptionModule } from '../subscription/subscription.module';
 import { CurriculumEngineService } from './services/curriculum-engine.service';
 import { PerformanceAnalyzerService } from './services/performance-analyzer.service';
 import { TopicPrioritizerService } from './services/topic-prioritizer.service';
@@ -51,6 +52,7 @@ import { ExceptionService } from '../common/exceptions/exception.service';
     AuthModule, 
     RealtimeModule, 
     MonitoringModule, 
+    SubscriptionModule,
     ScheduleModule.forRoot(),
     QueueModule,
     AIModule
