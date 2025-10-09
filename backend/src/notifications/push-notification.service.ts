@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 import { MetricsService } from '../monitoring/metrics.service';
-import { EventEmitter } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConnectionManagerService } from '../realtime/connection-manager.service';
 import * as webpush from 'web-push';
 
@@ -61,7 +61,7 @@ export class PushNotificationService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly metrics: MetricsService,
-    private readonly eventEmitter: EventEmitter,
+    private readonly eventEmitter: EventEmitter2,
     private readonly connectionManager: ConnectionManagerService,
     @Optional() private readonly cache?: CacheService,
   ) {
