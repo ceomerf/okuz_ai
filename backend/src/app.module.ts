@@ -15,6 +15,8 @@ import { QueueModule } from './services/queue.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { StudentsModule } from './students/students.module';
+import { TeachersModule } from './teachers/teachers.module';
+import { ExecutiveModule } from './executive/executive.module';
 import { ParentsModule } from './parents/parents.module';
 import { SmartToolsModule } from './smart-tools/smart-tools.module';
 import { GamificationModule } from './gamification/gamification.module';
@@ -99,6 +101,8 @@ import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
     AuthModule,
     UsersModule,
     StudentsModule,
+    TeachersModule,
+    ExecutiveModule,
     ParentsModule,
     SmartToolsModule,
     GamificationModule,

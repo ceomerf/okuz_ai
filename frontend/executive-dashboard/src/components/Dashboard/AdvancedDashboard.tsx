@@ -160,45 +160,119 @@ const AdvancedDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
-  // Mock veri
-  const metrics: Metric[] = [
-    {
-      title: 'Toplam Kullanıcı',
-      value: 2847,
-      change: 12.5,
-      trend: 'up',
-      icon: <People />,
-      color: '#4caf50',
-      format: 'number',
-    },
-    {
-      title: 'Aktif Öğrenci',
-      value: 1923,
-      change: 8.3,
-      trend: 'up',
-      icon: <School />,
-      color: '#2196f3',
-      format: 'number',
-    },
-    {
-      title: 'Aylık Gelir',
-      value: 45600,
-      change: 15.2,
-      trend: 'up',
-      icon: <Assessment />,
-      color: '#ff9800',
-      format: 'currency',
-    },
-    {
-      title: 'Sistem Uptime',
-      value: 99.8,
-      change: 0.1,
-      trend: 'up',
-      icon: <Analytics />,
-      color: '#9c27b0',
-      format: 'percentage',
-    },
-  ];
+  // Gerçek veri için state
+  const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+
+  // API'den veri çekme
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        // Backend'den dashboard verilerini çek
+        const response = await fetch('http://localhost:3002/api/executive/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setDashboardData(data);
+          
+          // Gerçek verilerle metrics'i güncelle
+          setMetrics([
+            {
+              title: 'Toplam Kullanıcı',
+              value: data.criticalMetrics?.users?.total || 0,
+              change: data.criticalMetrics?.users?.growth || 0,
+              trend: data.criticalMetrics?.users?.growth > 0 ? 'up' : 'down',
+              icon: <People />,
+              color: '#4caf50',
+              format: 'number',
+            },
+            {
+              title: 'Aktif Öğrenci',
+              value: data.criticalMetrics?.users?.active || 0,
+              change: 8.3,
+              trend: 'up',
+              icon: <School />,
+              color: '#2196f3',
+              format: 'number',
+            },
+            {
+              title: 'Aylık Gelir',
+              value: data.criticalMetrics?.revenue?.current || 0,
+              change: data.criticalMetrics?.revenue?.growth || 0,
+              trend: data.criticalMetrics?.revenue?.growth > 0 ? 'up' : 'down',
+              icon: <Assessment />,
+              color: '#ff9800',
+              format: 'currency',
+            },
+            {
+              title: 'Sistem Uptime',
+              value: data.criticalMetrics?.performance?.uptime || 0,
+              change: 0.1,
+              trend: 'up',
+              icon: <Analytics />,
+              color: '#9c27b0',
+              format: 'percentage',
+            },
+          ]);
+        } else {
+          // API başarısızsa mock veri kullan
+          setMetrics([
+            {
+              title: 'Toplam Kullanıcı',
+              value: 0,
+              change: 0,
+              trend: 'stable',
+              icon: <People />,
+              color: '#4caf50',
+              format: 'number',
+            },
+            {
+              title: 'Aktif Öğrenci',
+              value: 0,
+              change: 0,
+              trend: 'stable',
+              icon: <School />,
+              color: '#2196f3',
+              format: 'number',
+            },
+            {
+              title: 'Aylık Gelir',
+              value: 0,
+              change: 0,
+              trend: 'stable',
+              icon: <Assessment />,
+              color: '#ff9800',
+              format: 'currency',
+            },
+            {
+              title: 'Sistem Uptime',
+              value: 0,
+              change: 0,
+              trend: 'stable',
+              icon: <Analytics />,
+              color: '#9c27b0',
+              format: 'percentage',
+            },
+          ]);
+        }
+      } catch (error) {
+        console.error('Dashboard verileri yüklenemedi:', error);
+        // Hata durumunda boş veri göster
+        setMetrics([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const quickStats: QuickStat[] = [
     { label: 'Bugünkü Girişler', value: '1,247', change: 5.2, trend: 'up', color: '#4caf50' },

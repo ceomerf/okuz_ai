@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { StudentsService } from './students.service';
 
+@ApiTags('Students')
 @Controller('students')
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
@@ -33,6 +35,13 @@ export class StudentsController {
   @Post('exam')
   async recordExamResult(@Body() data: any) {
     return this.studentsService.recordExamResult(data);
+  }
+
+  @Get('dashboard')
+  @ApiOperation({ summary: 'Öğrenci dashboard verileri' })
+  @ApiResponse({ status: 200, description: 'Öğrenci dashboard verileri başarıyla getirildi' })
+  async getStudentsDashboard() {
+    return this.studentsService.getStudentsDashboard();
   }
 
   @Get(':id/dashboard')

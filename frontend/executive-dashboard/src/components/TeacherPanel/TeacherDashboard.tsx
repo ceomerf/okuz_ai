@@ -64,20 +64,71 @@ function TabPanel(props: TabPanelProps) {
 const TeacherDashboard: React.FC = () => {
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [teacherStats, setTeacherStats] = useState({
+    totalStudents: 0,
+    activeClasses: 0,
+    completedAssignments: 0,
+    pendingGrading: 0,
+    averageGrade: 0,
+    attendanceRate: 0,
+  });
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
   };
 
-  // Mock data
-  const teacherStats = {
-    totalStudents: 45,
-    activeClasses: 3,
-    completedAssignments: 28,
-    pendingGrading: 5,
-    averageGrade: 85.2,
-    attendanceRate: 94.5,
-  };
+  // Gerçek veri çekme
+  useEffect(() => {
+    const fetchTeacherData = async () => {
+      try {
+        setLoading(true);
+        
+        // Backend'den öğretmen verilerini çek
+        const response = await fetch('http://localhost:3002/api/teachers/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setTeacherStats({
+            totalStudents: data.totalStudents || 0,
+            activeClasses: data.activeClasses || 0,
+            completedAssignments: data.completedAssignments || 0,
+            pendingGrading: data.pendingGrading || 0,
+            averageGrade: data.averageGrade || 0,
+            attendanceRate: data.attendanceRate || 0,
+          });
+        } else {
+          // API başarısızsa sıfır değerler
+          setTeacherStats({
+            totalStudents: 0,
+            activeClasses: 0,
+            completedAssignments: 0,
+            pendingGrading: 0,
+            averageGrade: 0,
+            attendanceRate: 0,
+          });
+        }
+      } catch (error) {
+        console.error('Öğretmen verileri yüklenemedi:', error);
+        setTeacherStats({
+          totalStudents: 0,
+          activeClasses: 0,
+          completedAssignments: 0,
+          pendingGrading: 0,
+          averageGrade: 0,
+          attendanceRate: 0,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeacherData();
+  }, []);
 
   const recentStudents = [
     { id: 1, name: 'Ahmet Yılmaz', grade: 85, attendance: 95, lastActivity: '2 saat önce' },

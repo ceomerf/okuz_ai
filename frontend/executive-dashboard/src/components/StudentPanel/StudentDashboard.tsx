@@ -66,20 +66,71 @@ function TabPanel(props: TabPanelProps) {
 const StudentDashboard: React.FC = () => {
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [studentStats, setStudentStats] = useState({
+    averageGrade: 0,
+    completedAssignments: 0,
+    pendingAssignments: 0,
+    attendanceRate: 0,
+    studyHours: 0,
+    streak: 0,
+  });
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
   };
 
-  // Mock data
-  const studentStats = {
-    averageGrade: 85.2,
-    completedAssignments: 28,
-    pendingAssignments: 5,
-    attendanceRate: 94.5,
-    studyHours: 45,
-    streak: 7,
-  };
+  // Gerçek veri çekme
+  useEffect(() => {
+    const fetchStudentData = async () => {
+      try {
+        setLoading(true);
+        
+        // Backend'den öğrenci verilerini çek
+        const response = await fetch('http://localhost:3002/api/students/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setStudentStats({
+            averageGrade: data.averageGrade || 0,
+            completedAssignments: data.completedAssignments || 0,
+            pendingAssignments: data.pendingAssignments || 0,
+            attendanceRate: data.attendanceRate || 0,
+            studyHours: data.studyHours || 0,
+            streak: data.streak || 0,
+          });
+        } else {
+          // API başarısızsa sıfır değerler
+          setStudentStats({
+            averageGrade: 0,
+            completedAssignments: 0,
+            pendingAssignments: 0,
+            attendanceRate: 0,
+            studyHours: 0,
+            streak: 0,
+          });
+        }
+      } catch (error) {
+        console.error('Öğrenci verileri yüklenemedi:', error);
+        setStudentStats({
+          averageGrade: 0,
+          completedAssignments: 0,
+          pendingAssignments: 0,
+          attendanceRate: 0,
+          studyHours: 0,
+          streak: 0,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudentData();
+  }, []);
 
   const recentGrades = [
     { id: 1, subject: 'Matematik', grade: 92, date: '2024-01-10', teacher: 'Ahmet Öğretmen' },
