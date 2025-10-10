@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException, Optional, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../common/services/prisma.service';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 import { MetricsService } from '../monitoring/metrics.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';

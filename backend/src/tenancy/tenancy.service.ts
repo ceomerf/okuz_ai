@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../common/services/prisma.service';
+import { PrismaService } from '../common/prisma/prisma.service';
 
 export interface CreateTenantDto {
   name: string;
