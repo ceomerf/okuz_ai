@@ -42,6 +42,7 @@ import { AIModule } from '../ai/ai.module';
 import { AIService } from '../ai/ai.service';
 import { LoggingService } from '../common/logging/logging.service';
 import { ExceptionService } from '../common/exceptions/exception.service';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
   imports: [
@@ -53,7 +54,8 @@ import { ExceptionService } from '../common/exceptions/exception.service';
     MonitoringModule, 
     ScheduleModule.forRoot(),
     QueueModule,
-    AIModule
+    AIModule,
+    SubscriptionModule
   ],
   controllers: [PlanningController],
   providers: [
