@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AdvancedAnalyticsController } from './advanced-analytics.controller';
 import { AdvancedAnalyticsService } from './advanced-analytics.service';
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../common/prisma/prisma.module';
 
 @Module({
   imports: [PrismaModule],
