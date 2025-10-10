@@ -41,6 +41,23 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { AuditModule } from './audit/audit.module';
 import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
+import { SystemHealthModule } from './system/system-health.module';
+import { ExecutiveDashboardModule } from './executive/executive-dashboard.module';
+import { TeacherDashboardModule } from './teachers/teacher-dashboard.module';
+import { StudentDashboardModule } from './students/student-dashboard.module';
+import { NotificationManagementModule } from './notifications/notification-management.module';
+import { AdvancedSecurityModule } from './security/advanced-security.module';
+import { MachineLearningModule } from './ml/machine-learning.module';
+import { AdvancedReportingModule } from './reporting/advanced-reporting.module';
+import { APIRateLimitingModule } from './rate-limiting/api-rate-limiting.module';
+import { AuditLoggingModule } from './audit/audit-logging.module';
+import { BackupRestoreModule } from './backup/backup-restore.module';
+import { AIManagementModule } from './ai/ai-management.module';
+import { AdvancedAnalyticsModule } from './analytics/advanced-analytics.module';
+import { RealtimeNotificationsModule } from './notifications/realtime-notifications.module';
+import { PerformanceMonitoringModule } from './monitoring/performance-monitoring.module';
+import { UserActivityTrackingModule } from './tracking/user-activity-tracking.module';
+import { DataExportModule } from './export/data-export.module';
 
 @Module({
   imports: [
@@ -126,6 +143,23 @@ import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
     RbacModule,
     AuditModule,
     FeatureFlagsModule,
+    SystemHealthModule,
+    ExecutiveDashboardModule,
+    TeacherDashboardModule,
+    StudentDashboardModule,
+    NotificationManagementModule,
+    AdvancedSecurityModule,
+    MachineLearningModule,
+    AdvancedReportingModule,
+    APIRateLimitingModule,
+    AuditLoggingModule,
+    BackupRestoreModule,
+    AIManagementModule,
+    AdvancedAnalyticsModule,
+    RealtimeNotificationsModule,
+    PerformanceMonitoringModule,
+    UserActivityTrackingModule,
+    DataExportModule,
   ],
   controllers: [AppController],
   providers: [

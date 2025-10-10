@@ -86,7 +86,8 @@ const StudentDashboard: React.FC = () => {
         setLoading(true);
         
         // Backend'den öğrenci verilerini çek
-        const response = await fetch('http://localhost:3002/api/students/dashboard', {
+        const studentId = localStorage.getItem('student_id') || '1'; // Geçici ID
+        const response = await fetch(`http://localhost:3002/api/students/${studentId}/dashboard`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
             'Content-Type': 'application/json',
@@ -96,12 +97,12 @@ const StudentDashboard: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           setStudentStats({
-            averageGrade: data.averageGrade || 0,
-            completedAssignments: data.completedAssignments || 0,
-            pendingAssignments: data.pendingAssignments || 0,
-            attendanceRate: data.attendanceRate || 0,
-            studyHours: data.studyHours || 0,
-            streak: data.streak || 0,
+            averageGrade: data.quickStats?.averageGrade || 0,
+            completedAssignments: data.quickStats?.completedAssignments || 0,
+            pendingAssignments: data.quickStats?.pendingAssignments || 0,
+            attendanceRate: 0, // Bu değer ayrı hesaplanabilir
+            studyHours: data.quickStats?.totalStudyHours || 0,
+            streak: data.quickStats?.streak || 0,
           });
         } else {
           // API başarısızsa sıfır değerler

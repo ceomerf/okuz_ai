@@ -847,6 +847,371 @@ model ParentReport {
   @@index([weekStart])
 }
 
+// Notification Management Tables
+model NotificationTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // email, sms, push, in_app
+  subject     String?
+  content     String
+  variables   Json?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaigns NotificationCampaign[]
+
+  @@index([type])
+  @@index([isActive])
+}
+
+model NotificationCampaign {
+  id            String   @id @default(cuid())
+  name          String
+  description   String
+  templateId    String
+  targetUsers   Json?
+  targetCriteria Json?
+  scheduledAt   DateTime?
+  status        String   // draft, scheduled, running, completed, cancelled
+  sentCount     Int      @default(0)
+  failedCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  template NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+// Security Tables
+model SecurityEvent {
+  id          String   @id @default(cuid())
+  type        String
+  severity    String
+  userId      String?
+  ipAddress   String
+  userAgent   String?
+  description String
+  metadata    Json?
+  timestamp   DateTime @default(now())
+  resolved    Boolean  @default(false)
+
+  @@index([type])
+  @@index([severity])
+  @@index([timestamp])
+  @@index([resolved])
+}
+
+model SecurityThreat {
+  id                 String    @id @default(cuid())
+  type               String
+  severity           String
+  source             String
+  target             String
+  description        String
+  status             String    // active, investigating, resolved, false_positive
+  detectedAt         DateTime  @default(now())
+  resolvedAt         DateTime?
+  mitigationActions  Json?
+
+  @@index([type])
+  @@index([severity])
+  @@index([status])
+  @@index([detectedAt])
+}
+
+model SecurityAlert {
+  id          String   @id @default(cuid())
+  type        String
+  title       String
+  description String
+  severity    String
+  timestamp   DateTime @default(now())
+  resolved   Boolean  @default(false)
+
+  @@index([type])
+  @@index([severity])
+  @@index([resolved])
+}
+
+model BlockedIP {
+  id        String    @id @default(cuid())
+  ipAddress String    @unique
+  reason    String
+  blockedAt DateTime  @default(now())
+  expiresAt DateTime
+
+  @@index([ipAddress])
+  @@index([expiresAt])
+}
+
+// Machine Learning Tables
+model MLModel {
+  id              String   @id @default(cuid())
+  name            String
+  type            String
+  status          String   // training, ready, deployed, failed
+  accuracy        Float?
+  version         String
+  trainingDataSize Int?
+  features        Json?
+  target          String?
+  precision       Float?
+  recall          Float?
+  f1Score         Float?
+  auc             Float?
+  createdAt       DateTime @default(now())
+  lastTrained     DateTime @default(now())
+
+  predictions MLPrediction[]
+  trainingJobs MLTrainingJob[]
+
+  @@index([type])
+  @@index([status])
+  @@index([accuracy])
+}
+
+model MLPrediction {
+  id             String   @id @default(cuid())
+  modelId        String
+  input          Json
+  output         Json
+  confidence     Float
+  processingTime Int
+  timestamp      DateTime @default(now())
+
+  model MLModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@index([modelId])
+  @@index([timestamp])
+}
+
+model MLTrainingJob {
+  id        String    @id @default(cuid())
+  modelId   String
+  status    String    // pending, running, completed, failed
+  progress  Int       @default(0)
+  startTime DateTime  @default(now())
+  endTime   DateTime?
+  accuracy  Float?
+  loss      Float?
+  epochs    Int?
+  error     String?
+
+  model MLModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@index([modelId])
+  @@index([status])
+}
+
+model MLRecommendation {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  score     Float
+  reason    String
+  category  String
+  timestamp DateTime @default(now())
+
+  @@index([userId])
+  @@index([category])
+  @@index([timestamp])
+}
+
+// Reporting Tables
+model ReportTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  type        String
+  category    String
+  isActive    Boolean  @default(true)
+  parameters  Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reports Report[]
+
+  @@index([type])
+  @@index([category])
+  @@index([isActive])
+}
+
+model Report {
+  id            String    @id @default(cuid())
+  templateId    String
+  name          String
+  status        String    // pending, generating, completed, failed
+  parameters    Json?
+  generatedBy   String
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+  filePath      String?
+  fileSize      Int?
+  recordCount   Int?
+  error         String?
+
+  template ReportTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@index([status])
+  @@index([generatedBy])
+}
+
+// Rate Limiting Tables
+model RateLimitRule {
+  id        String   @id @default(cuid())
+  name      String
+  pattern   String
+  method    String
+  limit     Int
+  window    Int
+  priority  Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pattern])
+  @@index([method])
+  @@index([priority])
+  @@index([isActive])
+}
+
+model RateLimitLog {
+  id        String   @id @default(cuid())
+  key       String
+  ipAddress String
+  endpoint  String
+  method    String
+  blocked   Boolean
+  reason    String?
+  timestamp DateTime @default(now())
+
+  @@index([key])
+  @@index([ipAddress])
+  @@index([endpoint])
+  @@index([blocked])
+  @@index([timestamp])
+}
+
+// Audit Logging Tables
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  resource   String
+  resourceId String?
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String
+  userAgent  String?
+  sessionId  String?
+  severity   String
+  category   String
+  metadata   Json?
+  timestamp  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([severity])
+  @@index([category])
+  @@index([timestamp])
+}
+
+// Backup Tables
+model BackupJob {
+  id        String    @id @default(cuid())
+  name      String
+  type      String
+  status    String    // pending, running, completed, failed
+  size      Int       @default(0)
+  filePath  String?
+  createdAt DateTime  @default(now())
+  completedAt DateTime?
+  error     String?
+  metadata  Json?
+
+  restoreJobs RestoreJob[]
+
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RestoreJob {
+  id        String    @id @default(cuid())
+  backupId  String
+  status    String    // pending, running, completed, failed
+  createdAt DateTime  @default(now())
+  completedAt DateTime?
+  error     String?
+  metadata  Json?
+
+  backup BackupJob @relation(fields: [backupId], references: [id], onDelete: Cascade)
+
+  @@index([backupId])
+  @@index([status])
+}
+
+model BackupSchedule {
+  id             String   @id @default(cuid())
+  name           String
+  type           String
+  frequency      String
+  time           String
+  dayOfWeek      Int?
+  dayOfMonth     Int?
+  isActive       Boolean  @default(true)
+  retentionDays  Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([frequency])
+  @@index([isActive])
+}
+
+// Feature Flags Tables
+model FeatureFlag {
+  id                String   @id @default(cuid())
+  name              String
+  key               String   @unique
+  description       String
+  isEnabled         Boolean  @default(false)
+  rolloutPercentage Int      @default(0)
+  targetUsers       Json?
+  targetRoles       Json?
+  targetSegments    Json?
+  conditions        Json?
+  environment       String
+  createdBy         String
+  updatedBy         String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  evaluations FeatureFlagEvaluation[]
+
+  @@index([key])
+  @@index([isEnabled])
+  @@index([environment])
+}
+
+model FeatureFlagEvaluation {
+  id         String   @id @default(cuid())
+  flagKey    String
+  userId     String
+  isEnabled  Boolean
+  reason     String
+  metadata   Json?
+  timestamp  DateTime @default(now())
+
+  @@index([flagKey])
+  @@index([userId])
+  @@index([timestamp])
+}
+
 model QuizResult {
   id          String    @id @default(cuid())
   userId      String

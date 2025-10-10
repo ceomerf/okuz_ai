@@ -84,7 +84,8 @@ const TeacherDashboard: React.FC = () => {
         setLoading(true);
         
         // Backend'den öğretmen verilerini çek
-        const response = await fetch('http://localhost:3002/api/teachers/dashboard', {
+        const teacherId = localStorage.getItem('teacher_id') || '1'; // Geçici ID
+        const response = await fetch(`http://localhost:3002/api/teachers/${teacherId}/dashboard`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
             'Content-Type': 'application/json',
@@ -94,10 +95,10 @@ const TeacherDashboard: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           setTeacherStats({
-            totalStudents: data.totalStudents || 0,
-            activeClasses: data.activeClasses || 0,
-            completedAssignments: data.completedAssignments || 0,
-            pendingGrading: data.pendingGrading || 0,
+            totalStudents: data.quickStats?.totalStudents || 0,
+            activeClasses: data.quickStats?.totalClasses || 0,
+            completedAssignments: data.quickStats?.completedAssignments || 0,
+            pendingGrading: data.quickStats?.pendingAssignments || 0,
             averageGrade: data.averageGrade || 0,
             attendanceRate: data.attendanceRate || 0,
           });

@@ -77,6 +77,8 @@ import {
   Tune,
   ViewList,
   ViewModule,
+  Backup,
+  Flag,
   ViewComfy,
   Dashboard,
   Security,
@@ -163,6 +165,22 @@ const AdvancedDashboard: React.FC = () => {
   // Gerçek veri için state
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [dashboardData, setDashboardData] = useState<any>(null);
+  
+  // Yeni sistem verileri için state'ler
+  const [notificationData, setNotificationData] = useState<any>(null);
+  const [securityData, setSecurityData] = useState<any>(null);
+  const [mlData, setMLData] = useState<any>(null);
+  const [reportingData, setReportingData] = useState<any>(null);
+  const [rateLimitingData, setRateLimitingData] = useState<any>(null);
+  const [auditData, setAuditData] = useState<any>(null);
+  const [backupData, setBackupData] = useState<any>(null);
+  const [featureFlagsData, setFeatureFlagsData] = useState<any>(null);
+  const [aiManagementData, setAiManagementData] = useState<any>(null);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [realtimeData, setRealtimeData] = useState<any>(null);
+  const [performanceData, setPerformanceData] = useState<any>(null);
+  const [trackingData, setTrackingData] = useState<any>(null);
+  const [exportData, setExportData] = useState<any>(null);
 
   // API'den veri çekme
   useEffect(() => {
@@ -186,17 +204,17 @@ const AdvancedDashboard: React.FC = () => {
           setMetrics([
             {
               title: 'Toplam Kullanıcı',
-              value: data.criticalMetrics?.users?.total || 0,
-              change: data.criticalMetrics?.users?.growth || 0,
-              trend: data.criticalMetrics?.users?.growth > 0 ? 'up' : 'down',
+              value: data.quickStats?.totalUsers || 0,
+              change: 0, // Bu değer analytics'ten hesaplanabilir
+              trend: 'up',
               icon: <People />,
               color: '#4caf50',
               format: 'number',
             },
             {
               title: 'Aktif Öğrenci',
-              value: data.criticalMetrics?.users?.active || 0,
-              change: 8.3,
+              value: data.quickStats?.totalStudents || 0,
+              change: 0,
               trend: 'up',
               icon: <School />,
               color: '#2196f3',
@@ -204,17 +222,17 @@ const AdvancedDashboard: React.FC = () => {
             },
             {
               title: 'Aylık Gelir',
-              value: data.criticalMetrics?.revenue?.current || 0,
-              change: data.criticalMetrics?.revenue?.growth || 0,
-              trend: data.criticalMetrics?.revenue?.growth > 0 ? 'up' : 'down',
+              value: data.quickStats?.monthlyRevenue || 0,
+              change: 0,
+              trend: 'up',
               icon: <Assessment />,
               color: '#ff9800',
               format: 'currency',
             },
             {
               title: 'Sistem Uptime',
-              value: data.criticalMetrics?.performance?.uptime || 0,
-              change: 0.1,
+              value: data.quickStats?.systemUptime || 0,
+              change: 0,
               trend: 'up',
               icon: <Analytics />,
               color: '#9c27b0',
@@ -272,6 +290,315 @@ const AdvancedDashboard: React.FC = () => {
     };
 
     fetchDashboardData();
+  }, []);
+
+  // Yeni sistem verilerini çekme
+  useEffect(() => {
+    const fetchNotificationData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/notification-management/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setNotificationData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch notification data:', error);
+      }
+    };
+
+    fetchNotificationData();
+  }, []);
+
+  useEffect(() => {
+    const fetchSecurityData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/security/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setSecurityData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch security data:', error);
+      }
+    };
+
+    fetchSecurityData();
+  }, []);
+
+  useEffect(() => {
+    const fetchMLData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/ml/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setMLData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch ML data:', error);
+      }
+    };
+
+    fetchMLData();
+  }, []);
+
+  useEffect(() => {
+    const fetchReportingData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/reporting/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setReportingData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch reporting data:', error);
+      }
+    };
+
+    fetchReportingData();
+  }, []);
+
+  useEffect(() => {
+    const fetchRateLimitingData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/rate-limiting/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setRateLimitingData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch rate limiting data:', error);
+      }
+    };
+
+    fetchRateLimitingData();
+  }, []);
+
+  useEffect(() => {
+    const fetchAuditData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/audit/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setAuditData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch audit data:', error);
+      }
+    };
+
+    fetchAuditData();
+  }, []);
+
+  useEffect(() => {
+    const fetchBackupData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/backup/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setBackupData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch backup data:', error);
+      }
+    };
+
+    fetchBackupData();
+  }, []);
+
+  useEffect(() => {
+    const fetchFeatureFlagsData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/feature-flags/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setFeatureFlagsData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch feature flags data:', error);
+      }
+    };
+
+    fetchFeatureFlagsData();
+  }, []);
+
+  useEffect(() => {
+    const fetchAIManagementData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/ai/management', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setAiManagementData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch AI management data:', error);
+      }
+    };
+
+    fetchAIManagementData();
+  }, []);
+
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/analytics/advanced', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setAnalyticsData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch analytics data:', error);
+      }
+    };
+
+    fetchAnalyticsData();
+  }, []);
+
+  useEffect(() => {
+    const fetchRealtimeData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/notifications/realtime', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setRealtimeData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch realtime data:', error);
+      }
+    };
+
+    fetchRealtimeData();
+  }, []);
+
+  useEffect(() => {
+    const fetchPerformanceData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/monitoring/performance', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setPerformanceData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch performance data:', error);
+      }
+    };
+
+    fetchPerformanceData();
+  }, []);
+
+  useEffect(() => {
+    const fetchTrackingData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/tracking/activity', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setTrackingData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch tracking data:', error);
+      }
+    };
+
+    fetchTrackingData();
+  }, []);
+
+  useEffect(() => {
+    const fetchExportData = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/export/data', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setExportData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch export data:', error);
+      }
+    };
+
+    fetchExportData();
   }, []);
 
   const quickStats: QuickStat[] = [
@@ -488,6 +815,11 @@ const AdvancedDashboard: React.FC = () => {
             <Tab icon={<Analytics />} label="Analitik" />
             <Tab icon={<Settings />} label="Sistem" />
             <Tab icon={<Security />} label="Güvenlik" />
+            <Tab icon={<Notifications />} label="Bildirimler" />
+            <Tab icon={<Assessment />} label="Raporlama" />
+            <Tab icon={<TrendingUp />} label="ML & AI" />
+            <Tab icon={<Backup />} label="Yedekleme" />
+            <Tab icon={<Flag />} label="Özellikler" />
           </Tabs>
         </Box>
 
@@ -725,6 +1057,231 @@ const AdvancedDashboard: React.FC = () => {
                 </Card>
               </Box>
             </Box>
+          </Box>
+        </TabPanel>
+
+        {/* Bildirimler Tab */}
+        <TabPanel value={currentTab} index={4}>
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              📧 Bildirim Yönetimi
+            </Typography>
+            {notificationData ? (
+              <Box display="flex" flexWrap="wrap" gap={3}>
+                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Bildirim İstatistikleri
+                      </Typography>
+                      <Typography variant="h4" color="primary">
+                        {notificationData.stats?.totalSent || 0}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Toplam Gönderilen
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Başarı Oranı
+                      </Typography>
+                      <Typography variant="h4" color="success.main">
+                        {notificationData.stats?.deliveryRate || 0}%
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Teslim Edilen
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </Box>
+            ) : (
+              <Typography>Bildirim verileri yükleniyor...</Typography>
+            )}
+          </Box>
+        </TabPanel>
+
+        {/* Raporlama Tab */}
+        <TabPanel value={currentTab} index={5}>
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              📊 Gelişmiş Raporlama
+            </Typography>
+            {reportingData ? (
+              <Box display="flex" flexWrap="wrap" gap={3}>
+                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Toplam Rapor
+                      </Typography>
+                      <Typography variant="h4" color="primary">
+                        {reportingData.stats?.totalReports || 0}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Oluşturulan Raporlar
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Başarı Oranı
+                      </Typography>
+                      <Typography variant="h4" color="success.main">
+                        {reportingData.stats?.successRate || 0}%
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Başarılı Raporlar
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </Box>
+            ) : (
+              <Typography>Raporlama verileri yükleniyor...</Typography>
+            )}
+          </Box>
+        </TabPanel>
+
+        {/* ML & AI Tab */}
+        <TabPanel value={currentTab} index={6}>
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              🤖 Makine Öğrenmesi & AI
+            </Typography>
+            {mlData ? (
+              <Box display="flex" flexWrap="wrap" gap={3}>
+                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Aktif Modeller
+                      </Typography>
+                      <Typography variant="h4" color="primary">
+                        {mlData.metrics?.activeModels || 0}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Çalışan ML Modelleri
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Ortalama Doğruluk
+                      </Typography>
+                      <Typography variant="h4" color="success.main">
+                        {mlData.metrics?.averageAccuracy || 0}%
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Model Doğruluğu
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </Box>
+            ) : (
+              <Typography>ML verileri yükleniyor...</Typography>
+            )}
+          </Box>
+        </TabPanel>
+
+        {/* Yedekleme Tab */}
+        <TabPanel value={currentTab} index={7}>
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              💾 Yedekleme Sistemi
+            </Typography>
+            {backupData ? (
+              <Box display="flex" flexWrap="wrap" gap={3}>
+                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Toplam Yedek
+                      </Typography>
+                      <Typography variant="h4" color="primary">
+                        {backupData.stats?.totalBackups || 0}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Oluşturulan Yedekler
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Toplam Boyut
+                      </Typography>
+                      <Typography variant="h4" color="info.main">
+                        {backupData.stats?.totalSize || 0} MB
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Yedek Boyutu
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </Box>
+            ) : (
+              <Typography>Yedekleme verileri yükleniyor...</Typography>
+            )}
+          </Box>
+        </TabPanel>
+
+        {/* Özellikler Tab */}
+        <TabPanel value={currentTab} index={8}>
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              🚩 Özellik Bayrakları
+            </Typography>
+            {featureFlagsData ? (
+              <Box display="flex" flexWrap="wrap" gap={3}>
+                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Toplam Bayrak
+                      </Typography>
+                      <Typography variant="h4" color="primary">
+                        {featureFlagsData.stats?.totalFlags || 0}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Tanımlanan Bayraklar
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Aktif Bayrak
+                      </Typography>
+                      <Typography variant="h4" color="success.main">
+                        {featureFlagsData.stats?.enabledFlags || 0}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Etkin Bayraklar
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </Box>
+            ) : (
+              <Typography>Özellik bayrağı verileri yükleniyor...</Typography>
+            )}
           </Box>
         </TabPanel>
       </Card>

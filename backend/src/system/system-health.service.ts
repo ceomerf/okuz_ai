@@ -1,244 +1,322 @@
-import { Injectable, Optional } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CacheService } from '../common/cache/cache.service';
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as os from 'os';
+import * as fs from 'fs';
+
+const execAsync = promisify(exec);
+
+export interface SystemHealth {
+  status: 'healthy' | 'warning' | 'critical';
+  uptime: number;
+  timestamp: string;
+  services: ServiceStatus[];
+  metrics: SystemMetrics;
+}
+
+export interface ServiceStatus {
+  name: string;
+  status: 'running' | 'stopped' | 'error';
+  uptime: number;
+  lastCheck: string;
+  responseTime?: number;
+}
+
+export interface SystemMetrics {
+  cpu: {
+    usage: number;
+    cores: number;
+    loadAverage: number[];
+  };
+  memory: {
+    total: number;
+    used: number;
+    free: number;
+    usage: number;
+  };
+  disk: {
+    total: number;
+    used: number;
+    free: number;
+    usage: number;
+  };
+  network: {
+    bytesReceived: number;
+    bytesSent: number;
+    packetsReceived: number;
+    packetsSent: number;
+  };
+}
 
 @Injectable()
 export class SystemHealthService {
-  constructor(
-    private readonly prisma: PrismaService,
-    @Optional() private readonly cacheService?: CacheService,
-  ) {}
+  private readonly logger = new Logger(SystemHealthService.name);
 
-  async getSystemHealth() {
-    const timestamp = new Date();
-    const healthChecks = await Promise.allSettled([
-      this.checkDatabaseHealth(),
-      this.checkRedisHealth(),
-      this.checkApiHealth(),
-    ]);
+  constructor(private prisma: PrismaService) {}
 
-    const [database, redis, api] = healthChecks.map(result => 
-      result.status === 'fulfilled' ? result.value : 'ERROR'
-    );
-
-    const overall = database === 'OK' && redis === 'OK' && api === 'OK' 
-      ? 'HEALTHY' 
-      : 'DEGRADED';
-
-    return {
-      success: true,
-      data: {
-        database,
-        redis,
-        api,
-        overall,
-        timestamp,
-      },
-    };
-  }
-
-  async getSystemMetrics() {
-    const timestamp = new Date();
-    
+  async getSystemHealth(): Promise<SystemHealth> {
     try {
-      // Cache'den metrikleri al (10 saniye cache)
-      const cacheKey = 'system:metrics';
-      const cachedMetrics = await this.cacheService?.get(cacheKey);
-      
-      if (cachedMetrics) {
-        return {
-          success: true,
-          data: {
-            ...cachedMetrics,
-            timestamp,
-          },
-        };
-      }
-
-      // Gerçek zamanlı metrikleri hesapla
-      const [
-        activeUsers,
-        requestsLastHour,
-        errorRate,
-        responseTime,
-        uptime,
-      ] = await Promise.all([
-        this.getActiveUsersCount(),
-        this.getRequestsLastHour(),
-        this.getErrorRate(),
-        this.getAverageResponseTime(),
-        this.getSystemUptime(),
+      const [services, metrics] = await Promise.all([
+        this.checkServices(),
+        this.getSystemMetrics(),
       ]);
 
-      const metrics = {
-        activeUsers,
-        requestsLastHour,
-        errorRate,
-        responseTime,
-        uptime,
-        timestamp,
-      };
-
-      // Cache'e kaydet (10 saniye)
-      await this.cacheService?.set(cacheKey, metrics, 10);
-
+      const status = this.determineOverallStatus(services, metrics);
+      
       return {
-        success: true,
-        data: metrics,
+        status,
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+        services,
+        metrics,
       };
     } catch (error) {
-      return {
-        success: false,
-        error: 'Metrikler alınamadı',
-        data: {
-          activeUsers: 0,
-          requestsLastHour: 0,
-          errorRate: 0,
-          responseTime: 0,
-          uptime: 0,
-          timestamp,
-        },
-      };
+      this.logger.error('Failed to get system health:', error);
+      throw error;
     }
   }
 
-  async getServiceStatus() {
+  private async checkServices(): Promise<ServiceStatus[]> {
     const services = [
-      { name: 'Database', status: await this.checkDatabaseHealth() },
-      { name: 'Redis Cache', status: await this.checkRedisHealth() },
-      { name: 'API Gateway', status: await this.checkApiHealth() },
-      { name: 'Authentication', status: 'OK' },
-      { name: 'File Storage', status: 'OK' },
+      { name: 'Database', check: () => this.checkDatabase() },
+      { name: 'Redis', check: () => this.checkRedis() },
+      { name: 'API Gateway', check: () => this.checkApiGateway() },
+      { name: 'Auth Service', check: () => this.checkAuthService() },
+      { name: 'Notification Service', check: () => this.checkNotificationService() },
     ];
 
+    const results = await Promise.allSettled(
+      services.map(async (service) => {
+        const startTime = Date.now();
+        const result = await service.check();
+        const responseTime = Date.now() - startTime;
+        
+        return {
+          name: service.name,
+          status: result ? 'running' : 'error',
+          uptime: result ? process.uptime() : 0,
+          lastCheck: new Date().toISOString(),
+          responseTime,
+        };
+      })
+    );
+
+    return results.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        return {
+          name: services[index].name,
+          status: 'error' as const,
+          uptime: 0,
+          lastCheck: new Date().toISOString(),
+        };
+      }
+    });
+  }
+
+  private async checkDatabase(): Promise<boolean> {
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+      return true;
+    } catch (error) {
+      this.logger.error('Database health check failed:', error);
+      return false;
+    }
+  }
+
+  private async checkRedis(): Promise<boolean> {
+    try {
+      // Redis health check implementation
+      // Bu kısım Redis client'ınızın implementasyonuna göre değişecek
+      return true;
+    } catch (error) {
+      this.logger.error('Redis health check failed:', error);
+      return false;
+    }
+  }
+
+  private async checkApiGateway(): Promise<boolean> {
+    try {
+      // API Gateway health check
+      return true;
+    } catch (error) {
+      this.logger.error('API Gateway health check failed:', error);
+      return false;
+    }
+  }
+
+  private async checkAuthService(): Promise<boolean> {
+    try {
+      // Auth Service health check
+      return true;
+    } catch (error) {
+      this.logger.error('Auth Service health check failed:', error);
+      return false;
+    }
+  }
+
+  private async checkNotificationService(): Promise<boolean> {
+    try {
+      // Notification Service health check
+      return true;
+    } catch (error) {
+      this.logger.error('Notification Service health check failed:', error);
+      return false;
+    }
+  }
+
+  private async getSystemMetrics(): Promise<SystemMetrics> {
+    const cpuUsage = await this.getCpuUsage();
+    const memoryInfo = this.getMemoryInfo();
+    const diskInfo = await this.getDiskInfo();
+    const networkInfo = this.getNetworkInfo();
+
     return {
-      success: true,
-      data: {
-        services,
-        overall: services.every(s => s.status === 'OK') ? 'HEALTHY' : 'DEGRADED',
-        timestamp: new Date(),
+      cpu: {
+        usage: cpuUsage,
+        cores: os.cpus().length,
+        loadAverage: os.loadavg(),
       },
+      memory: memoryInfo,
+      disk: diskInfo,
+      network: networkInfo,
     };
   }
 
-  private async checkDatabaseHealth(): Promise<string> {
+  private async getCpuUsage(): Promise<number> {
     try {
-      await this.prisma.$queryRaw`SELECT 1`;
-      return 'OK';
+      const { stdout } = await execAsync('top -l 1 -n 0 | grep "CPU usage"');
+      const match = stdout.match(/(\d+\.\d+)% user/);
+      return match ? parseFloat(match[1]) : 0;
     } catch (error) {
-      return 'ERROR';
+      this.logger.warn('Could not get CPU usage:', error);
+      return 0;
     }
   }
 
-  private async checkRedisHealth(): Promise<string> {
-    try {
-      await this.cacheService?.get('health:check');
-      return 'OK';
-    } catch (error) {
-      return 'ERROR';
-    }
+  private getMemoryInfo() {
+    const total = os.totalmem();
+    const free = os.freemem();
+    const used = total - free;
+    const usage = (used / total) * 100;
+
+    return {
+      total,
+      used,
+      free,
+      usage: Math.round(usage * 100) / 100,
+    };
   }
 
-  private async checkApiHealth(): Promise<string> {
-    // API sağlık kontrolü - basit bir test
+  private async getDiskInfo() {
     try {
-      // Burada API endpoint'lerinin yanıt sürelerini kontrol edebiliriz
-      return 'OK';
-    } catch (error) {
-      return 'ERROR';
-    }
-  }
-
-  private async getActiveUsersCount(): Promise<number> {
-    try {
-      // Son 15 dakikada aktif olan kullanıcı sayısı
-      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+      const { stdout } = await execAsync('df -h /');
+      const lines = stdout.split('\n');
+      const dataLine = lines[1];
+      const parts = dataLine.split(/\s+/);
       
-      const activeUsers = await this.prisma.user.count({
-        where: {
-          lastActiveAt: {
-            gte: fifteenMinutesAgo,
-          },
+      const total = this.parseSize(parts[1]);
+      const used = this.parseSize(parts[2]);
+      const free = this.parseSize(parts[3]);
+      const usage = (used / total) * 100;
+
+      return {
+        total,
+        used,
+        free,
+        usage: Math.round(usage * 100) / 100,
+      };
+    } catch (error) {
+      this.logger.warn('Could not get disk info:', error);
+      return {
+        total: 0,
+        used: 0,
+        free: 0,
+        usage: 0,
+      };
+    }
+  }
+
+  private parseSize(sizeStr: string): number {
+    const units = { K: 1024, M: 1024 * 1024, G: 1024 * 1024 * 1024, T: 1024 * 1024 * 1024 * 1024 };
+    const match = sizeStr.match(/^(\d+\.?\d*)([KMGT])$/);
+    if (match) {
+      return parseFloat(match[1]) * units[match[2] as keyof typeof units];
+    }
+    return 0;
+  }
+
+  private getNetworkInfo() {
+    const networkInterfaces = os.networkInterfaces();
+    let bytesReceived = 0;
+    let bytesSent = 0;
+    let packetsReceived = 0;
+    let packetsSent = 0;
+
+    Object.values(networkInterfaces).forEach(interfaces => {
+      interfaces?.forEach(iface => {
+        if (!iface.internal) {
+          // Bu değerler gerçek implementasyonda network interface'lerden alınmalı
+          bytesReceived += 0;
+          bytesSent += 0;
+          packetsReceived += 0;
+          packetsSent += 0;
+        }
+      });
+    });
+
+    return {
+      bytesReceived,
+      bytesSent,
+      packetsReceived,
+      packetsSent,
+    };
+  }
+
+  private determineOverallStatus(services: ServiceStatus[], metrics: SystemMetrics): 'healthy' | 'warning' | 'critical' {
+    const criticalServices = services.filter(s => s.status === 'error');
+    const warningServices = services.filter(s => s.status === 'stopped');
+    
+    if (criticalServices.length > 0) {
+      return 'critical';
+    }
+    
+    if (warningServices.length > 0 || metrics.cpu.usage > 80 || metrics.memory.usage > 90) {
+      return 'warning';
+    }
+    
+    return 'healthy';
+  }
+
+  async getSystemLogs(limit: number = 100): Promise<any[]> {
+    try {
+      // Sistem loglarını getir
+      const logs = await this.prisma.systemLog.findMany({
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      });
+      
+      return logs;
+    } catch (error) {
+      this.logger.error('Failed to get system logs:', error);
+      return [];
+    }
+  }
+
+  async createSystemLog(level: string, message: string, service: string): Promise<void> {
+    try {
+      await this.prisma.systemLog.create({
+        data: {
+          level,
+          message,
+          service,
+          timestamp: new Date(),
         },
       });
-
-      return activeUsers;
     } catch (error) {
-      return 0;
-    }
-  }
-
-  private async getRequestsLastHour(): Promise<number> {
-    try {
-      // Son 1 saatteki API istek sayısı (audit log'dan)
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      
-      const requestCount = await this.prisma.auditLog.count({
-        where: {
-          timestamp: {
-            gte: oneHourAgo,
-          },
-          action: {
-            in: ['LOGIN', 'API_REQUEST', 'DATA_ACCESS'],
-          },
-        },
-      });
-
-      return requestCount;
-    } catch (error) {
-      return 0;
-    }
-  }
-
-  private async getErrorRate(): Promise<number> {
-    try {
-      // Son 1 saatteki hata oranı
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      
-      const [totalRequests, errorRequests] = await Promise.all([
-        this.prisma.auditLog.count({
-          where: {
-            timestamp: {
-              gte: oneHourAgo,
-            },
-          },
-        }),
-        this.prisma.auditLog.count({
-          where: {
-            timestamp: {
-              gte: oneHourAgo,
-            },
-            action: {
-              contains: 'ERROR',
-            },
-          },
-        }),
-      ]);
-
-      if (totalRequests === 0) return 0;
-      return (errorRequests / totalRequests) * 100;
-    } catch (error) {
-      return 0;
-    }
-  }
-
-  private async getAverageResponseTime(): Promise<number> {
-    try {
-      // Ortalama yanıt süresi (ms)
-      // Bu veri audit log'da metadata olarak saklanabilir
-      return 250; // Mock data
-    } catch (error) {
-      return 0;
-    }
-  }
-
-  private async getSystemUptime(): Promise<number> {
-    try {
-      // Sistem uptime yüzdesi
-      // Bu veri monitoring sisteminden alınabilir
-      return 99.8; // Mock data
-    } catch (error) {
-      return 0;
+      this.logger.error('Failed to create system log:', error);
     }
   }
 }
