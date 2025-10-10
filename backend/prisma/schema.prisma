@@ -612,23 +612,6 @@ model MebTopic {
 }
 
 /// Logging and Audit models
-model AuditLog {
-  id          String   @id @default(cuid())
-  userId      String
-  action      String
-  entityType  String
-  entityId    String
-  oldValues   Json?
-  newValues   Json?
-  ipAddress   String?
-  userAgent   String?
-  metadata    Json?
-  timestamp   DateTime @default(now())
-
-  @@index([userId])
-  @@index([entityType, entityId])
-  @@index([timestamp])
-}
 
 model LogEntry {
   id            String   @id @default(cuid())
