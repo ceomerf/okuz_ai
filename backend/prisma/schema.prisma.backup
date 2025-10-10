@@ -1,0 +1,1479 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  PARENT
+  TEACHER
+  COACH
+  ADMIN
+}
+
+enum PlanType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  HOLIDAY
+  LONG_TERM
+}
+
+enum AchievementType {
+  STUDY_STREAK
+  PERFECT_SCORE
+  COMPLETION
+  MILESTONE
+  SPECIAL
+}
+
+enum TaskType {
+  STUDY_SESSION
+  QUIZ
+  EXAM
+  PROJECT
+  READING
+  PRACTICE
+}
+
+enum NotificationType {
+  REMINDER
+  ACHIEVEMENT
+  PROGRESS
+  SYSTEM
+  INVITE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  FREE
+  PREMIUM
+  FAMILY
+  CANCELLED
+}
+
+enum SubscriptionPlan {
+  MONTHLY_PREMIUM
+  YEARLY_PREMIUM
+  FAMILY_PLAN
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Subscription fields
+  subscriptionStatus  SubscriptionStatus @default(TRIAL)
+  trialEndDate        DateTime?
+  subscriptionEndDate DateTime?
+
+  // Profile relations
+  studentProfile StudentProfile?
+  parentProfile  ParentProfile?
+  student        Student?
+
+  // Invites
+  sentInvites     Invite[] @relation("Inviter")
+  receivedInvites Invite[] @relation("Invitee")
+
+  // Plans
+  plans Plan[]
+
+  // Achievements
+  achievements Achievement[]
+
+  // Study sessions
+  studySessions StudySession[]
+
+  // Gamification
+  gamificationProfile GamificationProfile?
+
+  // Notifications
+  notifications Notification[]
+
+  // Tool usage
+  toolUsages ToolUsage[]
+
+  // Family connections
+  familyMembers FamilyMember[] @relation("Parent")
+  children      FamilyMember[] @relation("Child")
+
+  // Additional relations
+  examResults   ExamResult[]
+  learningPaths LearningPath[]
+  flashcards    Flashcard[]
+  conceptMaps   ConceptMap[]
+  quizzes       Quiz[]
+  studyGoals    StudyGoal[]
+  studyHabits   StudyHabit[]
+  subscriptions Subscription[]
+  payments      Payment[]
+
+  // RBAC relations
+  userRoles         UserRoleMap[]
+  temporaryUserRoles TemporaryUserRole[]
+
+  // AI relations
+  aiRequestLogs     AiRequestLog[]
+  analyses          Analysis[]
+
+  // Coaching relations
+  coachStudents     CoachStudent[] @relation("Coach")
+  studentCoaches    CoachStudent[] @relation("Student")
+
+  // Parent relations
+  parent            Parent?
+  parentReports     ParentReport[] @relation("ParentReport")
+  studentReports    ParentReport[] @relation("StudentReport")
+
+  // Quiz relations
+  quizResults       QuizResult[]
+
+  // Additional fields
+  lastActiveAt      DateTime?
+  grade            Int?
+
+  // Authentication
+  refreshTokens    RefreshToken[]
+
+  // Additional relations for new models
+  classes          Class[]
+  notificationPreferences NotificationPreferences?
+  userActivities   UserActivity[]
+  aiLogs           AILog[]
+}
+
+model StudentProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  grade         Int
+  field         String
+  goals         String[]
+  learningStyle String?
+  strengths     String[]
+  weaknesses    String[]
+  interests     String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  grade     Int
+  field     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Relations
+  classStudents ClassStudent[]
+  submissions   Submission[]
+  grades        Grade[]
+  studyPlans    StudyPlan[]
+
+  @@index([userId])
+  @@index([grade])
+  @@index([field])
+}
+
+model ParentProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Invite {
+  id        String   @id @default(cuid())
+  inviterId String
+  inviteeId String?
+  email     String
+  token     String   @unique
+  type      String // "student" or "parent"
+  status    String   @default("pending") // "pending", "accepted", "expired"
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inviter User? @relation("Inviter", fields: [inviterId], references: [id])
+  invitee User? @relation("Invitee", fields: [inviteeId], references: [id])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  type        PlanType
+  subjects    String[]
+  goals       String[]
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  status      String   @default("ACTIVE")
+  duration    Int?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions StudySession[]
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@index([userId, startDate])
+  @@index([userId, createdAt])
+  @@index([userId, type, isActive, endDate])
+}
+
+model StudySession {
+  id          String    @id @default(cuid())
+  planId      String?
+  userId      String
+  subject     String
+  topic       String
+  duration    Int // minutes
+  startTime   DateTime
+  endTime     DateTime?
+  isCompleted Boolean   @default(false)
+  performance Int? // 0-100
+  status      String    @default("PENDING")
+  dayOfWeek   String?
+  completedAt DateTime?
+  notes       String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  plan Plan? @relation(fields: [planId], references: [id])
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([planId])
+  @@index([startTime])
+  @@index([userId, startTime])
+  @@index([userId, createdAt])
+}
+
+model Achievement {
+  id          String          @id @default(cuid())
+  userId      String
+  title       String
+  description String
+  type        AchievementType
+  icon        String?
+  points      Int             @default(0)
+  metadata    Json?
+  unlockedAt  DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+}
+
+model GamificationProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  level            Int      @default(1)
+  experience       Int      @default(0)
+  energy           Int      @default(100)
+  maxEnergy        Int      @default(100)
+  streak           Int      @default(0)
+  totalPoints      Int      @default(0)
+  coins            Int      @default(0)
+  lastEnergyRefill DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+   @@index([userId])
+   @@index([createdAt])
+}
+
+model ToolUsage {
+  id        String   @id @default(cuid())
+  userId    String
+  toolName  String
+  input     String?
+  output    String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model FamilyMember {
+  id        String   @id @default(cuid())
+  parentId  String
+  childId   String
+  role      String // "parent", "child"
+  createdAt DateTime @default(now())
+
+  parent User @relation("Parent", fields: [parentId], references: [id], onDelete: Cascade)
+  child  User @relation("Child", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+}
+
+model ExamResult {
+  id         String   @id @default(cuid())
+  userId     String
+  subject    String
+  examType   String
+  score      Int
+  totalScore Int
+  duration   Int // minutes
+  answers    Json?
+  analysis   Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+}
+
+model LearningPath {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  subjects    String[]
+  topics      String[]
+  steps       Json
+  progress    Json?
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Flashcard {
+  id           String    @id @default(cuid())
+  userId       String
+  topic        String
+  front        String
+  back         String
+  difficulty   String    @default("medium")
+  isMastered   Boolean   @default(false)
+  lastReviewed DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ConceptMap {
+  id          String   @id @default(cuid())
+  userId      String
+  topic       String
+  concepts    Json
+  connections Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Quiz {
+  id          String    @id @default(cuid())
+  userId      String
+  topic       String
+  questions   Json
+  answers     Json?
+  score       Int?
+  totalScore  Int
+  duration    Int // minutes
+  isCompleted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+}
+
+model StudyGoal {
+  id          String    @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  target      Int
+  current     Int       @default(0)
+  unit        String // "hours", "pages", "questions", etc.
+  deadline    DateTime?
+  isCompleted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model StudyHabit {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  frequency   String // "daily", "weekly", "monthly"
+  target      Int
+  current     Int      @default(0)
+  streak      Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  userId    String
+  planType  SubscriptionPlan
+  status    SubscriptionStatus
+  startDate DateTime
+  endDate   DateTime?
+  isActive  Boolean            @default(true)
+  features  String[]
+  metadata  Json?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId])
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  subscriptionId  String?
+  amount          Float
+  currency        String        @default("TRY")
+  status          PaymentStatus @default(PENDING)
+  paymentMethod   String // "credit_card", "bank_transfer", etc.
+  transactionId   String? // External payment gateway transaction ID
+  gatewayResponse Json? // Full response from payment gateway
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@index([userId])
+  @@index([subscriptionId])
+}
+
+/// Authentication Models
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+/// RBAC Models
+model Role {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  description     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relations
+  rolePermissions RolePermission[]
+  userRoles       UserRoleMap[]
+  temporaryUserRoles TemporaryUserRole[]
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g. "students.update"
+  resource    String   // e.g. "students"
+  action      String   // e.g. "update"
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime   @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId], name: "roleId_permissionId")
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model UserRoleMap {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId], name: "userId_roleId")
+  @@index([userId])
+  @@index([roleId])
+}
+
+model TemporaryUserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([roleId])
+  @@index([expiresAt])
+}
+
+/// MEB müfredat konuları ve YKS ağırlıklarını tutar
+model MebTopic {
+  id        String   @id @default(cuid())
+  grade     Int      // Konunun ait olduğu sınıf (9, 10, 11, 12)
+  subject   String   // Dersin adı (Örn: "Matematik", "Türkçe")
+  unit      String   // Ünitenin/temanın adı (Örn: "Sayılar ve Cebir")
+  topic     String   // Konunun adı (Örn: "Üslü İfadeler ve Denklemler")
+  outcomes  String[] // Bu konuya ait MEB kazanımları (opsiyonel)
+  tytWeight Int      @default(0) // Konunun TYT'deki ortalama soru sayısı
+  aytWeight Int      @default(0) // Konunun AYT'deki ortalama soru sayısı
+
+  @@unique([grade, subject, topic])
+}
+
+/// Logging and Audit models
+
+model LogEntry {
+  id            String   @id @default(cuid())
+  level         String
+  message       String
+  context       String?
+  timestamp     DateTime @default(now())
+  service       String?
+  correlationId String?
+  userId        String?
+
+  @@index([level])
+  @@index([service])
+  @@index([timestamp])
+}
+
+/// Feature flags and remote config
+model FeatureFlagEntity {
+  id               String   @id @default(cuid())
+  key              String   @unique
+  name             String
+  description      String?
+  enabled          Boolean  @default(false)
+  rolloutPercentage Int      @default(0)
+  targetUsers      String[]
+  targetRoles      String[]
+  targetSegments   String[]
+  conditions       Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model RemoteConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+/// Email statistics
+model EmailLog {
+  id           String   @id @default(cuid())
+  success      Boolean
+  deliveryTime Int      @default(0)
+  templateName String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([templateName])
+}
+
+/// AI Management Models
+model AiRequestLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  model       String
+  promptType  String?
+  prompt      String
+  response    String?
+  tokensUsed  Int      @default(0)
+  duration    Int      @default(0) // milliseconds
+  success     Boolean  @default(true)
+  error       String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([model])
+  @@index([createdAt])
+}
+
+model AiPromptTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  template    String
+  variables   String[]
+  category    String
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model Analysis {
+  id              String   @id @default(cuid())
+  userId          String
+  type            String
+  subject         String
+  difficulty      String?
+  data            Json
+  insights        Json?
+  recommendations Json?
+  score           Int?
+  performance     Int?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model CoachStudent {
+  id        String   @id @default(cuid())
+  coachId   String
+  studentId String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  coach   User @relation("Coach", fields: [coachId], references: [id], onDelete: Cascade)
+  student User @relation("Student", fields: [studentId], references: [id], onDelete: Cascade)
+  notes   CoachNote[]
+
+  @@unique([coachId, studentId])
+  @@index([coachId])
+  @@index([studentId])
+}
+
+model CoachNote {
+  id              String   @id @default(cuid())
+  coachStudentId  String
+  title           String
+  content         String
+  type            String   @default("general")
+  priority        String   @default("medium")
+  isPrivate       Boolean  @default(false)
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  coachStudent CoachStudent @relation(fields: [coachStudentId], references: [id], onDelete: Cascade)
+
+  @@index([coachStudentId])
+  @@index([createdAt])
+}
+
+model Curriculum {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  subject     String
+  grade       Int
+  topics      Json
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([subject])
+  @@index([grade])
+  @@index([isActive])
+}
+
+model Badge {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  points      Int      @default(0)
+  rarity      String?
+  category    String?
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([rarity])
+  @@index([isActive])
+}
+
+model Parent {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  phone     String?
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ParentReport {
+  id                    String   @id @default(cuid())
+  parentId              String
+  studentId             String
+  weekStart             DateTime
+  weekEnd               DateTime
+  report                Json
+  metadata              Json?
+  totalStudyTime        Int?
+  completedSessions     Int?
+  coachRecommendations  Json?
+  createdAt             DateTime @default(now())
+
+  parent  User @relation("ParentReport", fields: [parentId], references: [id], onDelete: Cascade)
+  student User @relation("StudentReport", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([parentId])
+  @@index([studentId])
+  @@index([weekStart])
+}
+
+// Notification Management Tables
+model NotificationTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // email, sms, push, in_app
+  subject     String?
+  content     String
+  variables   Json?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaigns NotificationCampaign[]
+
+  @@index([type])
+  @@index([isActive])
+}
+
+model NotificationCampaign {
+  id            String   @id @default(cuid())
+  name          String
+  description   String
+  templateId    String
+  targetUsers   Json?
+  targetCriteria Json?
+  scheduledAt   DateTime?
+  status        String   // draft, scheduled, running, completed, cancelled
+  sentCount     Int      @default(0)
+  failedCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  template NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+// Security Tables
+model SecurityEvent {
+  id          String   @id @default(cuid())
+  type        String
+  severity    String
+  userId      String?
+  ipAddress   String
+  userAgent   String?
+  description String
+  metadata    Json?
+  timestamp   DateTime @default(now())
+  resolved    Boolean  @default(false)
+
+  @@index([type])
+  @@index([severity])
+  @@index([timestamp])
+  @@index([resolved])
+}
+
+model SecurityThreat {
+  id                 String    @id @default(cuid())
+  type               String
+  severity           String
+  source             String
+  target             String
+  description        String
+  status             String    // active, investigating, resolved, false_positive
+  detectedAt         DateTime  @default(now())
+  resolvedAt         DateTime?
+  mitigationActions  Json?
+
+  @@index([type])
+  @@index([severity])
+  @@index([status])
+  @@index([detectedAt])
+}
+
+model SecurityAlert {
+  id          String   @id @default(cuid())
+  type        String
+  title       String
+  description String
+  severity    String
+  timestamp   DateTime @default(now())
+  resolved   Boolean  @default(false)
+
+  @@index([type])
+  @@index([severity])
+  @@index([resolved])
+}
+
+model BlockedIP {
+  id        String    @id @default(cuid())
+  ipAddress String    @unique
+  reason    String
+  blockedAt DateTime  @default(now())
+  expiresAt DateTime
+
+  @@index([ipAddress])
+  @@index([expiresAt])
+}
+
+// Machine Learning Tables
+model MLModel {
+  id              String   @id @default(cuid())
+  name            String
+  type            String
+  status          String   // training, ready, deployed, failed
+  accuracy        Float?
+  version         String
+  trainingDataSize Int?
+  features        Json?
+  target          String?
+  precision       Float?
+  recall          Float?
+  f1Score         Float?
+  auc             Float?
+  createdAt       DateTime @default(now())
+  lastTrained     DateTime @default(now())
+
+  predictions MLPrediction[]
+  trainingJobs MLTrainingJob[]
+
+  @@index([type])
+  @@index([status])
+  @@index([accuracy])
+}
+
+model MLPrediction {
+  id             String   @id @default(cuid())
+  modelId        String
+  input          Json
+  output         Json
+  confidence     Float
+  processingTime Int
+  timestamp      DateTime @default(now())
+
+  model MLModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@index([modelId])
+  @@index([timestamp])
+}
+
+model MLTrainingJob {
+  id        String    @id @default(cuid())
+  modelId   String
+  status    String    // pending, running, completed, failed
+  progress  Int       @default(0)
+  startTime DateTime  @default(now())
+  endTime   DateTime?
+  accuracy  Float?
+  loss      Float?
+  epochs    Int?
+  error     String?
+
+  model MLModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@index([modelId])
+  @@index([status])
+}
+
+model MLRecommendation {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  score     Float
+  reason    String
+  category  String
+  timestamp DateTime @default(now())
+
+  @@index([userId])
+  @@index([category])
+  @@index([timestamp])
+}
+
+// Reporting Tables
+model ReportTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  type        String
+  category    String
+  isActive    Boolean  @default(true)
+  parameters  Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reports Report[]
+
+  @@index([type])
+  @@index([category])
+  @@index([isActive])
+}
+
+model Report {
+  id            String    @id @default(cuid())
+  templateId    String
+  name          String
+  status        String    // pending, generating, completed, failed
+  parameters    Json?
+  generatedBy   String
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+  filePath      String?
+  fileSize      Int?
+  recordCount   Int?
+  error         String?
+
+  template ReportTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@index([status])
+  @@index([generatedBy])
+}
+
+// Rate Limiting Tables
+model RateLimitRule {
+  id        String   @id @default(cuid())
+  name      String
+  pattern   String
+  method    String
+  limit     Int
+  window    Int
+  priority  Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pattern])
+  @@index([method])
+  @@index([priority])
+  @@index([isActive])
+}
+
+model RateLimitLog {
+  id        String   @id @default(cuid())
+  key       String
+  ipAddress String
+  endpoint  String
+  method    String
+  blocked   Boolean
+  reason    String?
+  timestamp DateTime @default(now())
+
+  @@index([key])
+  @@index([ipAddress])
+  @@index([endpoint])
+  @@index([blocked])
+  @@index([timestamp])
+}
+
+// Audit Logging Tables
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  resource   String
+  resourceId String?
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String
+  userAgent  String?
+  sessionId  String?
+  severity   String
+  category   String
+  metadata   Json?
+  timestamp  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([severity])
+  @@index([category])
+  @@index([timestamp])
+}
+
+// Backup Tables
+model BackupJob {
+  id        String    @id @default(cuid())
+  name      String
+  type      String
+  status    String    // pending, running, completed, failed
+  size      Int       @default(0)
+  filePath  String?
+  createdAt DateTime  @default(now())
+  completedAt DateTime?
+  error     String?
+  metadata  Json?
+
+  restoreJobs RestoreJob[]
+
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RestoreJob {
+  id        String    @id @default(cuid())
+  backupId  String
+  status    String    // pending, running, completed, failed
+  createdAt DateTime  @default(now())
+  completedAt DateTime?
+  error     String?
+  metadata  Json?
+
+  backup BackupJob @relation(fields: [backupId], references: [id], onDelete: Cascade)
+
+  @@index([backupId])
+  @@index([status])
+}
+
+model BackupSchedule {
+  id             String   @id @default(cuid())
+  name           String
+  type           String
+  frequency      String
+  time           String
+  dayOfWeek      Int?
+  dayOfMonth     Int?
+  isActive       Boolean  @default(true)
+  retentionDays  Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([frequency])
+  @@index([isActive])
+}
+
+// Feature Flags Tables
+model FeatureFlag {
+  id                String   @id @default(cuid())
+  name              String
+  key               String   @unique
+  description       String
+  isEnabled         Boolean  @default(false)
+  rolloutPercentage Int      @default(0)
+  targetUsers       Json?
+  targetRoles       Json?
+  targetSegments    Json?
+  conditions        Json?
+  environment       String
+  createdBy         String
+  updatedBy         String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  evaluations FeatureFlagEvaluation[]
+
+  @@index([key])
+  @@index([isEnabled])
+  @@index([environment])
+}
+
+model FeatureFlagEvaluation {
+  id         String   @id @default(cuid())
+  flagKey    String
+  userId     String
+  isEnabled  Boolean
+  reason     String
+  metadata   Json?
+  timestamp  DateTime @default(now())
+
+  flag FeatureFlag @relation(fields: [flagKey], references: [key])
+
+  @@index([flagKey])
+  @@index([userId])
+  @@index([timestamp])
+}
+
+model QuizResult {
+  id          String    @id @default(cuid())
+  userId      String
+  quizId      String?
+  score       Int
+  totalScore  Int
+  duration    Int       @default(0)
+  answers     Json?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([completedAt])
+}
+
+// Additional missing models
+model Class {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  grade       Int
+  subject     String
+  teacherId   String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  teacher     User @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+  students    ClassStudent[]
+
+  @@index([teacherId])
+  @@index([grade])
+  @@index([subject])
+}
+
+model ClassStudent {
+  id        String   @id @default(cuid())
+  classId   String
+  studentId String
+  joinedAt  DateTime @default(now())
+
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId])
+  @@index([classId])
+  @@index([studentId])
+}
+
+model Assignment {
+  id          String    @id @default(cuid())
+  classId     String
+  title       String
+  description String?
+  dueDate     DateTime
+  maxScore    Int       @default(100)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  class      Class       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+  grades     Grade[]
+
+  @@index([classId])
+  @@index([dueDate])
+}
+
+model Submission {
+  id           String   @id @default(cuid())
+  assignmentId String
+  studentId    String
+  content      String?
+  filePath     String?
+  status       String   @default("DRAFT") // DRAFT, SUBMITTED, GRADED
+  submittedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  grade      Grade?
+
+  @@index([assignmentId])
+  @@index([studentId])
+  @@index([status])
+}
+
+model Grade {
+  id           String   @id @default(cuid())
+  assignmentId String
+  studentId    String
+  submissionId String?  @unique
+  score        Int
+  maxScore     Int
+  feedback     String?
+  gradedAt     DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  assignment Assignment  @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  submission Submission? @relation(fields: [submissionId], references: [id])
+
+  @@index([assignmentId])
+  @@index([studentId])
+  @@index([submissionId])
+}
+
+model StudyPlan {
+  id          String   @id @default(cuid())
+  studentId   String
+  title       String
+  description String?
+  subjects    String[]
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([isActive])
+}
+
+model NotificationPreferences {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  emailNotifications    Boolean  @default(true)
+  pushNotifications     Boolean  @default(true)
+  smsNotifications      Boolean  @default(false)
+  reminderNotifications Boolean  @default(true)
+  achievementNotifications Boolean @default(true)
+  systemNotifications   Boolean  @default(true)
+  marketingNotifications Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model UserActivity {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  resource  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  level     String
+  message   String
+  service   String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([level])
+  @@index([service])
+  @@index([createdAt])
+}
+
+// AI Management Models
+model AIService {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  status      String   @default("active")
+  endpoint    String?
+  apiKey      String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  logs AILog[]
+
+  @@index([type])
+  @@index([status])
+}
+
+model AIModel {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  provider    String
+  version     String
+  status      String   @default("active")
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  logs AILog[]
+
+  @@index([type])
+  @@index([provider])
+  @@index([status])
+}
+
+model AILog {
+  id          String   @id @default(cuid())
+  serviceId   String?
+  modelId     String?
+  userId      String?
+  request     Json
+  response    Json?
+  tokensUsed  Int      @default(0)
+  duration    Int      @default(0)
+  success     Boolean  @default(true)
+  error       String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  service AIService? @relation(fields: [serviceId], references: [id])
+  model   AIModel?   @relation(fields: [modelId], references: [id])
+  user    User?      @relation(fields: [userId], references: [id])
+
+  @@index([serviceId])
+  @@index([modelId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model AIAlert {
+  id          String   @id @default(cuid())
+  type        String
+  severity    String
+  message     String
+  metadata    Json?
+  resolved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+
+  @@index([type])
+  @@index([severity])
+  @@index([resolved])
+  @@index([createdAt])
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  description String?
+  grade       Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([code])
+  @@index([grade])
+  @@index([isActive])
+}

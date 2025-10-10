@@ -15,18 +15,17 @@ import { QueueModule } from './services/queue.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { StudentsModule } from './students/students.module';
+import { SystemHealthModule } from './system/system-health.module';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { ExecutiveModule } from './executive/executive.module';
-import { ParentsModule } from './parents/parents.module';
 import { SmartToolsModule } from './smart-tools/smart-tools.module';
-import { GamificationModule } from './gamification/gamification.module';
 import { PlanningModule } from './planning/planning.module';
 import { AnalysisModule } from './analysis/analysis.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { InvitesModule } from './invites/invites.module';
 import { InteractionModule } from './interaction/interaction.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { SubscriptionModule } from './subscription/subscription.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SolverModule } from './services/solver.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
@@ -35,29 +34,15 @@ import { ParentReportsModule } from './parent-reports/parent-reports.module';
 import { AICoachModule } from './ai-coach/ai-coach.module';
 import { NotificationSettingsModule } from './notification-settings/notification-settings.module';
 import { ReferralModule } from './referral/referral.module';
-import { SystemModule } from './system/system.module';
 import { RbacModule } from './rbac/rbac.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { AuditModule } from './audit/audit.module';
-import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
-import { SystemHealthModule } from './system/system-health.module';
 import { ExecutiveDashboardModule } from './executive/executive-dashboard.module';
-import { TeacherDashboardModule } from './teachers/teacher-dashboard.module';
-import { StudentDashboardModule } from './students/student-dashboard.module';
-import { NotificationManagementModule } from './notifications/notification-management.module';
-import { AdvancedSecurityModule } from './security/advanced-security.module';
-import { MachineLearningModule } from './ml/machine-learning.module';
-import { AdvancedReportingModule } from './reporting/advanced-reporting.module';
-import { APIRateLimitingModule } from './rate-limiting/api-rate-limiting.module';
 import { AuditLoggingModule } from './audit/audit-logging.module';
 import { BackupRestoreModule } from './backup/backup-restore.module';
 import { AIManagementModule } from './ai/ai-management.module';
 import { AdvancedAnalyticsModule } from './analytics/advanced-analytics.module';
-import { RealtimeNotificationsModule } from './notifications/realtime-notifications.module';
-import { PerformanceMonitoringModule } from './monitoring/performance-monitoring.module';
-import { UserActivityTrackingModule } from './tracking/user-activity-tracking.module';
-import { DataExportModule } from './export/data-export.module';
 
 @Module({
   imports: [
@@ -118,18 +103,17 @@ import { DataExportModule } from './export/data-export.module';
     AuthModule,
     UsersModule,
     StudentsModule,
+    SystemHealthModule,
+    FeatureFlagsModule,
     TeachersModule,
     ExecutiveModule,
-    ParentsModule,
     SmartToolsModule,
-    GamificationModule,
     PlanningModule,
     AnalysisModule,
     AnalyticsModule,
     InvitesModule,
     InteractionModule,
     NotificationsModule,
-    SubscriptionModule,
     RealtimeModule,
     SolverModule,
     MonitoringModule,
@@ -139,27 +123,13 @@ import { DataExportModule } from './export/data-export.module';
     AICoachModule,
     NotificationSettingsModule,
     ReferralModule,
-    SystemModule,
     RbacModule,
     AuditModule,
-    FeatureFlagsModule,
-    SystemHealthModule,
     ExecutiveDashboardModule,
-    TeacherDashboardModule,
-    StudentDashboardModule,
-    NotificationManagementModule,
-    AdvancedSecurityModule,
-    MachineLearningModule,
-    AdvancedReportingModule,
-    APIRateLimitingModule,
     AuditLoggingModule,
     BackupRestoreModule,
     AIManagementModule,
     AdvancedAnalyticsModule,
-    RealtimeNotificationsModule,
-    PerformanceMonitoringModule,
-    UserActivityTrackingModule,
-    DataExportModule,
   ],
   controllers: [AppController],
   providers: [

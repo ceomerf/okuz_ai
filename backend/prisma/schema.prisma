@@ -10,6 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enums
 enum UserRole {
   STUDENT
   PARENT
@@ -48,21 +49,18 @@ enum NotificationType {
   ACHIEVEMENT
   PROGRESS
   SYSTEM
-  INVITE
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
 }
 
-enum SubscriptionStatus {
-  TRIAL
-  FREE
-  PREMIUM
-  FAMILY
-  CANCELLED
-}
-
-enum SubscriptionPlan {
-  MONTHLY_PREMIUM
-  YEARLY_PREMIUM
-  FAMILY_PLAN
+enum NotificationCategory {
+  SYSTEM
+  USER
+  PAYMENT
+  LEARNING
+  SECURITY
 }
 
 enum PaymentStatus {
@@ -73,1141 +71,1136 @@ enum PaymentStatus {
   CANCELLED
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      UserRole @default(STUDENT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Subscription fields
-  subscriptionStatus  SubscriptionStatus @default(TRIAL)
-  trialEndDate        DateTime?
-  subscriptionEndDate DateTime?
-
-  // Profile relations
-  studentProfile StudentProfile?
-  parentProfile  ParentProfile?
-  student        Student?
-
-  // Invites
-  sentInvites     Invite[] @relation("Inviter")
-  receivedInvites Invite[] @relation("Invitee")
-
-  // Plans
-  plans Plan[]
-
-  // Achievements
-  achievements Achievement[]
-
-  // Study sessions
-  studySessions StudySession[]
-
-  // Gamification
-  gamificationProfile GamificationProfile?
-
-  // Notifications
-  notifications Notification[]
-
-  // Tool usage
-  toolUsages ToolUsage[]
-
-  // Family connections
-  familyMembers FamilyMember[] @relation("Parent")
-  children      FamilyMember[] @relation("Child")
-
-  // Additional relations
-  examResults   ExamResult[]
-  learningPaths LearningPath[]
-  flashcards    Flashcard[]
-  conceptMaps   ConceptMap[]
-  quizzes       Quiz[]
-  studyGoals    StudyGoal[]
-  studyHabits   StudyHabit[]
-  subscriptions Subscription[]
-  payments      Payment[]
-
-  // RBAC relations
-  userRoles         UserRoleMap[]
-  temporaryUserRoles TemporaryUserRole[]
-
-  // AI relations
-  aiRequestLogs     AiRequestLog[]
-  analyses          Analysis[]
-
-  // Coaching relations
-  coachStudents     CoachStudent[] @relation("Coach")
-  studentCoaches    CoachStudent[] @relation("Student")
-
-  // Parent relations
-  parent            Parent?
-  parentReports     ParentReport[] @relation("ParentReport")
-  studentReports    ParentReport[] @relation("StudentReport")
-
-  // Quiz relations
-  quizResults       QuizResult[]
-
-  // Additional fields
-  lastActiveAt      DateTime?
-  grade            Int?
-
-  // Authentication
-  refreshTokens    RefreshToken[]
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  CANCELLED
+  EXPIRED
+  SUSPENDED
+  TRIAL
+  PREMIUM
+  FREE
+  FAMILY
 }
 
-model StudentProfile {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  grade         Int
-  field         String
-  goals         String[]
-  learningStyle String?
-  strengths     String[]
-  weaknesses    String[]
-  interests     String[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+enum SecurityEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  PASSWORD_CHANGE
+  PROFILE_UPDATE
+  SUSPICIOUS_ACTIVITY
+  BRUTE_FORCE_ATTEMPT
+  UNAUTHORIZED_ACCESS
+}
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum SecurityThreatLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum AIServiceStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  DEPRECATED
+}
+
+enum SubscriptionPlan {
+  MONTHLY_PREMIUM
+  YEARLY_PREMIUM
+  FAMILY_PLAN
+  FREE
+  TRIAL
+}
+
+enum AIModelType {
+  TEXT_GENERATION
+  TEXT_ANALYSIS
+  IMAGE_GENERATION
+  IMAGE_ANALYSIS
+  SPEECH_TO_TEXT
+  TEXT_TO_SPEECH
+  TRANSLATION
+  SENTIMENT_ANALYSIS
+}
+
+// Core Models
+model User {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  password           String
+  firstName          String
+  lastName           String
+  name               String?
+  role               UserRole
+  isActive            Boolean  @default(true)
+  subscriptionStatus String?
+  lastLoginAt        DateTime?
+  lastActiveAt       DateTime?
+  grade              Int?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  student            Student?
+  parent             Parent?
+  teacher            Teacher?
+  coach              Coach?
+  admin              Admin?
+  classes            Class[]
+  notificationPreferences NotificationPreferences?
+  userActivities     UserActivity[]
+  aiLogs             AILog[]
+  auditLogs          AuditLog[]
+  securityEvents     SecurityEvent[]
+  notifications      Notification[]
+  twoFactorAuth      TwoFactorAuth?
+  passwordReset      PasswordReset[]
+  emailVerification  EmailVerification?
+  analyses           Analysis[]
+  studySessions      StudySession[]
+  subscriptions      Subscription[]
+  familyMembers      FamilyMember[] @relation("UserFamilyMembers")
+  childFamilyMembers FamilyMember[] @relation("UserChildFamilyMembers")
+  plans              Plan[]
+  achievements       Achievement[]
+  parentReports      ParentReport[]
+
+  @@map("users")
 }
 
 model Student {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  grade     Int
-  field     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([grade])
-  @@index([field])
-}
-
-model ParentProfile {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  phone     String?
-  address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Invite {
-  id        String   @id @default(cuid())
-  inviterId String
-  inviteeId String?
-  email     String
-  token     String   @unique
-  type      String // "student" or "parent"
-  status    String   @default("pending") // "pending", "accepted", "expired"
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  inviter User? @relation("Inviter", fields: [inviterId], references: [id])
-  invitee User? @relation("Invitee", fields: [inviteeId], references: [id])
-}
-
-model Plan {
   id          String   @id @default(cuid())
-  userId      String
-  title       String
-  description String?
-  type        PlanType
-  subjects    String[]
-  goals       String[]
-  startDate   DateTime
-  endDate     DateTime
-  isActive    Boolean  @default(true)
-  status      String   @default("ACTIVE")
-  duration    Int?
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessions StudySession[]
-
-  @@index([userId])
-  @@index([userId, isActive])
-  @@index([userId, startDate])
-  @@index([userId, createdAt])
-  @@index([userId, type, isActive, endDate])
-}
-
-model StudySession {
-  id          String    @id @default(cuid())
-  planId      String?
-  userId      String
-  subject     String
-  topic       String
-  duration    Int // minutes
-  startTime   DateTime
-  endTime     DateTime?
-  isCompleted Boolean   @default(false)
-  performance Int? // 0-100
-  status      String    @default("PENDING")
-  dayOfWeek   String?
-  completedAt DateTime?
-  notes       String?
-  metadata    Json?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  plan Plan? @relation(fields: [planId], references: [id])
-  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([planId])
-  @@index([startTime])
-  @@index([userId, startTime])
-  @@index([userId, createdAt])
-}
-
-model Achievement {
-  id          String          @id @default(cuid())
-  userId      String
-  title       String
-  description String
-  type        AchievementType
-  icon        String?
-  points      Int             @default(0)
-  metadata    Json?
-  unlockedAt  DateTime        @default(now())
-  createdAt   DateTime        @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([userId, createdAt])
-}
-
-model GamificationProfile {
-  id               String   @id @default(cuid())
-  userId           String   @unique
-  level            Int      @default(1)
-  experience       Int      @default(0)
-  energy           Int      @default(100)
-  maxEnergy        Int      @default(100)
-  streak           Int      @default(0)
-  totalPoints      Int      @default(0)
-  coins            Int      @default(0)
-  lastEnergyRefill DateTime @default(now())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  title     String
-  message   String
-  type      NotificationType
-  isRead    Boolean          @default(false)
-  metadata  Json?
-  createdAt DateTime         @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-   @@index([userId])
-   @@index([createdAt])
-}
-
-model ToolUsage {
-  id        String   @id @default(cuid())
-  userId    String
-  toolName  String
-  input     String?
-  output    String?
-  metadata  Json?
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([createdAt])
-}
-
-model FamilyMember {
-  id        String   @id @default(cuid())
-  parentId  String
-  childId   String
-  role      String // "parent", "child"
-  createdAt DateTime @default(now())
-
-  parent User @relation("Parent", fields: [parentId], references: [id], onDelete: Cascade)
-  child  User @relation("Child", fields: [childId], references: [id], onDelete: Cascade)
-
-  @@unique([parentId, childId])
-}
-
-model ExamResult {
-  id         String   @id @default(cuid())
-  userId     String
-  subject    String
-  examType   String
-  score      Int
-  totalScore Int
-  duration   Int // minutes
-  answers    Json?
-  analysis   Json?
-  createdAt  DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([userId, createdAt])
-}
-
-model LearningPath {
-  id          String   @id @default(cuid())
-  userId      String
-  title       String
-  description String?
-  subjects    String[]
-  topics      String[]
-  steps       Json
-  progress    Json?
-  isCompleted Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model Flashcard {
-  id           String    @id @default(cuid())
-  userId       String
-  topic        String
-  front        String
-  back         String
-  difficulty   String    @default("medium")
-  isMastered   Boolean   @default(false)
-  lastReviewed DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model ConceptMap {
-  id          String   @id @default(cuid())
-  userId      String
-  topic       String
-  concepts    Json
-  connections Json
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model Quiz {
-  id          String    @id @default(cuid())
-  userId      String
-  topic       String
-  questions   Json
-  answers     Json?
-  score       Int?
-  totalScore  Int
-  duration    Int // minutes
-  isCompleted Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  completedAt DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([userId, createdAt])
-}
-
-model StudyGoal {
-  id          String    @id @default(cuid())
-  userId      String
-  title       String
-  description String?
-  target      Int
-  current     Int       @default(0)
-  unit        String // "hours", "pages", "questions", etc.
-  deadline    DateTime?
-  isCompleted Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model StudyHabit {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  description String?
-  frequency   String // "daily", "weekly", "monthly"
-  target      Int
-  current     Int      @default(0)
-  streak      Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model Subscription {
-  id        String             @id @default(cuid())
-  userId    String
-  planType  SubscriptionPlan
-  status    SubscriptionStatus
-  startDate DateTime
-  endDate   DateTime?
-  isActive  Boolean            @default(true)
-  features  String[]
-  metadata  Json?
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payments Payment[]
-
-  @@index([userId])
-}
-
-model Payment {
-  id              String        @id @default(cuid())
-  userId          String
-  subscriptionId  String?
-  amount          Float
-  currency        String        @default("TRY")
-  status          PaymentStatus @default(PENDING)
-  paymentMethod   String // "credit_card", "bank_transfer", etc.
-  transactionId   String? // External payment gateway transaction ID
-  gatewayResponse Json? // Full response from payment gateway
-  metadata        Json?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
-
-  @@index([userId])
-  @@index([subscriptionId])
-}
-
-/// Authentication Models
-model RefreshToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
-  userId    String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([token])
-}
-
-/// RBAC Models
-model Role {
-  id              String           @id @default(cuid())
-  name            String           @unique
-  description     String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  // Relations
-  rolePermissions RolePermission[]
-  userRoles       UserRoleMap[]
-  temporaryUserRoles TemporaryUserRole[]
-}
-
-model Permission {
-  id          String   @id @default(cuid())
-  name        String   @unique // e.g. "students.update"
-  resource    String   // e.g. "students"
-  action      String   // e.g. "update"
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  rolePermissions RolePermission[]
-}
-
-model RolePermission {
-  id           String     @id @default(cuid())
-  roleId       String
-  permissionId String
-  createdAt    DateTime   @default(now())
-
-  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@unique([roleId, permissionId], name: "roleId_permissionId")
-  @@index([roleId])
-  @@index([permissionId])
-}
-
-model UserRoleMap {
-  id        String   @id @default(cuid())
-  userId    String
-  roleId    String
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, roleId], name: "userId_roleId")
-  @@index([userId])
-  @@index([roleId])
-}
-
-model TemporaryUserRole {
-  id        String   @id @default(cuid())
-  userId    String
-  roleId    String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([roleId])
-  @@index([expiresAt])
-}
-
-/// MEB müfredat konuları ve YKS ağırlıklarını tutar
-model MebTopic {
-  id        String   @id @default(cuid())
-  grade     Int      // Konunun ait olduğu sınıf (9, 10, 11, 12)
-  subject   String   // Dersin adı (Örn: "Matematik", "Türkçe")
-  unit      String   // Ünitenin/temanın adı (Örn: "Sayılar ve Cebir")
-  topic     String   // Konunun adı (Örn: "Üslü İfadeler ve Denklemler")
-  outcomes  String[] // Bu konuya ait MEB kazanımları (opsiyonel)
-  tytWeight Int      @default(0) // Konunun TYT'deki ortalama soru sayısı
-  aytWeight Int      @default(0) // Konunun AYT'deki ortalama soru sayısı
-
-  @@unique([grade, subject, topic])
-}
-
-/// Logging and Audit models
-
-model LogEntry {
-  id            String   @id @default(cuid())
-  level         String
-  message       String
-  context       String?
-  timestamp     DateTime @default(now())
-  service       String?
-  correlationId String?
-  userId        String?
-
-  @@index([level])
-  @@index([service])
-  @@index([timestamp])
-}
-
-/// Feature flags and remote config
-model FeatureFlagEntity {
-  id               String   @id @default(cuid())
-  key              String   @unique
-  name             String
-  description      String?
-  enabled          Boolean  @default(false)
-  rolloutPercentage Int      @default(0)
-  targetUsers      String[]
-  targetRoles      String[]
-  targetSegments   String[]
-  conditions       Json?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-}
-
-model RemoteConfig {
-  id          String   @id @default(cuid())
-  key         String   @unique
-  value       String
-  description String?
-  updatedAt   DateTime @updatedAt
-  createdAt   DateTime @default(now())
-}
-
-/// Email statistics
-model EmailLog {
-  id           String   @id @default(cuid())
-  success      Boolean
-  deliveryTime Int      @default(0)
-  templateName String?
-  createdAt    DateTime @default(now())
-
-  @@index([createdAt])
-  @@index([templateName])
-}
-
-/// AI Management Models
-model AiRequestLog {
-  id          String   @id @default(cuid())
-  userId      String?
-  model       String
-  promptType  String?
-  prompt      String
-  response    String?
-  tokensUsed  Int      @default(0)
-  duration    Int      @default(0) // milliseconds
-  success     Boolean  @default(true)
-  error       String?
-  metadata    Json?
-  createdAt   DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([model])
-  @@index([createdAt])
-}
-
-model AiPromptTemplate {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  template    String
-  variables   String[]
-  category    String
-  version     Int      @default(1)
-  isActive    Boolean  @default(true)
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([category])
-  @@index([isActive])
-}
-
-model Analysis {
-  id              String   @id @default(cuid())
-  userId          String
-  type            String
-  subject         String
-  difficulty      String?
-  data            Json
-  insights        Json?
-  recommendations Json?
-  score           Int?
-  performance     Int?
-  metadata        Json?
-  createdAt       DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([type])
-  @@index([createdAt])
-}
-
-model CoachStudent {
-  id        String   @id @default(cuid())
-  coachId   String
-  studentId String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  coach   User @relation("Coach", fields: [coachId], references: [id], onDelete: Cascade)
-  student User @relation("Student", fields: [studentId], references: [id], onDelete: Cascade)
-  notes   CoachNote[]
-
-  @@unique([coachId, studentId])
-  @@index([coachId])
-  @@index([studentId])
-}
-
-model CoachNote {
-  id              String   @id @default(cuid())
-  coachStudentId  String
-  title           String
-  content         String
-  type            String   @default("general")
-  priority        String   @default("medium")
-  isPrivate       Boolean  @default(false)
-  metadata        Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  coachStudent CoachStudent @relation(fields: [coachStudentId], references: [id], onDelete: Cascade)
-
-  @@index([coachStudentId])
-  @@index([createdAt])
-}
-
-model Curriculum {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  subject     String
+  userId      String   @unique
+  studentId   String   @unique
   grade       Int
-  topics      Json
+  school      String?
+  parentId    String?
   isActive    Boolean  @default(true)
-  metadata    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@index([subject])
-  @@index([grade])
-  @@index([isActive])
-}
+  // Relations
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent         Parent?         @relation(fields: [parentId], references: [id])
+  classStudents  ClassStudent[]
+  submissions    Submission[]
+  studyPlans     StudyPlan[]
+  achievements   Achievement[]
+  tasks          Task[]
+  payments       Payment[]
+  subscriptions  Subscription[]
+  studentProfile StudentProfile?
+  quizResults    QuizResult[]
+  examResults    ExamResult[]
+  coachNotes     CoachNote[]
+  familyMembers  FamilyMember[]
+  parentReports  ParentReport[]
 
-model Badge {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  icon        String?
-  points      Int      @default(0)
-  rarity      String?
-  category    String?
-  isActive    Boolean  @default(true)
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([category])
-  @@index([rarity])
-  @@index([isActive])
+  @@map("students")
 }
 
 model Parent {
   id        String   @id @default(cuid())
   userId    String   @unique
   phone     String?
-  address   String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  students  Student[]
+
+  @@map("parents")
+}
+
+model Teacher {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  subject   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("teachers")
+}
+
+model Coach {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  specialty String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@map("coaches")
 }
 
-model ParentReport {
-  id                    String   @id @default(cuid())
-  parentId              String
-  studentId             String
-  weekStart             DateTime
-  weekEnd               DateTime
-  report                Json
-  metadata              Json?
-  totalStudyTime        Int?
-  completedSessions     Int?
-  coachRecommendations  Json?
-  createdAt             DateTime @default(now())
+model Admin {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  level     Int      @default(1)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  parent  User @relation("ParentReport", fields: [parentId], references: [id], onDelete: Cascade)
-  student User @relation("StudentReport", fields: [studentId], references: [id], onDelete: Cascade)
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([parentId])
-  @@index([studentId])
-  @@index([weekStart])
+  @@map("admins")
 }
 
-// Notification Management Tables
-model NotificationTemplate {
+// Educational Models
+model Class {
   id          String   @id @default(cuid())
   name        String
-  type        String   // email, sms, push, in_app
-  subject     String?
-  content     String
-  variables   Json?
+  description String?
+  grade       Int
+  subject     String
+  teacherId   String
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  campaigns NotificationCampaign[]
+  // Relations
+  teacher     User           @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+  students    ClassStudent[]
 
+  @@index([teacherId])
+  @@index([grade])
+  @@index([subject])
+  @@map("classes")
+}
+
+model ClassStudent {
+  id        String   @id @default(cuid())
+  classId   String
+  studentId String
+  joinedAt   DateTime @default(now())
+  isActive  Boolean  @default(true)
+
+  // Relations
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId])
+  @@map("class_students")
+}
+
+model Assignment {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  classId     String
+  dueDate     DateTime
+  maxScore    Int      @default(100)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  class      Class       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@index([classId])
+  @@index([dueDate])
+  @@map("assignments")
+}
+
+model Submission {
+  id           String   @id @default(cuid())
+  assignmentId String
+  studentId    String
+  content      String
+  submittedAt  DateTime @default(now())
+  isLate       Boolean  @default(false)
+  score        Int?
+
+  // Relations
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  grade      Grade?
+
+  @@unique([assignmentId, studentId])
+  @@index([studentId])
+  @@map("submissions")
+}
+
+model Grade {
+  id           String   @id @default(cuid())
+  submissionId String   @unique
+  score        Int
+  feedback     String?
+  gradedAt     DateTime @default(now())
+  gradedBy     String
+
+  // Relations
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("grades")
+}
+
+model StudyPlan {
+  id        String   @id @default(cuid())
+  studentId String
+  title     String
+  content   String
+  type      PlanType
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@map("study_plans")
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("subjects")
+}
+
+// Notification Models
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String
+  type      NotificationType
+  category  NotificationCategory
+  title     String
+  message   String
+  read      Boolean            @default(false)
+  createdAt DateTime           @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
   @@index([type])
-  @@index([isActive])
+  @@index([category])
+  @@map("notifications")
+}
+
+model NotificationPreferences {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  emailNotifications    Boolean  @default(true)
+  pushNotifications     Boolean  @default(true)
+  smsNotifications      Boolean  @default(false)
+  achievementAlerts    Boolean  @default(true)
+  progressAlerts        Boolean  @default(true)
+  systemAlerts          Boolean  @default(true)
+  securityAlerts        Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }
 
 model NotificationCampaign {
   id            String   @id @default(cuid())
   name          String
-  description   String
-  templateId    String
-  targetUsers   Json?
+  description   String?
+  templateId    String?
+  targetUsers   String[]
   targetCriteria Json?
+  status        String   @default("draft")
   scheduledAt   DateTime?
-  status        String   // draft, scheduled, running, completed, cancelled
-  sentCount     Int      @default(0)
-  failedCount   Int      @default(0)
+  sentAt        DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  template NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  // Relations
+  template NotificationTemplate? @relation(fields: [templateId], references: [id])
 
-  @@index([status])
-  @@index([scheduledAt])
+  @@map("notification_campaigns")
 }
 
-// Security Tables
-model SecurityEvent {
-  id          String   @id @default(cuid())
-  type        String
-  severity    String
-  userId      String?
-  ipAddress   String
-  userAgent   String?
-  description String
-  metadata    Json?
-  timestamp   DateTime @default(now())
-  resolved    Boolean  @default(false)
+model NotificationTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  subject   String
+  content   String
+  type      NotificationType
+  category  NotificationCategory
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
+  // Relations
+  campaigns NotificationCampaign[]
+
+  @@map("notification_templates")
+}
+
+// Payment Models
+model Payment {
+  id            String        @id @default(cuid())
+  studentId     String
+  subscriptionId String?
+  amount        Decimal
+  currency      String        @default("TRY")
+  status        PaymentStatus
+  paymentMethod String
+  transactionId String?
+  description   String?
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@index([studentId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  studentId String
+  userId    String?
+  planId    String
+  planType  String?
+  status    SubscriptionStatus
+  startDate DateTime
+  endDate   DateTime?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  payments Payment[]
+
+  @@index([studentId])
+  @@index([userId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+// Achievement and Task Models
+model Achievement {
+  id          String           @id @default(cuid())
+  studentId   String
+  userId      String?
+  type        AchievementType
+  title       String
+  description String
+  points      Int              @default(0)
+  icon        String?
+  unlockedAt  DateTime         @default(now())
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([studentId])
+  @@index([userId])
   @@index([type])
-  @@index([severity])
-  @@index([timestamp])
-  @@index([resolved])
+  @@map("achievements")
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  studentId   String
+  type        TaskType
+  title       String
+  description String?
+  dueDate     DateTime?
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([type])
+  @@map("tasks")
+}
+
+// Security Models
+model SecurityEvent {
+  id        String            @id @default(cuid())
+  userId    String?
+  type      SecurityEventType
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime          @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([type])
+  @@index([ipAddress])
+  @@map("security_events")
 }
 
 model SecurityThreat {
-  id                 String    @id @default(cuid())
-  type               String
-  severity           String
-  source             String
-  target             String
-  description        String
-  status             String    // active, investigating, resolved, false_positive
-  detectedAt         DateTime  @default(now())
-  resolvedAt         DateTime?
-  mitigationActions  Json?
+  id        String             @id @default(cuid())
+  type      String
+  level     SecurityThreatLevel
+  source    String
+  target    String?
+  details   Json
+  status    String             @default("active")
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
 
   @@index([type])
-  @@index([severity])
+  @@index([level])
   @@index([status])
-  @@index([detectedAt])
+  @@map("security_threats")
 }
 
 model SecurityAlert {
-  id          String   @id @default(cuid())
-  type        String
-  title       String
-  description String
-  severity    String
-  timestamp   DateTime @default(now())
-  resolved   Boolean  @default(false)
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  level     SecurityThreatLevel
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 
-  @@index([type])
-  @@index([severity])
-  @@index([resolved])
+  @@index([level])
+  @@index([isRead])
+  @@map("security_alerts")
 }
 
 model BlockedIP {
-  id        String    @id @default(cuid())
-  ipAddress String    @unique
+  id        String   @id @default(cuid())
+  ipAddress String   @unique
   reason    String
-  blockedAt DateTime  @default(now())
-  expiresAt DateTime
+  blockedAt DateTime @default(now())
+  expiresAt DateTime?
 
   @@index([ipAddress])
-  @@index([expiresAt])
+  @@map("blocked_ips")
 }
 
-// Machine Learning Tables
-model MLModel {
-  id              String   @id @default(cuid())
-  name            String
-  type            String
-  status          String   // training, ready, deployed, failed
-  accuracy        Float?
-  version         String
-  trainingDataSize Int?
-  features        Json?
-  target          String?
-  precision       Float?
-  recall          Float?
-  f1Score         Float?
-  auc             Float?
-  createdAt       DateTime @default(now())
-  lastTrained     DateTime @default(now())
+// AI Models
+model AIService {
+  id            String          @id @default(cuid())
+  name          String          @unique
+  description   String?
+  endpoint      String
+  status        AIServiceStatus @default(ACTIVE)
+  config        Json?
+  lastActivity  DateTime?
+  responseTime  Int?
+  requests      Int             @default(0)
+  tokens        Int             @default(0)
+  cost          Decimal         @default(0)
+  cpuUsage      Float           @default(0)
+  memoryUsage   Float          @default(0)
+  uptime        Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
+  // Relations
+  models AIModel[]
+  logs   AILog[]
+
+  @@map("ai_services")
+}
+
+model AIModel {
+  id          String      @id @default(cuid())
+  serviceId   String
+  name        String
+  type        AIModelType
+  version     String
+  config      Json?
+  isActive    Boolean     @default(true)
+  status      String      @default("active")
+  accuracy    Float       @default(0)
+  lastTrained DateTime?
+  requests    Int         @default(0)
+  tokens      Int         @default(0)
+  cost        Decimal     @default(0)
+  responseTime Int        @default(0)
+  successRate Float       @default(0)
+  errorRate   Float       @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  service AIService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  logs    AILog[]
+
+  @@index([serviceId])
+  @@index([type])
+  @@map("ai_models")
+}
+
+model AILog {
+  id        String   @id @default(cuid())
+  userId    String?
+  serviceId String
+  modelId   String?
+  request   Json
+  response  Json?
+  status   String
+  duration  Int?
+  timestamp DateTime @default(now())
+  action    String?
+  input     Json?
+  output    Json?
+  tokens    Int?
+  cost      Decimal?
+  error     String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user    User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  service AIService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  model   AIModel?  @relation(fields: [modelId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([serviceId])
+  @@index([modelId])
+  @@index([status])
+  @@map("ai_logs")
+}
+
+model AIAlert {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  level     String
+  type      String?
+  timestamp DateTime @default(now())
+  resolved  Boolean  @default(false)
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([level])
+  @@index([isRead])
+  @@index([resolved])
+  @@map("ai_alerts")
+}
+
+model AIPromptTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  content     String
+  category    String?
+  tags        String[]
+  template    String?
+  variables   String[]
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+  @@map("ai_prompt_templates")
+}
+
+// System Models
+model SystemLog {
+  id        String   @id @default(cuid())
+  level     String
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([level])
+  @@map("system_logs")
+}
+
+model UserActivity {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  resource  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("user_activities")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  changes    Json?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  timestamp  DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@map("audit_logs")
+}
+
+// Report Models
+model Report {
+  id        String       @id @default(cuid())
+  title     String
+  type      String
+  status    ReportStatus  @default(PENDING)
+  data      Json?
+  filePath  String?
+  error     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  completedAt DateTime?
+
+  @@index([status])
+  @@index([type])
+  @@map("reports")
+}
+
+model ReportTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  type        String
+  config      Json
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type])
+  @@map("report_templates")
+}
+
+// Rate Limiting Models
+model RateLimitRule {
+  id          String   @id @default(cuid())
+  name        String
+  pattern     String
+  limit       Int
+  window      Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("rate_limit_rules")
+}
+
+model RateLimitLog {
+  id        String   @id @default(cuid())
+  ipAddress String
+  endpoint  String
+  blocked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([ipAddress])
+  @@index([endpoint])
+  @@map("rate_limit_logs")
+}
+
+// Feature Flag Models
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(false)
+  config      Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  evaluations FeatureFlagEvaluation[]
+
+  @@map("feature_flags")
+}
+
+model FeatureFlagEvaluation {
+  id        String   @id @default(cuid())
+  flagId    String
+  userId    String?
+  result    Boolean
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  // Relations
+  flag FeatureFlag @relation(fields: [flagId], references: [id], onDelete: Cascade)
+
+  @@index([flagId])
+  @@index([userId])
+  @@map("feature_flag_evaluations")
+}
+
+// Authentication Models
+model TwoFactorAuth {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  secret    String
+  isEnabled Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("two_factor_auth")
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("password_resets")
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("email_verifications")
+}
+
+// Analysis Models
+model Analysis {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  subject   String?
+  score     Float?
+  data      Json
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([subject])
+  @@map("analyses")
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal
+  planType    String
+  features    Json?
+  status      String   @default("ACTIVE")
+  isActive    Boolean  @default(true)
+  userId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sessions    StudySession[]
+
+  @@map("plans")
+}
+
+model StudySession {
+  id          String   @id @default(cuid())
+  userId      String
+  planId      String?
+  subject     String
+  duration    Int
+  isCompleted Boolean  @default(false)
+  status      String   @default("PENDING")
+  performance Float?
+  score       Float?
+  startTime   DateTime?
+  completedAt DateTime?
+  topic       String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([subject])
+  @@index([isCompleted])
+  @@index([status])
+  @@map("study_sessions")
+}
+
+// Machine Learning Models
+model MLModel {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  version     String
+  status      String   @default("active")
+  accuracy    Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
   predictions MLPrediction[]
   trainingJobs MLTrainingJob[]
 
-  @@index([type])
-  @@index([status])
-  @@index([accuracy])
+  @@map("ml_models")
 }
 
 model MLPrediction {
-  id             String   @id @default(cuid())
-  modelId        String
-  input          Json
-  output         Json
-  confidence     Float
-  processingTime Int
-  timestamp      DateTime @default(now())
+  id        String   @id @default(cuid())
+  modelId   String
+  input     Json
+  output    Json
+  confidence Float?
+  createdAt DateTime @default(now())
 
+  // Relations
   model MLModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
   @@index([modelId])
-  @@index([timestamp])
+  @@map("ml_predictions")
 }
 
 model MLTrainingJob {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   modelId   String
-  status    String    // pending, running, completed, failed
-  progress  Int       @default(0)
-  startTime DateTime  @default(now())
-  endTime   DateTime?
-  accuracy  Float?
-  loss      Float?
-  epochs    Int?
-  error     String?
+  status    String   @default("pending")
+  progress  Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
+  // Relations
   model MLModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
   @@index([modelId])
-  @@index([status])
+  @@map("ml_training_jobs")
 }
 
 model MLRecommendation {
   id        String   @id @default(cuid())
   userId    String
-  itemId    String
+  type      String
+  data      Json
   score     Float
-  reason    String
-  category  String
-  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId])
-  @@index([category])
-  @@index([timestamp])
+  @@map("ml_recommendations")
 }
 
-// Reporting Tables
-model ReportTemplate {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  type        String
-  category    String
-  isActive    Boolean  @default(true)
-  parameters  Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// Backup Models
+model BackupJob {
+  id        String   @id @default(cuid())
+  status    String   @default("pending")
+  progress  Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  reports Report[]
-
-  @@index([type])
-  @@index([category])
-  @@index([isActive])
+  @@map("backup_jobs")
 }
 
-model Report {
-  id            String    @id @default(cuid())
-  templateId    String
-  name          String
-  status        String    // pending, generating, completed, failed
-  parameters    Json?
-  generatedBy   String
-  createdAt     DateTime  @default(now())
-  completedAt   DateTime?
-  filePath      String?
-  fileSize      Int?
-  recordCount   Int?
-  error         String?
+model RestoreJob {
+  id        String   @id @default(cuid())
+  status    String   @default("pending")
+  progress  Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  template ReportTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-
-  @@index([templateId])
-  @@index([status])
-  @@index([generatedBy])
+  @@map("restore_jobs")
 }
 
-// Rate Limiting Tables
-model RateLimitRule {
+model BackupSchedule {
   id        String   @id @default(cuid())
   name      String
-  pattern   String
-  method    String
-  limit     Int
-  window    Int
-  priority  Int
+  schedule  String
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([pattern])
-  @@index([method])
-  @@index([priority])
-  @@index([isActive])
+  @@map("backup_schedules")
 }
 
-model RateLimitLog {
+// Additional Models
+model StudentProfile {
   id        String   @id @default(cuid())
-  key       String
-  ipAddress String
-  endpoint  String
-  method    String
-  blocked   Boolean
-  reason    String?
-  timestamp DateTime @default(now())
+  studentId String   @unique
+  bio       String?
+  avatar    String?
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([key])
-  @@index([ipAddress])
-  @@index([endpoint])
-  @@index([blocked])
-  @@index([timestamp])
-}
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-// Audit Logging Tables
-model AuditLog {
-  id         String   @id @default(cuid())
-  userId     String
-  action     String
-  resource   String
-  resourceId String?
-  oldValues  Json?
-  newValues  Json?
-  ipAddress  String
-  userAgent  String?
-  sessionId  String?
-  severity   String
-  category   String
-  metadata   Json?
-  timestamp  DateTime @default(now())
-
-  @@index([userId])
-  @@index([action])
-  @@index([resource])
-  @@index([severity])
-  @@index([category])
-  @@index([timestamp])
-}
-
-// Backup Tables
-model BackupJob {
-  id        String    @id @default(cuid())
-  name      String
-  type      String
-  status    String    // pending, running, completed, failed
-  size      Int       @default(0)
-  filePath  String?
-  createdAt DateTime  @default(now())
-  completedAt DateTime?
-  error     String?
-  metadata  Json?
-
-  restoreJobs RestoreJob[]
-
-  @@index([type])
-  @@index([status])
-  @@index([createdAt])
-}
-
-model RestoreJob {
-  id        String    @id @default(cuid())
-  backupId  String
-  status    String    // pending, running, completed, failed
-  createdAt DateTime  @default(now())
-  completedAt DateTime?
-  error     String?
-  metadata  Json?
-
-  backup BackupJob @relation(fields: [backupId], references: [id], onDelete: Cascade)
-
-  @@index([backupId])
-  @@index([status])
-}
-
-model BackupSchedule {
-  id             String   @id @default(cuid())
-  name           String
-  type           String
-  frequency      String
-  time           String
-  dayOfWeek      Int?
-  dayOfMonth     Int?
-  isActive       Boolean  @default(true)
-  retentionDays  Int
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@index([frequency])
-  @@index([isActive])
-}
-
-// Feature Flags Tables
-model FeatureFlag {
-  id                String   @id @default(cuid())
-  name              String
-  key               String   @unique
-  description       String
-  isEnabled         Boolean  @default(false)
-  rolloutPercentage Int      @default(0)
-  targetUsers       Json?
-  targetRoles       Json?
-  targetSegments    Json?
-  conditions        Json?
-  environment       String
-  createdBy         String
-  updatedBy         String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  evaluations FeatureFlagEvaluation[]
-
-  @@index([key])
-  @@index([isEnabled])
-  @@index([environment])
-}
-
-model FeatureFlagEvaluation {
-  id         String   @id @default(cuid())
-  flagKey    String
-  userId     String
-  isEnabled  Boolean
-  reason     String
-  metadata   Json?
-  timestamp  DateTime @default(now())
-
-  @@index([flagKey])
-  @@index([userId])
-  @@index([timestamp])
+  @@map("student_profiles")
 }
 
 model QuizResult {
-  id          String    @id @default(cuid())
-  userId      String
-  quizId      String?
-  score       Int
-  totalScore  Int
-  duration    Int       @default(0)
-  answers     Json?
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
+  id        String   @id @default(cuid())
+  studentId String
+  userId    String
+  quizId    String
+  score     Float
+  totalScore Float?
+  answers   Json
+  createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
+  @@index([studentId])
   @@index([userId])
-  @@index([completedAt])
+  @@map("quiz_results")
 }
+
+model ExamResult {
+  id        String   @id @default(cuid())
+  studentId String
+  userId    String
+  examId    String
+  score     Float
+  answers   Json
+  createdAt DateTime @default(now())
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([userId])
+  @@map("exam_results")
+}
+
+model CoachNote {
+  id           String   @id @default(cuid())
+  studentId    String
+  coachId      String
+  coachStudent String?
+  content      String
+  createdAt    DateTime @default(now())
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([coachStudent])
+  @@map("coach_notes")
+}
+
+model FamilyMember {
+  id        String   @id @default(cuid())
+  studentId  String
+  childId    String?
+  parentId   String
+  relation   String
+  role       String?
+  createdAt  DateTime @default(now())
+
+  // Relations
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  parent     User?   @relation("UserFamilyMembers", fields: [parentId], references: [id], onDelete: Cascade)
+  child      User?   @relation("UserChildFamilyMembers", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([childId])
+  @@map("family_members")
+}
+
+// Parent Report Model
+model ParentReport {
+  id        String   @id @default(cuid())
+  parentId  String
+  studentId String
+  title     String
+  content   String
+  type      String
+  status    String   @default("draft")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  parent  User    @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([parentId])
+  @@index([studentId])
+  @@index([type])
+  @@map("parent_reports")
+}
+
+// Log Entry Model
+model LogEntry {
+  id        String   @id @default(cuid())
+  level     String
+  message   String
+  metadata  Json?
+  source    String?
+  timestamp DateTime @default(now())
+
+  @@index([level])
+  @@index([source])
+  @@index([timestamp])
+  @@map("log_entries")
+}
+

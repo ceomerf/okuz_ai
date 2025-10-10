@@ -181,6 +181,8 @@ async function main() {
       email: 'admin@okuz.ai',
       password: hashedPassword,
       name: 'Sistem Yöneticisi',
+      firstName: 'Sistem',
+      lastName: 'Yöneticisi',
       role: 'ADMIN',
     },
   });
@@ -211,6 +213,8 @@ async function main() {
       email: 'teacher@okuz.ai',
       password: await bcrypt.hash('teacher123', 12),
       name: 'Test Öğretmeni',
+      firstName: 'Test',
+      lastName: 'Öğretmeni',
       role: 'TEACHER',
     },
   });
@@ -237,6 +241,8 @@ async function main() {
       email: 'student@okuz.ai',
       password: await bcrypt.hash('student123', 12),
       name: 'Test Öğrencisi',
+      firstName: 'Test',
+      lastName: 'Öğrencisi',
       role: 'STUDENT',
     },
   });
@@ -263,6 +269,8 @@ async function main() {
       email: 'parent@okuz.ai',
       password: await bcrypt.hash('parent123', 12),
       name: 'Test Veli',
+      firstName: 'Test',
+      lastName: 'Veli',
       role: 'PARENT',
     },
   });
@@ -286,35 +294,28 @@ async function main() {
   
   // Öğrenci profili
   await prisma.studentProfile.upsert({
-    where: { userId: studentUser.id },
+    where: { studentId: studentUser.id },
     update: {},
     create: {
-      userId: studentUser.id,
-      grade: 12,
-      field: 'Sayısal',
-      goals: ['YKS TYT', 'YKS AYT'],
-      learningStyle: 'Görsel',
-      strengths: ['Matematik', 'Fizik'],
-      weaknesses: ['Türkçe', 'Tarih'],
-      interests: ['Bilgisayar', 'Mühendislik'],
+      studentId: studentUser.id,
     },
   });
 
-  // Gamification profili
-  await prisma.gamificationProfile.upsert({
-    where: { userId: studentUser.id },
-    update: {},
-    create: {
-      userId: studentUser.id,
-      level: 1,
-      experience: 0,
-      energy: 100,
-      maxEnergy: 100,
-      streak: 0,
-      totalPoints: 0,
-      coins: 0,
-    },
-  });
+  // Gamification profili - Schema'da yok, yorum satırına alındı
+  // await prisma.gamificationProfile.upsert({
+  //   where: { userId: studentUser.id },
+  //   update: {},
+  //   create: {
+  //     userId: studentUser.id,
+  //     level: 1,
+  //     experience: 0,
+  //     energy: 100,
+  //     maxEnergy: 100,
+  //     streak: 0,
+  //     totalPoints: 0,
+  //     coins: 0,
+  //   },
+  // });
 
   // Study streak modeli şemada yoksa atlandı
 

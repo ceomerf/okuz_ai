@@ -22,32 +22,15 @@ export class AuditLoggingController {
   async logAuditEvent(@Body() logData: {
     userId: string;
     action: string;
-    resource: string;
-    ipAddress: string;
-    resourceId?: string;
-    oldValues?: any;
-    newValues?: any;
-    userAgent?: string;
-    sessionId?: string;
-    severity?: 'low' | 'medium' | 'high' | 'critical';
-    category?: 'authentication' | 'authorization' | 'data_access' | 'data_modification' | 'system' | 'security';
+    entityType: string;
+    entityId: string;
+    changes?: any;
     metadata?: any;
-  }): Promise<void> {
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<AuditLog> {
     try {
-      await this.auditLoggingService.logAuditEvent(
-        logData.userId,
-        logData.action,
-        logData.resource,
-        logData.ipAddress,
-        logData.resourceId,
-        logData.oldValues,
-        logData.newValues,
-        logData.userAgent,
-        logData.sessionId,
-        logData.severity || 'medium',
-        logData.category || 'system',
-        logData.metadata
-      );
+      return await this.auditLoggingService.createAuditLog(logData);
     } catch (error) {
       throw new HttpException(
         'Failed to log audit event',
@@ -68,6 +51,18 @@ export class AuditLoggingController {
     }
   }
 
+  @Get('logs/:id')
+  async getAuditLogById(@Param('id') id: string): Promise<AuditLog | null> {
+    try {
+      return await this.auditLoggingService.getAuditLogById(id);
+    } catch (error) {
+      throw new HttpException(
+        'Failed to get audit log',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Get('logs/export')
   async exportAuditLogs(
     @Query() filter: AuditLogFilter,
@@ -75,15 +70,21 @@ export class AuditLoggingController {
     @Res() res: Response
   ): Promise<void> {
     try {
-      const buffer = await this.auditLoggingService.exportAuditLogs(filter, format);
+      const logs = await this.auditLoggingService.exportAuditLogs(filter);
       
       const fileName = `audit_logs_${new Date().toISOString().split('T')[0]}.${format}`;
       const contentType = this.getContentType(format);
 
       res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.setHeader('Content-Length', buffer.length);
-      res.send(buffer);
+      
+      if (format === 'json') {
+        res.json(logs);
+      } else {
+        const csv = this.convertToCSV(logs);
+        res.setHeader('Content-Length', Buffer.byteLength(csv));
+        res.send(csv);
+      }
     } catch (error) {
       throw new HttpException(
         'Failed to export audit logs',
@@ -92,31 +93,16 @@ export class AuditLoggingController {
     }
   }
 
-  @Get('logs/summary')
-  async getAuditLogSummary(
-    @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string
-  ): Promise<any> {
-    try {
-      return await this.auditLoggingService.getAuditLogSummary(startDate, endDate);
-    } catch (error) {
-      throw new HttpException(
-        'Failed to get audit log summary',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
   @Post('logs/cleanup')
-  async deleteAuditLogs(@Body() cleanupData: {
-    olderThan: string;
+  async deleteOldLogs(@Body() cleanupData: {
+    daysToKeep: number;
   }): Promise<{ deletedCount: number }> {
     try {
-      const deletedCount = await this.auditLoggingService.deleteAuditLogs(new Date(cleanupData.olderThan));
+      const deletedCount = await this.auditLoggingService.deleteOldLogs(cleanupData.daysToKeep);
       return { deletedCount };
     } catch (error) {
       throw new HttpException(
-        'Failed to delete audit logs',
+        'Failed to delete old audit logs',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -133,5 +119,41 @@ export class AuditLoggingController {
       default:
         return 'application/octet-stream';
     }
+  }
+
+  private convertToCSV(logs: AuditLog[]): string {
+    if (logs.length === 0) {
+      return 'No data available';
+    }
+
+    const headers = [
+      'ID',
+      'User ID',
+      'Action',
+      'Entity Type',
+      'Entity ID',
+      'IP Address',
+      'User Agent',
+      'Timestamp',
+      'Created At'
+    ];
+
+    const rows = logs.map(log => [
+      log.id,
+      log.userId,
+      log.action,
+      log.entityType,
+      log.entityId,
+      log.ipAddress || '',
+      log.userAgent || '',
+      log.timestamp.toISOString(),
+      log.createdAt.toISOString()
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+
+    return csvContent;
   }
 }

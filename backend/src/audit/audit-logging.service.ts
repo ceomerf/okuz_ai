@@ -1,29 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../common/services/prisma.service';
 
 export interface AuditLog {
   id: string;
   userId: string;
   action: string;
-  resource: string;
-  resourceId?: string;
-  oldValues?: any;
-  newValues?: any;
-  ipAddress: string;
-  userAgent?: string;
-  sessionId?: string;
-  timestamp: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  category: 'authentication' | 'authorization' | 'data_access' | 'data_modification' | 'system' | 'security';
+  entityType: string;
+  entityId: string;
+  changes?: any;
   metadata?: any;
+  ipAddress?: string;
+  userAgent?: string;
+  timestamp: Date;
+  createdAt: Date;
 }
 
 export interface AuditLogFilter {
   userId?: string;
   action?: string;
-  resource?: string;
-  category?: string;
-  severity?: string;
+  entityType?: string;
   startDate?: string;
   endDate?: string;
   ipAddress?: string;
@@ -33,8 +28,7 @@ export interface AuditLogFilter {
 
 export interface AuditLogStats {
   totalLogs: number;
-  logsByCategory: { category: string; count: number }[];
-  logsBySeverity: { severity: string; count: number }[];
+  logsByEntityType: { entityType: string; count: number }[];
   logsByAction: { action: string; count: number }[];
   logsByUser: { userId: string; userName: string; count: number }[];
   hourlyStats: { hour: string; count: number }[];
@@ -48,32 +42,176 @@ export interface AuditLogDashboard {
   userActivity: {
     userId: string;
     userName: string;
-    lastActivity: string;
+    lastActivity: Date;
     activityCount: number;
-    riskScore: number;
   }[];
-  systemHealth: {
-    totalEvents: number;
-    criticalEvents: number;
-    securityEvents: number;
-    dataEvents: number;
-  };
 }
 
 @Injectable()
 export class AuditLoggingService {
   private readonly logger = new Logger(AuditLoggingService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
+
+  async createAuditLog(data: {
+    userId: string;
+    action: string;
+    entityType: string;
+    entityId: string;
+    changes?: any;
+    metadata?: any;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<AuditLog> {
+    try {
+      const auditLog = await this.prisma.auditLog.create({
+        data: {
+          userId: data.userId,
+          action: data.action,
+          entityType: data.entityType,
+          entityId: data.entityId,
+          changes: data.changes,
+          metadata: data.metadata,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      return {
+        id: auditLog.id,
+        userId: auditLog.userId,
+        action: auditLog.action,
+        entityType: auditLog.entityType,
+        entityId: auditLog.entityId,
+        changes: auditLog.changes,
+        metadata: auditLog.metadata,
+        ipAddress: auditLog.ipAddress,
+        userAgent: auditLog.userAgent,
+        timestamp: auditLog.timestamp,
+        createdAt: auditLog.createdAt,
+      };
+    } catch (error) {
+      this.logger.error('Failed to create audit log:', error);
+      throw error;
+    }
+  }
+
+  async getAuditLogs(filter: AuditLogFilter = {}): Promise<AuditLog[]> {
+    try {
+      const where: any = {};
+
+      if (filter.userId) {
+        where.userId = filter.userId;
+      }
+
+      if (filter.action) {
+        where.action = filter.action;
+      }
+
+      if (filter.entityType) {
+        where.entityType = filter.entityType;
+      }
+
+      if (filter.ipAddress) {
+        where.ipAddress = filter.ipAddress;
+      }
+
+      if (filter.startDate || filter.endDate) {
+        where.timestamp = {};
+        if (filter.startDate) {
+          where.timestamp.gte = new Date(filter.startDate);
+        }
+        if (filter.endDate) {
+          where.timestamp.lte = new Date(filter.endDate);
+        }
+      }
+
+      const logs = await this.prisma.auditLog.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: { timestamp: 'desc' },
+        take: filter.limit || 100,
+        skip: filter.offset || 0,
+      });
+
+      return logs.map((log) => ({
+        id: log.id,
+        userId: log.userId,
+        action: log.action,
+        entityType: log.entityType,
+        entityId: log.entityId,
+        changes: log.changes,
+        metadata: log.metadata,
+        ipAddress: log.ipAddress,
+        userAgent: log.userAgent,
+        timestamp: log.timestamp,
+        createdAt: log.createdAt,
+      }));
+    } catch (error) {
+      this.logger.error('Failed to get audit logs:', error);
+      throw error;
+    }
+  }
+
+  async getAuditLogById(id: string): Promise<AuditLog | null> {
+    try {
+      const log = await this.prisma.auditLog.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (!log) {
+        return null;
+      }
+
+      return {
+        id: log.id,
+        userId: log.userId,
+        action: log.action,
+        entityType: log.entityType,
+        entityId: log.entityId,
+        changes: log.changes,
+        metadata: log.metadata,
+        ipAddress: log.ipAddress,
+        userAgent: log.userAgent,
+        timestamp: log.timestamp,
+        createdAt: log.createdAt,
+      };
+    } catch (error) {
+      this.logger.error('Failed to get audit log by ID:', error);
+      throw error;
+    }
+  }
 
   async getAuditDashboard(): Promise<AuditLogDashboard> {
     try {
-      const [recentLogs, stats, criticalEvents, userActivity, systemHealth] = await Promise.all([
+      const [recentLogs, stats, criticalEvents, userActivity] = await Promise.all([
         this.getRecentLogs(),
         this.getAuditStats(),
         this.getCriticalEvents(),
         this.getUserActivity(),
-        this.getSystemHealth(),
       ]);
 
       return {
@@ -81,7 +219,6 @@ export class AuditLoggingService {
         stats,
         criticalEvents,
         userActivity,
-        systemHealth,
       };
     } catch (error) {
       this.logger.error('Failed to get audit dashboard:', error);
@@ -92,30 +229,30 @@ export class AuditLoggingService {
   private async getRecentLogs(): Promise<AuditLog[]> {
     try {
       const logs = await this.prisma.auditLog.findMany({
-        take: 20,
+        take: 10,
         orderBy: { timestamp: 'desc' },
         include: {
           user: {
-            select: { name: true, email: true },
+            select: {
+              name: true,
+              email: true,
+            },
           },
         },
       });
 
-      return logs.map(log => ({
+      return logs.map((log) => ({
         id: log.id,
         userId: log.userId,
         action: log.action,
-        resource: log.resource,
-        resourceId: log.resourceId,
-        oldValues: log.oldValues,
-        newValues: log.newValues,
+        entityType: log.entityType,
+        entityId: log.entityId,
+        changes: log.changes,
+        metadata: log.metadata,
         ipAddress: log.ipAddress,
         userAgent: log.userAgent,
-        sessionId: log.sessionId,
-        timestamp: log.timestamp.toISOString(),
-        severity: log.severity as any,
-        category: log.category as any,
-        metadata: log.metadata,
+        timestamp: log.timestamp,
+        createdAt: log.createdAt,
       }));
     } catch (error) {
       this.logger.warn('Could not get recent logs:', error);
@@ -127,16 +264,14 @@ export class AuditLoggingService {
     try {
       const [
         totalLogs,
-        logsByCategory,
-        logsBySeverity,
+        logsByEntityType,
         logsByAction,
         logsByUser,
         hourlyStats,
         dailyStats,
       ] = await Promise.all([
         this.getTotalLogs(),
-        this.getLogsByCategory(),
-        this.getLogsBySeverity(),
+        this.getLogsByEntityType(),
         this.getLogsByAction(),
         this.getLogsByUser(),
         this.getHourlyStats(),
@@ -145,8 +280,7 @@ export class AuditLoggingService {
 
       return {
         totalLogs,
-        logsByCategory,
-        logsBySeverity,
+        logsByEntityType,
         logsByAction,
         logsByUser,
         hourlyStats,
@@ -156,8 +290,7 @@ export class AuditLoggingService {
       this.logger.warn('Could not get audit stats:', error);
       return {
         totalLogs: 0,
-        logsByCategory: [],
-        logsBySeverity: [],
+        logsByEntityType: [],
         logsByAction: [],
         logsByUser: [],
         hourlyStats: [],
@@ -167,60 +300,36 @@ export class AuditLoggingService {
   }
 
   private async getTotalLogs(): Promise<number> {
-    try {
-      return await this.prisma.auditLog.count();
-    } catch (error) {
-      this.logger.warn('Could not get total logs:', error);
-      return 0;
-    }
+    return this.prisma.auditLog.count();
   }
 
-  private async getLogsByCategory() {
+  private async getLogsByEntityType(): Promise<{ entityType: string; count: number }[]> {
     try {
       const result = await this.prisma.auditLog.groupBy({
-        by: ['category'],
+        by: ['entityType'],
         _count: { id: true },
         orderBy: { _count: { id: 'desc' } },
       });
 
-      return result.map(item => ({
-        category: item.category,
+      return result.map((item) => ({
+        entityType: item.entityType,
         count: item._count.id,
       }));
     } catch (error) {
-      this.logger.warn('Could not get logs by category:', error);
+      this.logger.warn('Could not get logs by entity type:', error);
       return [];
     }
   }
 
-  private async getLogsBySeverity() {
-    try {
-      const result = await this.prisma.auditLog.groupBy({
-        by: ['severity'],
-        _count: { id: true },
-        orderBy: { _count: { id: 'desc' } },
-      });
-
-      return result.map(item => ({
-        severity: item.severity,
-        count: item._count.id,
-      }));
-    } catch (error) {
-      this.logger.warn('Could not get logs by severity:', error);
-      return [];
-    }
-  }
-
-  private async getLogsByAction() {
+  private async getLogsByAction(): Promise<{ action: string; count: number }[]> {
     try {
       const result = await this.prisma.auditLog.groupBy({
         by: ['action'],
         _count: { id: true },
         orderBy: { _count: { id: 'desc' } },
-        take: 10,
       });
 
-      return result.map(item => ({
+      return result.map((item) => ({
         action: item.action,
         count: item._count.id,
       }));
@@ -230,7 +339,7 @@ export class AuditLoggingService {
     }
   }
 
-  private async getLogsByUser() {
+  private async getLogsByUser(): Promise<{ userId: string; userName: string; count: number }[]> {
     try {
       const result = await this.prisma.auditLog.groupBy({
         by: ['userId'],
@@ -239,77 +348,85 @@ export class AuditLoggingService {
         take: 10,
       });
 
+      const userIds = result.map((item) => item.userId);
       const users = await this.prisma.user.findMany({
-        where: {
-          id: { in: result.map(r => r.userId) },
-        },
+        where: { id: { in: userIds } },
         select: { id: true, name: true },
       });
 
-      return result.map(item => {
-        const user = users.find(u => u.id === item.userId);
-        return {
-          userId: item.userId,
-          userName: user?.name || 'Unknown',
-          count: item._count.id,
-        };
-      });
+      const userMap = new Map(users.map((user) => [user.id, user.name || 'Unknown']));
+
+      return result.map((item) => ({
+        userId: item.userId,
+        userName: userMap.get(item.userId) || 'Unknown',
+        count: item._count.id,
+      }));
     } catch (error) {
       this.logger.warn('Could not get logs by user:', error);
       return [];
     }
   }
 
-  private async getHourlyStats() {
+  private async getHourlyStats(): Promise<{ hour: string; count: number }[]> {
     try {
-      const last24Hours = new Date();
-      last24Hours.setHours(last24Hours.getHours() - 24);
-
-      const logs = await this.prisma.auditLog.findMany({
-        where: {
-          timestamp: { gte: last24Hours },
-        },
-        select: { timestamp: true },
-      });
-
-      const hourlyData = new Map<string, number>();
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
-      logs.forEach(log => {
-        const hour = log.timestamp.toISOString().substring(0, 13) + ':00:00.000Z';
-        hourlyData.set(hour, (hourlyData.get(hour) || 0) + 1);
+      const result = await this.prisma.auditLog.groupBy({
+        by: ['timestamp'],
+        where: {
+          timestamp: {
+            gte: startOfDay,
+          },
+        },
+        _count: { id: true },
+        orderBy: { timestamp: 'asc' },
       });
 
-      return Array.from(hourlyData.entries())
-        .map(([hour, count]) => ({ hour, count }))
-        .sort((a, b) => a.hour.localeCompare(b.hour));
+      const hourlyMap = new Map<string, number>();
+      
+      result.forEach((item) => {
+        const hour = item.timestamp.getHours().toString().padStart(2, '0');
+        hourlyMap.set(hour, (hourlyMap.get(hour) || 0) + item._count.id);
+      });
+
+      return Array.from(hourlyMap.entries()).map(([hour, count]) => ({
+        hour,
+        count,
+      }));
     } catch (error) {
       this.logger.warn('Could not get hourly stats:', error);
       return [];
     }
   }
 
-  private async getDailyStats() {
+  private async getDailyStats(): Promise<{ date: string; count: number }[]> {
     try {
-      const last30Days = new Date();
-      last30Days.setDate(last30Days.getDate() - 30);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const logs = await this.prisma.auditLog.findMany({
+      const result = await this.prisma.auditLog.groupBy({
+        by: ['timestamp'],
         where: {
-          timestamp: { gte: last30Days },
+          timestamp: {
+            gte: thirtyDaysAgo,
+          },
         },
-        select: { timestamp: true },
+        _count: { id: true },
+        orderBy: { timestamp: 'asc' },
       });
 
-      const dailyData = new Map<string, number>();
+      const dailyMap = new Map<string, number>();
       
-      logs.forEach(log => {
-        const date = log.timestamp.toISOString().split('T')[0];
-        dailyData.set(date, (dailyData.get(date) || 0) + 1);
+      result.forEach((item) => {
+        const date = item.timestamp.toISOString().split('T')[0];
+        dailyMap.set(date, (dailyMap.get(date) || 0) + item._count.id);
       });
 
-      return Array.from(dailyData.entries())
-        .map(([date, count]) => ({ date, count }))
-        .sort((a, b) => a.date.localeCompare(b.date));
+      return Array.from(dailyMap.entries()).map(([date, count]) => ({
+        date,
+        count,
+      }));
     } catch (error) {
       this.logger.warn('Could not get daily stats:', error);
       return [];
@@ -320,27 +437,34 @@ export class AuditLoggingService {
     try {
       const logs = await this.prisma.auditLog.findMany({
         where: {
-          severity: { in: ['high', 'critical'] },
+          action: {
+            in: ['login_failed', 'unauthorized_access', 'suspicious_activity'],
+          },
         },
-        take: 10,
+        take: 5,
         orderBy: { timestamp: 'desc' },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
       });
 
-      return logs.map(log => ({
+      return logs.map((log) => ({
         id: log.id,
         userId: log.userId,
         action: log.action,
-        resource: log.resource,
-        resourceId: log.resourceId,
-        oldValues: log.oldValues,
-        newValues: log.newValues,
+        entityType: log.entityType,
+        entityId: log.entityId,
+        changes: log.changes,
+        metadata: log.metadata,
         ipAddress: log.ipAddress,
         userAgent: log.userAgent,
-        sessionId: log.sessionId,
-        timestamp: log.timestamp.toISOString(),
-        severity: log.severity as any,
-        category: log.category as any,
-        metadata: log.metadata,
+        timestamp: log.timestamp,
+        createdAt: log.createdAt,
       }));
     } catch (error) {
       this.logger.warn('Could not get critical events:', error);
@@ -348,24 +472,34 @@ export class AuditLoggingService {
     }
   }
 
-  private async getUserActivity() {
+  private async getUserActivity(): Promise<{
+    userId: string;
+    userName: string;
+    lastActivity: Date;
+    activityCount: number;
+  }[]> {
     try {
-      const users = await this.prisma.user.findMany({
+      const result = await this.prisma.auditLog.groupBy({
+        by: ['userId'],
+        _count: { id: true },
+        _max: { timestamp: true },
+        orderBy: { _max: { timestamp: 'desc' } },
         take: 10,
-        orderBy: { lastLoginAt: 'desc' },
-        select: {
-          id: true,
-          name: true,
-          lastLoginAt: true,
-        },
       });
 
-      return users.map(user => ({
-        userId: user.id,
-        userName: user.name,
-        lastActivity: user.lastLoginAt?.toISOString() || '',
-        activityCount: 0, // Bu değer hesaplanabilir
-        riskScore: 0, // Bu değer hesaplanabilir
+      const userIds = result.map((item) => item.userId);
+      const users = await this.prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, name: true },
+      });
+
+      const userMap = new Map(users.map((user) => [user.id, user.name || 'Unknown']));
+
+      return result.map((item) => ({
+        userId: item.userId,
+        userName: userMap.get(item.userId) || 'Unknown',
+        lastActivity: item._max.timestamp || new Date(),
+        activityCount: item._count.id,
       }));
     } catch (error) {
       this.logger.warn('Could not get user activity:', error);
@@ -373,219 +507,36 @@ export class AuditLoggingService {
     }
   }
 
-  private async getSystemHealth() {
+  async deleteOldLogs(daysToKeep: number = 90): Promise<number> {
     try {
-      const [totalEvents, criticalEvents, securityEvents, dataEvents] = await Promise.all([
-        this.prisma.auditLog.count(),
-        this.prisma.auditLog.count({ where: { severity: 'critical' } }),
-        this.prisma.auditLog.count({ where: { category: 'security' } }),
-        this.prisma.auditLog.count({ where: { category: 'data_modification' } }),
-      ]);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
-      return {
-        totalEvents,
-        criticalEvents,
-        securityEvents,
-        dataEvents,
-      };
-    } catch (error) {
-      this.logger.warn('Could not get system health:', error);
-      return {
-        totalEvents: 0,
-        criticalEvents: 0,
-        securityEvents: 0,
-        dataEvents: 0,
-      };
-    }
-  }
-
-  async logAuditEvent(
-    userId: string,
-    action: string,
-    resource: string,
-    ipAddress: string,
-    resourceId?: string,
-    oldValues?: any,
-    newValues?: any,
-    userAgent?: string,
-    sessionId?: string,
-    severity: 'low' | 'medium' | 'high' | 'critical' = 'medium',
-    category: 'authentication' | 'authorization' | 'data_access' | 'data_modification' | 'system' | 'security' = 'system',
-    metadata?: any
-  ): Promise<void> {
-    try {
-      await this.prisma.auditLog.create({
-        data: {
-          userId,
-          action,
-          resource,
-          resourceId,
-          oldValues,
-          newValues,
-          ipAddress,
-          userAgent,
-          sessionId,
-          severity,
-          category,
-          metadata: metadata || {},
-          timestamp: new Date(),
-        },
-      });
-
-      this.logger.log(`Audit event logged: ${action} by user ${userId}`);
-    } catch (error) {
-      this.logger.error('Failed to log audit event:', error);
-    }
-  }
-
-  async getAuditLogs(filter: AuditLogFilter): Promise<AuditLog[]> {
-    try {
-      const where: any = {};
-
-      if (filter.userId) where.userId = filter.userId;
-      if (filter.action) where.action = filter.action;
-      if (filter.resource) where.resource = filter.resource;
-      if (filter.category) where.category = filter.category;
-      if (filter.severity) where.severity = filter.severity;
-      if (filter.ipAddress) where.ipAddress = filter.ipAddress;
-      if (filter.startDate || filter.endDate) {
-        where.timestamp = {};
-        if (filter.startDate) where.timestamp.gte = new Date(filter.startDate);
-        if (filter.endDate) where.timestamp.lte = new Date(filter.endDate);
-      }
-
-      const logs = await this.prisma.auditLog.findMany({
-        where,
-        take: filter.limit || 100,
-        skip: filter.offset || 0,
-        orderBy: { timestamp: 'desc' },
-      });
-
-      return logs.map(log => ({
-        id: log.id,
-        userId: log.userId,
-        action: log.action,
-        resource: log.resource,
-        resourceId: log.resourceId,
-        oldValues: log.oldValues,
-        newValues: log.newValues,
-        ipAddress: log.ipAddress,
-        userAgent: log.userAgent,
-        sessionId: log.sessionId,
-        timestamp: log.timestamp.toISOString(),
-        severity: log.severity as any,
-        category: log.category as any,
-        metadata: log.metadata,
-      }));
-    } catch (error) {
-      this.logger.error('Failed to get audit logs:', error);
-      throw error;
-    }
-  }
-
-  async exportAuditLogs(
-    filter: AuditLogFilter,
-    format: 'csv' | 'excel' | 'json' = 'csv'
-  ): Promise<Buffer> {
-    try {
-      const logs = await this.getAuditLogs(filter);
-      
-      switch (format) {
-        case 'csv':
-          return this.exportToCSV(logs);
-        case 'excel':
-          return this.exportToExcel(logs);
-        case 'json':
-          return this.exportToJSON(logs);
-        default:
-          throw new Error(`Unsupported format: ${format}`);
-      }
-    } catch (error) {
-      this.logger.error('Failed to export audit logs:', error);
-      throw error;
-    }
-  }
-
-  private exportToCSV(logs: AuditLog[]): Buffer {
-    if (logs.length === 0) {
-      return Buffer.from('');
-    }
-
-    const headers = Object.keys(logs[0]);
-    const csvContent = [
-      headers.join(','),
-      ...logs.map(log => headers.map(header => `"${log[header as keyof AuditLog]}"`).join(','))
-    ].join('\n');
-
-    return Buffer.from(csvContent);
-  }
-
-  private exportToExcel(logs: AuditLog[]): Buffer {
-    // Bu implementasyon ExcelJS kullanarak yapılabilir
-    // Şimdilik CSV olarak döndürüyoruz
-    return this.exportToCSV(logs);
-  }
-
-  private exportToJSON(logs: AuditLog[]): Buffer {
-    const jsonData = {
-      exportDate: new Date().toISOString(),
-      recordCount: logs.length,
-      data: logs,
-    };
-
-    return Buffer.from(JSON.stringify(jsonData, null, 2));
-  }
-
-  async deleteAuditLogs(olderThan: Date): Promise<number> {
-    try {
       const result = await this.prisma.auditLog.deleteMany({
         where: {
-          timestamp: { lt: olderThan },
-        },
-      });
-
-      this.logger.log(`Deleted ${result.count} audit logs older than ${olderThan.toISOString()}`);
-      return result.count;
-    } catch (error) {
-      this.logger.error('Failed to delete audit logs:', error);
-      throw error;
-    }
-  }
-
-  async getAuditLogSummary(startDate: string, endDate: string): Promise<any> {
-    try {
-      const logs = await this.prisma.auditLog.findMany({
-        where: {
           timestamp: {
-            gte: new Date(startDate),
-            lte: new Date(endDate),
+            lt: cutoffDate,
           },
         },
       });
 
-      const summary = {
-        period: { startDate, endDate },
-        totalLogs: logs.length,
-        byCategory: this.groupBy(logs, 'category'),
-        bySeverity: this.groupBy(logs, 'severity'),
-        byAction: this.groupBy(logs, 'action'),
-        byUser: this.groupBy(logs, 'userId'),
-        criticalEvents: logs.filter(log => log.severity === 'critical').length,
-        securityEvents: logs.filter(log => log.category === 'security').length,
-      };
-
-      return summary;
+      this.logger.log(`Deleted ${result.count} old audit logs`);
+      return result.count;
     } catch (error) {
-      this.logger.error('Failed to get audit log summary:', error);
+      this.logger.error('Failed to delete old audit logs:', error);
       throw error;
     }
   }
 
-  private groupBy(array: any[], key: string): Record<string, number> {
-    return array.reduce((groups, item) => {
-      const value = item[key];
-      groups[value] = (groups[value] || 0) + 1;
-      return groups;
-    }, {});
+  async exportAuditLogs(filter: AuditLogFilter = {}): Promise<AuditLog[]> {
+    try {
+      return this.getAuditLogs({
+        ...filter,
+        limit: 10000, // Export limit
+      });
+    } catch (error) {
+      this.logger.error('Failed to export audit logs:', error);
+      throw error;
+    }
   }
 }

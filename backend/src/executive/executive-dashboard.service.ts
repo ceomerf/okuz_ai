@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../common/prisma/prisma.service';
 
 export interface ExecutiveDashboardData {
   quickStats: {
@@ -52,7 +52,7 @@ export interface ExecutiveDashboardData {
 export class ExecutiveDashboardService {
   private readonly logger = new Logger(ExecutiveDashboardService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async getDashboardData(): Promise<ExecutiveDashboardData> {
     try {
@@ -81,40 +81,54 @@ export class ExecutiveDashboardService {
         alerts,
       };
     } catch (error) {
-      this.logger.error('Failed to get executive dashboard data:', error);
+      this.logger.error('Failed to get dashboard data:', error);
       throw error;
     }
   }
 
   private async getQuickStats() {
-    const [
-      totalUsers,
-      totalTeachers,
-      totalStudents,
-      totalClasses,
-      totalRevenue,
-      monthlyRevenue,
-      activeUsers,
-    ] = await Promise.all([
-      this.prisma.user.count(),
-      this.prisma.user.count({ where: { role: 'TEACHER' } }),
-      this.prisma.user.count({ where: { role: 'STUDENT' } }),
-      this.prisma.class.count(),
-      this.getTotalRevenue(),
-      this.getMonthlyRevenue(),
-      this.getActiveUsers(),
-    ]);
+    try {
+      const [
+        totalUsers,
+        totalTeachers,
+        totalStudents,
+        totalClasses,
+        totalRevenue,
+        monthlyRevenue,
+        activeUsers,
+      ] = await Promise.all([
+        this.prisma.user.count(),
+        this.prisma.teacher.count(),
+        this.prisma.student.count(),
+        this.prisma.class.count(),
+        this.getTotalRevenue(),
+        this.getMonthlyRevenue(),
+        this.getActiveUsers(),
+      ]);
 
-    return {
-      totalUsers,
-      totalTeachers,
-      totalStudents,
-      totalClasses,
-      totalRevenue,
-      monthlyRevenue,
-      systemUptime: process.uptime(),
-      activeUsers,
-    };
+      return {
+        totalUsers,
+        totalTeachers,
+        totalStudents,
+        totalClasses,
+        totalRevenue,
+        monthlyRevenue,
+        systemUptime: process.uptime(),
+        activeUsers,
+      };
+    } catch (error) {
+      this.logger.error('Failed to get quick stats:', error);
+      return {
+        totalUsers: 0,
+        totalTeachers: 0,
+        totalStudents: 0,
+        totalClasses: 0,
+        totalRevenue: 0,
+        monthlyRevenue: 0,
+        systemUptime: 0,
+        activeUsers: 0,
+      };
+    }
   }
 
   private async getTotalRevenue(): Promise<number> {
@@ -123,9 +137,9 @@ export class ExecutiveDashboardService {
         _sum: { amount: true },
         where: { status: 'COMPLETED' },
       });
-      return result._sum.amount || 0;
+      return Number(result._sum.amount || 0);
     } catch (error) {
-      this.logger.warn('Could not get total revenue:', error);
+      this.logger.error('Failed to get total revenue:', error);
       return 0;
     }
   }
@@ -143,167 +157,143 @@ export class ExecutiveDashboardService {
           createdAt: { gte: startOfMonth },
         },
       });
-      return result._sum.amount || 0;
+      return Number(result._sum.amount || 0);
     } catch (error) {
-      this.logger.warn('Could not get monthly revenue:', error);
+      this.logger.error('Failed to get monthly revenue:', error);
       return 0;
     }
   }
 
   private async getActiveUsers(): Promise<number> {
     try {
-      const last24Hours = new Date();
-      last24Hours.setHours(last24Hours.getHours() - 24);
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
       return await this.prisma.user.count({
         where: {
-          lastLoginAt: { gte: last24Hours },
+          lastActiveAt: { gte: oneDayAgo },
         },
       });
     } catch (error) {
-      this.logger.warn('Could not get active users:', error);
+      this.logger.error('Failed to get active users:', error);
       return 0;
     }
   }
 
   private async getRecentActivities() {
     try {
-      const activities = await this.prisma.activityLog.findMany({
+      const activities = await this.prisma.userActivity.findMany({
         take: 10,
         orderBy: { createdAt: 'desc' },
         include: {
           user: {
-            select: { name: true, email: true },
+            select: {
+              name: true,
+              email: true,
+            },
           },
         },
       });
 
       return activities.map(activity => ({
         id: activity.id,
-        type: activity.type as any,
-        title: activity.title,
-        description: activity.description,
+        type: this.mapActivityType(activity.action),
+        title: this.getActivityTitle(activity.action),
+        description: this.getActivityDescription(activity.action),
         timestamp: activity.createdAt.toISOString(),
-        user: activity.user?.name || activity.user?.email,
-        amount: activity.metadata?.amount,
+        user: activity.user.name || activity.user.email,
       }));
     } catch (error) {
-      this.logger.warn('Could not get recent activities:', error);
+      this.logger.error('Failed to get recent activities:', error);
       return [];
     }
   }
 
+  private mapActivityType(action: string): 'user_registration' | 'class_created' | 'payment_received' | 'system_alert' {
+    if (action.includes('register')) return 'user_registration';
+    if (action.includes('class')) return 'class_created';
+    if (action.includes('payment')) return 'payment_received';
+    return 'system_alert';
+  }
+
+  private getActivityTitle(action: string): string {
+    if (action.includes('register')) return 'New User Registration';
+    if (action.includes('class')) return 'Class Created';
+    if (action.includes('payment')) return 'Payment Received';
+    return 'System Activity';
+  }
+
+  private getActivityDescription(action: string): string {
+    return `User performed: ${action}`;
+  }
+
   private async getRevenueAnalytics() {
     try {
-      const [daily, monthly, yearly] = await Promise.all([
-        this.getDailyRevenue(),
-        this.getMonthlyRevenueData(),
-        this.getYearlyRevenueData(),
-      ]);
+      const payments = await this.prisma.payment.findMany({
+        where: { status: 'COMPLETED' },
+        select: { amount: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 1000,
+      });
 
-      return { daily, monthly, yearly };
+      const dailyRevenue = new Map<string, number>();
+      const monthlyRevenue = new Map<string, number>();
+      const yearlyRevenue = new Map<string, number>();
+
+      payments.forEach(payment => {
+        const date = payment.createdAt.toISOString().split('T')[0];
+        const month = payment.createdAt.toISOString().substring(0, 7);
+        const year = payment.createdAt.getFullYear().toString();
+
+        dailyRevenue.set(date, (dailyRevenue.get(date) || 0) + Number(payment.amount));
+        monthlyRevenue.set(month, (monthlyRevenue.get(month) || 0) + Number(payment.amount));
+        yearlyRevenue.set(year, (yearlyRevenue.get(year) || 0) + Number(payment.amount));
+      });
+
+      return {
+        daily: Array.from(dailyRevenue.entries()).map(([date, revenue]) => ({ date, revenue })),
+        monthly: Array.from(monthlyRevenue.entries()).map(([month, revenue]) => ({ month, revenue })),
+        yearly: Array.from(yearlyRevenue.entries()).map(([year, revenue]) => ({ year, revenue })),
+      };
     } catch (error) {
-      this.logger.warn('Could not get revenue analytics:', error);
+      this.logger.error('Failed to get revenue analytics:', error);
       return {
         daily: [],
         monthly: [],
         yearly: [],
       };
     }
-  }
-
-  private async getDailyRevenue() {
-    const last30Days = new Date();
-    last30Days.setDate(last30Days.getDate() - 30);
-
-    const payments = await this.prisma.payment.findMany({
-      where: {
-        status: 'COMPLETED',
-        createdAt: { gte: last30Days },
-      },
-      select: {
-        amount: true,
-        createdAt: true,
-      },
-    });
-
-    const dailyRevenue = new Map<string, number>();
-    
-    payments.forEach(payment => {
-      const date = payment.createdAt.toISOString().split('T')[0];
-      dailyRevenue.set(date, (dailyRevenue.get(date) || 0) + payment.amount);
-    });
-
-    return Array.from(dailyRevenue.entries())
-      .map(([date, revenue]) => ({ date, revenue }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }
-
-  private async getMonthlyRevenueData() {
-    const last12Months = new Date();
-    last12Months.setMonth(last12Months.getMonth() - 12);
-
-    const payments = await this.prisma.payment.findMany({
-      where: {
-        status: 'COMPLETED',
-        createdAt: { gte: last12Months },
-      },
-      select: {
-        amount: true,
-        createdAt: true,
-      },
-    });
-
-    const monthlyRevenue = new Map<string, number>();
-    
-    payments.forEach(payment => {
-      const month = payment.createdAt.toISOString().substring(0, 7);
-      monthlyRevenue.set(month, (monthlyRevenue.get(month) || 0) + payment.amount);
-    });
-
-    return Array.from(monthlyRevenue.entries())
-      .map(([month, revenue]) => ({ month, revenue }))
-      .sort((a, b) => a.month.localeCompare(b.month));
-  }
-
-  private async getYearlyRevenueData() {
-    const last5Years = new Date();
-    last5Years.setFullYear(last5Years.getFullYear() - 5);
-
-    const payments = await this.prisma.payment.findMany({
-      where: {
-        status: 'COMPLETED',
-        createdAt: { gte: last5Years },
-      },
-      select: {
-        amount: true,
-        createdAt: true,
-      },
-    });
-
-    const yearlyRevenue = new Map<string, number>();
-    
-    payments.forEach(payment => {
-      const year = payment.createdAt.getFullYear().toString();
-      yearlyRevenue.set(year, (yearlyRevenue.get(year) || 0) + payment.amount);
-    });
-
-    return Array.from(yearlyRevenue.entries())
-      .map(([year, revenue]) => ({ year, revenue }))
-      .sort((a, b) => a.year.localeCompare(b.year));
   }
 
   private async getUserAnalytics() {
     try {
-      const [daily, monthly, yearly] = await Promise.all([
-        this.getDailyUserRegistrations(),
-        this.getMonthlyUserRegistrations(),
-        this.getYearlyUserRegistrations(),
-      ]);
+      const users = await this.prisma.user.findMany({
+        select: { createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 1000,
+      });
 
-      return { daily, monthly, yearly };
+      const dailyUsers = new Map<string, number>();
+      const monthlyUsers = new Map<string, number>();
+      const yearlyUsers = new Map<string, number>();
+
+      users.forEach(user => {
+        const date = user.createdAt.toISOString().split('T')[0];
+        const month = user.createdAt.toISOString().substring(0, 7);
+        const year = user.createdAt.getFullYear().toString();
+
+        dailyUsers.set(date, (dailyUsers.get(date) || 0) + 1);
+        monthlyUsers.set(month, (monthlyUsers.get(month) || 0) + 1);
+        yearlyUsers.set(year, (yearlyUsers.get(year) || 0) + 1);
+      });
+
+      return {
+        daily: Array.from(dailyUsers.entries()).map(([date, users]) => ({ date, users })),
+        monthly: Array.from(monthlyUsers.entries()).map(([month, users]) => ({ month, users })),
+        yearly: Array.from(yearlyUsers.entries()).map(([year, users]) => ({ year, users })),
+      };
     } catch (error) {
-      this.logger.warn('Could not get user analytics:', error);
+      this.logger.error('Failed to get user analytics:', error);
       return {
         daily: [],
         monthly: [],
@@ -312,104 +302,46 @@ export class ExecutiveDashboardService {
     }
   }
 
-  private async getDailyUserRegistrations() {
-    const last30Days = new Date();
-    last30Days.setDate(last30Days.getDate() - 30);
-
-    const users = await this.prisma.user.findMany({
-      where: {
-        createdAt: { gte: last30Days },
-      },
-      select: { createdAt: true },
-    });
-
-    const dailyUsers = new Map<string, number>();
-    
-    users.forEach(user => {
-      const date = user.createdAt.toISOString().split('T')[0];
-      dailyUsers.set(date, (dailyUsers.get(date) || 0) + 1);
-    });
-
-    return Array.from(dailyUsers.entries())
-      .map(([date, users]) => ({ date, users }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }
-
-  private async getMonthlyUserRegistrations() {
-    const last12Months = new Date();
-    last12Months.setMonth(last12Months.getMonth() - 12);
-
-    const users = await this.prisma.user.findMany({
-      where: {
-        createdAt: { gte: last12Months },
-      },
-      select: { createdAt: true },
-    });
-
-    const monthlyUsers = new Map<string, number>();
-    
-    users.forEach(user => {
-      const month = user.createdAt.toISOString().substring(0, 7);
-      monthlyUsers.set(month, (monthlyUsers.get(month) || 0) + 1);
-    });
-
-    return Array.from(monthlyUsers.entries())
-      .map(([month, users]) => ({ month, users }))
-      .sort((a, b) => a.month.localeCompare(b.month));
-  }
-
-  private async getYearlyUserRegistrations() {
-    const last5Years = new Date();
-    last5Years.setFullYear(last5Years.getFullYear() - 5);
-
-    const users = await this.prisma.user.findMany({
-      where: {
-        createdAt: { gte: last5Years },
-      },
-      select: { createdAt: true },
-    });
-
-    const yearlyUsers = new Map<string, number>();
-    
-    users.forEach(user => {
-      const year = user.createdAt.getFullYear().toString();
-      yearlyUsers.set(year, (yearlyUsers.get(year) || 0) + 1);
-    });
-
-    return Array.from(yearlyUsers.entries())
-      .map(([year, users]) => ({ year, users }))
-      .sort((a, b) => a.year.localeCompare(b.year));
-  }
-
   private async getSystemMetrics() {
-    // Bu değerler SystemHealthService'den alınabilir
-    return {
-      cpuUsage: 45.2,
-      memoryUsage: 67.8,
-      diskUsage: 23.4,
-      networkTraffic: 1024,
-      responseTime: 150,
-    };
+    try {
+      const memoryUsage = process.memoryUsage();
+      
+      return {
+        cpuUsage: process.cpuUsage().user / 1000000,
+        memoryUsage: memoryUsage.heapUsed / 1024 / 1024,
+        diskUsage: 0, // Simplified
+        networkTraffic: 0, // Simplified
+        responseTime: 0, // Simplified
+      };
+    } catch (error) {
+      this.logger.error('Failed to get system metrics:', error);
+      return {
+        cpuUsage: 0,
+        memoryUsage: 0,
+        diskUsage: 0,
+        networkTraffic: 0,
+        responseTime: 0,
+      };
+    }
   }
 
   private async getAlerts() {
     try {
-      const alerts = await this.prisma.alert.findMany({
-        where: { resolved: false },
-        take: 5,
+      const alerts = await this.prisma.aIAlert.findMany({
+        take: 10,
         orderBy: { createdAt: 'desc' },
       });
 
       return alerts.map(alert => ({
         id: alert.id,
-        type: alert.type as any,
+        type: alert.level as 'warning' | 'error' | 'info',
         title: alert.title,
         message: alert.message,
-        timestamp: alert.createdAt.toISOString(),
+        timestamp: alert.timestamp.toISOString(),
         resolved: alert.resolved,
       }));
     } catch (error) {
-      this.logger.warn('Could not get alerts:', error);
+      this.logger.error('Failed to get alerts:', error);
       return [];
     }
   }

@@ -33,14 +33,14 @@ export class PromptManagementService {
     }
 
     try {
-      const prompts = await this.prisma.aiPromptTemplate.findMany({
+      const prompts = await this.prisma.aIPromptTemplate.findMany({
         where,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
       });
 
-      const total = await this.prisma.aiPromptTemplate.count({ where });
+      const total = await this.prisma.aIPromptTemplate.count({ where });
 
       return {
         success: true,
@@ -63,7 +63,7 @@ export class PromptManagementService {
 
   async getPromptById(id: string) {
     try {
-      const prompt = await this.prisma.aiPromptTemplate.findUnique({
+      const prompt = await this.prisma.aIPromptTemplate.findUnique({
         where: { id },
       });
 
@@ -89,10 +89,11 @@ export class PromptManagementService {
     isActive?: boolean;
   }) {
     try {
-      const prompt = await this.prisma.aiPromptTemplate.create({
+      const prompt = await this.prisma.aIPromptTemplate.create({
         data: {
           name: createData.name,
           category: createData.category,
+          content: createData.template,
           template: createData.template,
           variables: createData.variables,
           description: createData.description,
@@ -120,7 +121,7 @@ export class PromptManagementService {
     isActive?: boolean;
   }) {
     try {
-      const prompt = await this.prisma.aiPromptTemplate.update({
+      const prompt = await this.prisma.aIPromptTemplate.update({
         where: { id },
         data: updateData,
       });
@@ -137,7 +138,7 @@ export class PromptManagementService {
 
   async deletePrompt(id: string) {
     try {
-      await this.prisma.aiPromptTemplate.delete({
+      await this.prisma.aIPromptTemplate.delete({
         where: { id },
       });
 
@@ -152,7 +153,7 @@ export class PromptManagementService {
 
   async getPromptVersions(id: string) {
     try {
-      const prompt = await this.prisma.aiPromptTemplate.findUnique({
+      const prompt = await this.prisma.aIPromptTemplate.findUnique({
         where: { id },
       });
 
@@ -195,7 +196,7 @@ export class PromptManagementService {
     description?: string;
   }) {
     try {
-      const prompt = await this.prisma.aiPromptTemplate.findUnique({
+      const prompt = await this.prisma.aIPromptTemplate.findUnique({
         where: { id },
       });
 
@@ -226,7 +227,7 @@ export class PromptManagementService {
 
   async getPromptUsage(id: string) {
     try {
-      const prompt = await this.prisma.aiPromptTemplate.findUnique({
+      const prompt = await this.prisma.aIPromptTemplate.findUnique({
         where: { id },
       });
 
@@ -258,7 +259,7 @@ export class PromptManagementService {
 
   async getPromptPerformance(id: string) {
     try {
-      const prompt = await this.prisma.aiPromptTemplate.findUnique({
+      const prompt = await this.prisma.aIPromptTemplate.findUnique({
         where: { id },
       });
 
@@ -287,7 +288,7 @@ export class PromptManagementService {
 
   async duplicatePrompt(id: string) {
     try {
-      const originalPrompt = await this.prisma.aiPromptTemplate.findUnique({
+      const originalPrompt = await this.prisma.aIPromptTemplate.findUnique({
         where: { id },
       });
 
@@ -295,10 +296,11 @@ export class PromptManagementService {
         throw new NotFoundException('Prompt bulunamadı');
       }
 
-      const duplicatedPrompt = await this.prisma.aiPromptTemplate.create({
+      const duplicatedPrompt = await this.prisma.aIPromptTemplate.create({
         data: {
           name: `${originalPrompt.name} (Copy)`,
           category: originalPrompt.category,
+          content: originalPrompt.template,
           template: originalPrompt.template,
           variables: originalPrompt.variables,
           description: originalPrompt.description,

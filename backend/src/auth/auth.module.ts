@@ -5,13 +5,11 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
 import { PrismaModule } from '../common/prisma/prisma.module';
-import { SubscriptionModule } from '../subscription/subscription.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
     PrismaModule,
-    SubscriptionModule,
     PassportModule,
     ConfigModule,
     JwtModule.registerAsync({

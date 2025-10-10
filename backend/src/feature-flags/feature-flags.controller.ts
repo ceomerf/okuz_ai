@@ -1,144 +1,97 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpException, HttpStatus } from '@nestjs/common';
-import { FeatureFlagsService, FeatureFlagDashboard, FeatureFlag, FeatureFlagEvaluation, FeatureFlagUsage } from './feature-flags.service';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { FeatureFlagsService, CreateFeatureFlagDto, UpdateFeatureFlagDto } from './feature-flags.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('feature-flags')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class FeatureFlagsController {
   constructor(private readonly featureFlagsService: FeatureFlagsService) {}
 
-  @Get('dashboard')
-  async getFeatureFlagDashboard(): Promise<FeatureFlagDashboard> {
-    try {
-      return await this.featureFlagsService.getFeatureFlagDashboard();
-    } catch (error) {
-      throw new HttpException(
-        'Failed to get feature flag dashboard',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  @Get()
+  @Roles(UserRole.ADMIN)
+  async getFeatureFlags(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search?: string,
+    @Query('isActive') isActive?: boolean,
+  ) {
+    return this.featureFlagsService.getFeatureFlags({
+      page,
+      limit,
+      search,
+      isActive,
+    });
+  }
+
+  @Get('active')
+  @Roles(UserRole.ADMIN, UserRole.TEACHER)
+  async getActiveFeatureFlags() {
+    return this.featureFlagsService.getActiveFeatureFlags();
+  }
+
+  @Get('stats')
+  @Roles(UserRole.ADMIN)
+  async getFeatureFlagStats() {
+    return this.featureFlagsService.getFeatureFlagStats();
+  }
+
+  @Get(':id')
+  @Roles(UserRole.ADMIN)
+  async getFeatureFlagById(@Param('id') id: string) {
+    return this.featureFlagsService.getFeatureFlagById(id);
+  }
+
+  @Get('name/:name')
+  @Roles(UserRole.ADMIN, UserRole.TEACHER)
+  async getFeatureFlagByName(@Param('name') name: string) {
+    return this.featureFlagsService.getFeatureFlagByName(name);
   }
 
   @Post()
-  async createFeatureFlag(@Body() flagData: {
-    name: string;
-    key: string;
-    description: string;
-    isEnabled: boolean;
-    rolloutPercentage: number;
-    targetUsers?: string[];
-    targetRoles?: string[];
-    targetSegments?: string[];
-    conditions?: any[];
-    environment: 'development' | 'staging' | 'production';
-    createdBy: string;
-  }): Promise<FeatureFlag> {
-    try {
-      return await this.featureFlagsService.createFeatureFlag(flagData);
-    } catch (error) {
-      throw new HttpException(
-        'Failed to create feature flag',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  @Roles(UserRole.ADMIN)
+  async createFeatureFlag(@Body() data: CreateFeatureFlagDto) {
+    return this.featureFlagsService.createFeatureFlag(data);
   }
 
-  @Get()
-  async getFeatureFlags(): Promise<FeatureFlag[]> {
-    try {
-      const dashboard = await this.featureFlagsService.getFeatureFlagDashboard();
-      return dashboard.flags;
-    } catch (error) {
-      throw new HttpException(
-        'Failed to get feature flags',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Get(':flagId')
-  async getFeatureFlag(@Param('flagId') flagId: string): Promise<FeatureFlag | null> {
-    try {
-      const dashboard = await this.featureFlagsService.getFeatureFlagDashboard();
-      return dashboard.flags.find(flag => flag.id === flagId) || null;
-    } catch (error) {
-      throw new HttpException(
-        'Failed to get feature flag',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Put(':flagId')
+  @Put(':id')
+  @Roles(UserRole.ADMIN)
   async updateFeatureFlag(
-    @Param('flagId') flagId: string,
-    @Body() flagData: Partial<FeatureFlag> & { updatedBy: string }
-  ): Promise<FeatureFlag> {
-    try {
-      return await this.featureFlagsService.updateFeatureFlag(flagId, flagData, flagData.updatedBy);
-    } catch (error) {
-      throw new HttpException(
-        'Failed to update feature flag',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    @Param('id') id: string,
+    @Body() data: UpdateFeatureFlagDto,
+  ) {
+    return this.featureFlagsService.updateFeatureFlag(id, data);
   }
 
-  @Delete(':flagId')
-  async deleteFeatureFlag(@Param('flagId') flagId: string): Promise<void> {
-    try {
-      await this.featureFlagsService.deleteFeatureFlag(flagId);
-    } catch (error) {
-      throw new HttpException(
-        'Failed to delete feature flag',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  @Put(':id/toggle')
+  @Roles(UserRole.ADMIN)
+  async toggleFeatureFlag(@Param('id') id: string) {
+    return this.featureFlagsService.toggleFeatureFlag(id);
   }
 
-  @Post('evaluate')
-  async evaluateFeatureFlag(@Body() evaluationData: {
-    flagKey: string;
-    userId: string;
-    userContext?: {
-      role?: string;
-      segment?: string;
-      attributes?: Record<string, any>;
-    };
-  }): Promise<FeatureFlagEvaluation> {
-    try {
-      return await this.featureFlagsService.evaluateFeatureFlag(
-        evaluationData.flagKey,
-        evaluationData.userId,
-        evaluationData.userContext
-      );
-    } catch (error) {
-      throw new HttpException(
-        'Failed to evaluate feature flag',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  @Delete(':id')
+  @Roles(UserRole.ADMIN)
+  async deleteFeatureFlag(@Param('id') id: string) {
+    await this.featureFlagsService.deleteFeatureFlag(id);
+    return { message: 'Feature flag deleted successfully' };
   }
 
-  @Get('usage/:flagKey')
-  async getFeatureFlagUsage(@Param('flagKey') flagKey: string): Promise<FeatureFlagUsage | null> {
-    try {
-      return await this.featureFlagsService.getFeatureFlagUsage(flagKey);
-    } catch (error) {
-      throw new HttpException(
-        'Failed to get feature flag usage',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  @Get('check/:name')
+  @Roles(UserRole.ADMIN, UserRole.TEACHER)
+  async isFeatureEnabled(@Param('name') name: string) {
+    const isEnabled = await this.featureFlagsService.isFeatureEnabled(name);
+    return { name, isEnabled };
   }
 
-  @Post('cache/clear')
-  async clearCache(): Promise<void> {
-    try {
-      await this.featureFlagsService.clearCache();
-    } catch (error) {
-      throw new HttpException(
-        'Failed to clear cache',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  @Get('value/:name')
+  @Roles(UserRole.ADMIN, UserRole.TEACHER)
+  async getFeatureFlagValue(
+    @Param('name') name: string,
+    @Query('defaultValue') defaultValue?: string,
+  ) {
+    const value = await this.featureFlagsService.getFeatureFlagValue(name, defaultValue);
+    return { name, value };
   }
 }

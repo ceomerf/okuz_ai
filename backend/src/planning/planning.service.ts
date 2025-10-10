@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { PlanType } from '@prisma/client';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { PrismaService } from '../common/services/prisma.service';
 import { PlanningFacade } from './planning-facade.service';
 import { PlanGenerationService } from './services/plan-generation.service';
 import { PlanValidationService } from './services/plan-validation.service';

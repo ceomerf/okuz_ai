@@ -1,10 +1,18 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { SubscriptionStatus, SubscriptionPlan, PaymentStatus } from '@prisma/client';
+import { PrismaService } from '../common/services/prisma.service';
+import { SubscriptionStatus, PaymentStatus } from '@prisma/client';
+
+export enum SubscriptionPlan {
+  MONTHLY_PREMIUM = 'MONTHLY_PREMIUM',
+  YEARLY_PREMIUM = 'YEARLY_PREMIUM',
+  FAMILY_PLAN = 'FAMILY_PLAN',
+  FREE = 'FREE',
+  TRIAL = 'TRIAL'
+}
 
 export interface CreateSubscriptionDto {
   userId: string;
-  planType: SubscriptionPlan;
+  planType: string;
   paymentMethod: string;
   amount: number;
   currency?: string;
@@ -182,7 +190,7 @@ export class SubscriptionService {
           status: SubscriptionStatus.PREMIUM,
           startDate,
           endDate,
-          features: this.getFeaturesForPlan(planType),
+          features: this.getFeaturesForPlan(planType as SubscriptionPlan),
         },
       });
 

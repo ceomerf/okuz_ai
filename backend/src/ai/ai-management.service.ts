@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../common/services/prisma.service';
+import { PrismaClient } from '@prisma/client';
 
 export interface AIServiceStatus {
   id: string;
@@ -129,7 +130,7 @@ export class AIManagementService {
         usage: {
           requests: service.requests || 0,
           tokens: service.tokens || 0,
-          cost: service.cost || 0,
+          cost: service.cost ? service.cost.toNumber() : 0,
         },
         health: {
           cpu: service.cpuUsage || 0,
@@ -161,7 +162,7 @@ export class AIManagementService {
         usage: {
           requests: model.requests || 0,
           tokens: model.tokens || 0,
-          cost: model.cost || 0,
+          cost: model.cost ? model.cost.toNumber() : 0,
         },
         performance: {
           responseTime: model.responseTime || 0,
@@ -185,14 +186,14 @@ export class AIManagementService {
       return logs.map(log => ({
         id: log.id,
         timestamp: log.timestamp.toISOString(),
-        service: log.service,
-        model: log.model,
+        service: log.serviceId,
+        model: log.modelId,
         action: log.action,
         input: log.input,
         output: log.output,
         duration: log.duration,
         tokens: log.tokens,
-        cost: log.cost,
+        cost: log.cost.toNumber(),
         status: log.status as any,
         error: log.error,
       }));
@@ -263,7 +264,7 @@ export class AIManagementService {
       const result = await this.prisma.aILog.aggregate({
         _sum: { cost: true },
       });
-      return result._sum.cost || 0;
+      return result._sum.cost ? result._sum.cost.toNumber() : 0;
     } catch (error) {
       this.logger.warn('Could not get total cost:', error);
       return 0;
@@ -350,7 +351,7 @@ export class AIManagementService {
       dailyUsage.set(date, {
         requests: existing.requests + 1,
         tokens: existing.tokens + log.tokens,
-        cost: existing.cost + log.cost,
+        cost: existing.cost + log.cost.toNumber(),
       });
     });
 
@@ -382,7 +383,7 @@ export class AIManagementService {
       monthlyUsage.set(month, {
         requests: existing.requests + 1,
         tokens: existing.tokens + log.tokens,
-        cost: existing.cost + log.cost,
+        cost: existing.cost + log.cost.toNumber(),
       });
     });
 
@@ -414,7 +415,7 @@ export class AIManagementService {
       yearlyUsage.set(year, {
         requests: existing.requests + 1,
         tokens: existing.tokens + log.tokens,
-        cost: existing.cost + log.cost,
+        cost: existing.cost + log.cost.toNumber(),
       });
     });
 
@@ -460,8 +461,10 @@ export class AIManagementService {
     try {
       await this.prisma.aILog.create({
         data: {
-          service,
-          model,
+          serviceId: service,
+          modelId: model,
+          request: input,
+          response: output,
           action,
           input,
           output,
@@ -486,7 +489,7 @@ export class AIManagementService {
     try {
       await this.prisma.aIAlert.create({
         data: {
-          type,
+          level: type,
           title,
           message,
           timestamp: new Date(),

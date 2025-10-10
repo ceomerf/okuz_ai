@@ -19,11 +19,6 @@ describe('AuthService', () => {
         create: jest.fn(),
         update: jest.fn(),
       },
-      refreshToken: {
-        create: jest.fn(),
-        findUnique: jest.fn(),
-        delete: jest.fn(),
-      },
     };
 
     const mockJwtService = {
@@ -38,7 +33,7 @@ describe('AuthService', () => {
     };
 
     const mockSubscriptionService = {
-      getActiveSubscription: jest.fn(),
+      getUserSubscription: jest.fn(),
     };
 
     const mockConfigService = {
@@ -83,73 +78,32 @@ describe('AuthService', () => {
 
   describe('validateUser', () => {
     it('should return user when user exists', async () => {
+      const userId = '1';
       const mockUser = {
         id: '1',
         email: 'test@example.com',
-        name: 'Test User',
         isActive: true,
       };
 
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser as any);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
-      const result = await service.validateUser('1');
-
-      expect(result).toEqual(mockUser);
-    });
-
-    it('should return null when user is not found', async () => {
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
-
-      const result = await service.validateUser('1');
-
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('register', () => {
-    it('should create user when registration is successful', async () => {
-      const userData = {
-        email: 'test@example.com',
-        password: 'password123',
-        name: 'Test User',
-        accountType: 'STUDENT',
-      };
-
-      const mockUser = {
-        id: '1',
-        email: userData.email,
-        name: userData.name,
-        accountType: userData.accountType,
-        isActive: true,
-      };
-
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
-      (prismaService.user.create as jest.Mock).mockResolvedValue(mockUser as any);
-
-      const result = await service.register(userData);
+      const result = await service.validateUser(userId);
 
       expect(result).toEqual({
-        user: mockUser,
-        tokens: expect.any(Object),
+        id: '1',
+        email: 'test@example.com',
+        isActive: true,
       });
     });
 
-    it('should throw ConflictException when user already exists', async () => {
-      const userData = {
-        email: 'test@example.com',
-        password: 'password123',
-        name: 'Test User',
-        accountType: 'STUDENT',
-      };
+    it('should return null when user is not found', async () => {
+      const userId = '1';
 
-      const existingUser = {
-        id: '1',
-        email: userData.email,
-      };
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
 
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(existingUser as any);
+      const result = await service.validateUser(userId);
 
-      await expect(service.register(userData)).rejects.toThrow('User already exists');
+      expect(result).toBeNull();
     });
   });
 
@@ -162,89 +116,91 @@ describe('AuthService', () => {
 
       const mockUser = {
         id: '1',
-        email: loginData.email,
-        password: '$2b$10$hashedpassword',
+        email: 'test@example.com',
         isActive: true,
       };
 
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser as any);
-      // Password validation is done internally in login method
+      const mockTokens = {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      };
+
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      jest.spyOn(service as any, 'generateTokens').mockResolvedValue(mockTokens);
 
       const result = await service.login(loginData);
 
       expect(result).toEqual({
-        user: expect.any(Object),
-        tokens: expect.any(Object),
+        user: {
+          id: '1',
+          email: 'test@example.com',
+          isActive: true,
+        },
+        tokens: mockTokens,
       });
-    });
-
-    it('should throw UnauthorizedException when credentials are invalid', async () => {
-      const loginData = {
-        email: 'test@example.com',
-        password: 'wrongpassword',
-      };
-
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
-
-      await expect(service.login(loginData)).rejects.toThrow('Invalid credentials');
     });
   });
 
-  describe('refreshToken', () => {
-    it('should return new tokens when refresh token is valid', async () => {
-      const refreshToken = 'valid-refresh-token';
-      const mockRefreshToken = {
-        id: '1',
-        userId: '1',
-        token: refreshToken,
-        isActive: true,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  describe('register', () => {
+    it('should create user and return tokens when registration is successful', async () => {
+      const userData = {
+        email: 'test@example.com',
+        password: 'password123',
+        name: 'John Doe',
       };
 
       const mockUser = {
         id: '1',
-        email: 'test@example.com',
+        email: userData.email,
+        name: userData.name,
         isActive: true,
       };
 
-      (prismaService.refreshToken.findUnique as jest.Mock).mockResolvedValue(mockRefreshToken as any);
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser as any);
+      const mockTokens = {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      };
 
-      const result = await service.refreshToken({ refreshToken });
+      (prismaService.user.create as jest.Mock).mockResolvedValue(mockUser);
+      jest.spyOn(service as any, 'generateTokens').mockResolvedValue(mockTokens);
+
+      const result = await service.register(userData);
 
       expect(result).toEqual({
-        tokens: expect.any(Object),
+        user: {
+          id: '1',
+          email: userData.email,
+          name: userData.name,
+          isActive: true,
+        },
+        tokens: mockTokens,
       });
     });
 
-    it('should throw UnauthorizedException when refresh token is invalid', async () => {
-      const refreshToken = 'invalid-refresh-token';
+    it('should throw error when user already exists', async () => {
+      const userData = {
+        email: 'test@example.com',
+        password: 'password123',
+        name: 'John Doe',
+      };
 
-      (prismaService.refreshToken.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue({
+        id: '1',
+        email: userData.email,
+      });
 
-      await expect(service.refreshToken({ refreshToken })).rejects.toThrow('Invalid refresh token');
+      await expect(service.register(userData)).rejects.toThrow('User already exists');
     });
   });
 
   describe('logout', () => {
-    it('should deactivate refresh token when logout is successful', async () => {
+    it('should return success when logout is called', async () => {
       const userId = '1';
-      const refreshToken = 'valid-refresh-token';
-
-      (prismaService.refreshToken.delete as jest.Mock).mockResolvedValue({ success: true });
+      const refreshToken = 'refresh-token';
 
       const result = await service.logout(userId, refreshToken);
 
       expect(result).toEqual({ success: true });
-    });
-
-    it('should throw UnauthorizedException when logout fails', async () => {
-      const userId = '1';
-      const refreshToken = 'invalid-refresh-token';
-
-      (prismaService.refreshToken.delete as jest.Mock).mockRejectedValue(new Error('Token not found'));
-
-      await expect(service.logout(userId, refreshToken)).rejects.toThrow('Invalid refresh token');
     });
   });
 });

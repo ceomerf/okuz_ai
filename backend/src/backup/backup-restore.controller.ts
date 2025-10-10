@@ -22,13 +22,11 @@ export class BackupRestoreController {
   async createBackup(@Body() backupData: {
     name: string;
     type?: 'full' | 'incremental' | 'differential';
-    metadata?: any;
   }): Promise<BackupJob> {
     try {
       return await this.backupRestoreService.createBackup(
         backupData.name,
-        backupData.type || 'full',
-        backupData.metadata
+        backupData.type || 'full'
       );
     } catch (error) {
       throw new HttpException(
@@ -40,11 +38,10 @@ export class BackupRestoreController {
 
   @Post('restore/:backupId')
   async restoreBackup(
-    @Param('backupId') backupId: string,
-    @Body() restoreData: { metadata?: any }
+    @Param('backupId') backupId: string
   ): Promise<RestoreJob> {
     try {
-      return await this.backupRestoreService.restoreBackup(backupId, restoreData.metadata);
+      return await this.backupRestoreService.createRestore(backupId);
     } catch (error) {
       throw new HttpException(
         'Failed to restore backup',
@@ -53,93 +50,62 @@ export class BackupRestoreController {
     }
   }
 
-  @Get('download/:backupId')
-  async downloadBackup(
-    @Param('backupId') backupId: string,
-    @Res() res: Response
-  ): Promise<void> {
+  @Get('jobs')
+  async getAllBackups(): Promise<BackupJob[]> {
     try {
-      const backup = await this.backupRestoreService.getBackupFile(backupId);
-      
-      if (!backup) {
-        throw new HttpException(
-          'Backup file not found',
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      const fileName = `backup_${backupId}.sql`;
-      res.setHeader('Content-Type', 'application/sql');
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.setHeader('Content-Length', backup.length);
-      res.send(backup);
+      return await this.backupRestoreService.getAllBackups();
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
       throw new HttpException(
-        'Failed to download backup',
+        'Failed to get backup jobs',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
-  @Get('verify/:backupId')
-  async verifyBackup(@Param('backupId') backupId: string): Promise<{
-    isValid: boolean;
-    fileSize: number;
-    checksum: string;
-    error?: string;
-  }> {
+  @Get('jobs/:id')
+  async getBackupById(@Param('id') id: string): Promise<BackupJob | null> {
     try {
-      return await this.backupRestoreService.verifyBackup(backupId);
+      return await this.backupRestoreService.getBackupById(id);
     } catch (error) {
       throw new HttpException(
-        'Failed to verify backup',
+        'Failed to get backup job',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
-  @Delete(':backupId')
-  async deleteBackup(@Param('backupId') backupId: string): Promise<void> {
+  @Get('restores')
+  async getAllRestores(): Promise<RestoreJob[]> {
     try {
-      await this.backupRestoreService.deleteBackup(backupId);
+      return await this.backupRestoreService.getAllRestores();
     } catch (error) {
       throw new HttpException(
-        'Failed to delete backup',
+        'Failed to get restore jobs',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
-  @Post('cleanup')
-  async cleanupOldBackups(@Body() cleanupData: {
-    retentionDays: number;
-  }): Promise<{ deletedCount: number }> {
+  @Get('restores/:id')
+  async getRestoreById(@Param('id') id: string): Promise<RestoreJob | null> {
     try {
-      const deletedCount = await this.backupRestoreService.cleanupOldBackups(cleanupData.retentionDays);
-      return { deletedCount };
+      return await this.backupRestoreService.getRestoreById(id);
     } catch (error) {
       throw new HttpException(
-        'Failed to cleanup old backups',
+        'Failed to get restore job',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   @Post('schedules')
-  async createBackupSchedule(@Body() scheduleData: {
+  async createSchedule(@Body() scheduleData: {
     name: string;
-    type: 'full' | 'incremental' | 'differential';
-    frequency: 'daily' | 'weekly' | 'monthly';
-    time: string;
-    dayOfWeek?: number;
-    dayOfMonth?: number;
-    retentionDays: number;
+    schedule: string;
+    isActive?: boolean;
   }): Promise<BackupSchedule> {
     try {
-      return await this.backupRestoreService.createBackupSchedule(scheduleData);
+      return await this.backupRestoreService.createSchedule(scheduleData);
     } catch (error) {
       throw new HttpException(
         'Failed to create backup schedule',
@@ -148,13 +114,41 @@ export class BackupRestoreController {
     }
   }
 
-  @Put('schedules/:scheduleId')
-  async updateBackupSchedule(
-    @Param('scheduleId') scheduleId: string,
-    @Body() scheduleData: Partial<BackupSchedule>
+  @Get('schedules')
+  async getAllSchedules(): Promise<BackupSchedule[]> {
+    try {
+      return await this.backupRestoreService.getAllSchedules();
+    } catch (error) {
+      throw new HttpException(
+        'Failed to get backup schedules',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('schedules/:id')
+  async getScheduleById(@Param('id') id: string): Promise<BackupSchedule | null> {
+    try {
+      return await this.backupRestoreService.getScheduleById(id);
+    } catch (error) {
+      throw new HttpException(
+        'Failed to get backup schedule',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Put('schedules/:id')
+  async updateSchedule(
+    @Param('id') id: string,
+    @Body() scheduleData: {
+      name?: string;
+      schedule?: string;
+      isActive?: boolean;
+    }
   ): Promise<BackupSchedule> {
     try {
-      return await this.backupRestoreService.updateBackupSchedule(scheduleId, scheduleData);
+      return await this.backupRestoreService.updateSchedule(id, scheduleData);
     } catch (error) {
       throw new HttpException(
         'Failed to update backup schedule',
@@ -163,13 +157,28 @@ export class BackupRestoreController {
     }
   }
 
-  @Delete('schedules/:scheduleId')
-  async deleteBackupSchedule(@Param('scheduleId') scheduleId: string): Promise<void> {
+  @Delete('schedules/:id')
+  async deleteSchedule(@Param('id') id: string): Promise<void> {
     try {
-      await this.backupRestoreService.deleteBackupSchedule(scheduleId);
+      await this.backupRestoreService.deleteSchedule(id);
     } catch (error) {
       throw new HttpException(
         'Failed to delete backup schedule',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('cleanup')
+  async cleanupOldBackups(@Body() cleanupData: {
+    daysToKeep: number;
+  }): Promise<{ deletedCount: number }> {
+    try {
+      const deletedCount = await this.backupRestoreService.cleanupOldBackups(cleanupData.daysToKeep);
+      return { deletedCount };
+    } catch (error) {
+      throw new HttpException(
+        'Failed to cleanup old backups',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
