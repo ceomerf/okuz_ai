@@ -142,14 +142,26 @@ const SystemHealthDashboard: React.FC = () => {
         systemHealthApi.getActiveAlerts(),
       ]);
 
-      if (health.success && health.data) setSystemHealth(health.data);
-      else if (process.env.NODE_ENV !== 'production') setSystemHealth(mockSystemHealth);
+      if (health.success && health.data) {
+        setSystemHealth(health.data);
+      } else {
+        console.warn('System health API failed, using empty state');
+        setSystemHealth(null);
+      }
 
-      if (metrics.success && metrics.data) setSystemMetrics(metrics.data);
-      else if (process.env.NODE_ENV !== 'production') setSystemMetrics(mockSystemMetrics);
+      if (metrics.success && metrics.data) {
+        setSystemMetrics(metrics.data);
+      } else {
+        console.warn('System metrics API failed, using empty state');
+        setSystemMetrics(null);
+      }
 
-      if (services.success && services.data) setServiceStatus(services.data as any);
-      else if (process.env.NODE_ENV !== 'production') setServiceStatus(mockServiceStatus);
+      if (services.success && services.data) {
+        setServiceStatus(services.data as any);
+      } else {
+        console.warn('Service status API failed, using empty state');
+        setServiceStatus([]);
+      }
       if (perf.success && perf.data) {
         const mapped = (perf.data as any[]).map(d => ({
           time: format(new Date(d.timestamp), 'HH:mm', { locale: tr }),
@@ -164,13 +176,10 @@ const SystemHealthDashboard: React.FC = () => {
       setLastUpdate(new Date());
     } catch (error) {
       console.error('Sistem verileri yüklenemedi:', error);
-      if (process.env.NODE_ENV !== 'production') {
-        setSystemHealth(mockSystemHealth);
-        setSystemMetrics(mockSystemMetrics);
-        setServiceStatus(mockServiceStatus);
-      } else {
-        showError('Sistem verileri yüklenemedi');
-      }
+      showError('Sistem verileri yüklenemedi');
+      setSystemHealth(null);
+      setSystemMetrics(null);
+      setServiceStatus([]);
     }
     setLoading(false);
   };

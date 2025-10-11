@@ -29,18 +29,37 @@ import ParentDashboard from './components/ParentPanel/ParentDashboard';
 import DynamicEntityPage from './components/Dynamic/DynamicEntityPage';
 import DynamicSidebar from './components/Dynamic/DynamicSidebar';
 
-// Material-UI tema oluştur
+// Öküz AI Turuncu Tema
 const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#3b82f6',
+      main: '#FF6B35', // Öküz AI Turuncu
+      light: '#FF8A65',
+      dark: '#E65100',
+      contrastText: '#FFFFFF',
     },
     secondary: {
-      main: '#10b981',
+      main: '#FFA726', // Turuncu tonu
+      light: '#FFB74D',
+      dark: '#F57C00',
+      contrastText: '#FFFFFF',
     },
     background: {
-      default: '#f8fafc',
+      default: '#FFF8F5', // Açık turuncu arka plan
+      paper: '#FFFFFF',
+    },
+    error: {
+      main: '#D32F2F',
+    },
+    warning: {
+      main: '#FF9800',
+    },
+    info: {
+      main: '#2196F3',
+    },
+    success: {
+      main: '#4CAF50',
     },
   },
   typography: {
@@ -58,17 +77,39 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-          borderRadius: '12px',
+          boxShadow: '0 4px 12px 0 rgba(255, 107, 53, 0.15), 0 2px 4px 0 rgba(255, 107, 53, 0.08)',
+          borderRadius: '16px',
+          border: '1px solid rgba(255, 107, 53, 0.1)',
         },
       },
     },
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: '8px',
+          borderRadius: '12px',
           textTransform: 'none',
           fontWeight: 600,
+          boxShadow: '0 2px 8px rgba(255, 107, 53, 0.3)',
+          '&:hover': {
+            boxShadow: '0 4px 16px rgba(255, 107, 53, 0.4)',
+            transform: 'translateY(-1px)',
+          },
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#FF6B35',
+          boxShadow: '0 4px 20px rgba(255, 107, 53, 0.3)',
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: '20px',
+          fontWeight: 500,
         },
       },
     },

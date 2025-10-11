@@ -710,8 +710,15 @@ const EnhancedAdminPanel: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h4" component="h1">
-              🎯 Gelişmiş Admin Paneli - Gerçek Verilerle
+            <Typography variant="h4" component="h1" sx={{ 
+              color: 'primary.main',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #FF6B35 0%, #FFA726 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>
+              🎯 Öküz AI Gelişmiş Admin Paneli
             </Typography>
             <Box display="flex" gap={2}>
               <Button
