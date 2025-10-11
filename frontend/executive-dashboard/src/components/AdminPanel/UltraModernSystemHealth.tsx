@@ -96,7 +96,6 @@ import {
   AutoAwesome,
   FlashOn,
   Bolt,
-  Zap,
   Thunderstorm,
   LocalFireDepartment,
   Whatshot,
@@ -112,8 +111,6 @@ import {
   Analytics,
   Assessment,
   Timeline,
-  BarChart,
-  PieChart,
   TableChart,
   FilterList,
   Search,
@@ -348,7 +345,7 @@ const UltraModernSystemHealth: React.FC = () => {
     } catch (error) {
       console.error('Sistem verileri yüklenemedi:', error);
       showError('Sistem verileri yüklenemedi');
-      logEvent({ type: 'ULTRA_SYSTEM_HEALTH_ERROR', error: error.message });
+      logEvent({ type: 'ULTRA_SYSTEM_HEALTH_ERROR' });
     } finally {
       setLoading(false);
     }
@@ -441,7 +438,7 @@ const UltraModernSystemHealth: React.FC = () => {
       case 'critical':
         return 'error';
       default:
-        return 'default';
+        return 'primary';
     }
   };
 
@@ -483,7 +480,7 @@ const UltraModernSystemHealth: React.FC = () => {
         alert.id === alertId ? { ...alert, resolved: true } : alert
       ));
       showSuccess('Uyarı çözüldü');
-      logEvent({ type: 'ALERT_RESOLVED', alertId });
+      logEvent({ type: 'ALERT_RESOLVED' });
     } catch (error) {
       showError('Uyarı çözülemedi');
     }
@@ -583,7 +580,7 @@ const UltraModernSystemHealth: React.FC = () => {
         >
           <Grid container spacing={3}>
             {metricCards.map((metric, index) => (
-              <Grid item xs={12} sm={6} md={4} lg={2.4} key={index}>
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }} key={index}>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -664,7 +661,7 @@ const UltraModernSystemHealth: React.FC = () => {
                 </Typography>
                 <Grid container spacing={3}>
                   {systemHealth && Object.entries(systemHealth).filter(([key]) => key !== 'timestamp').map(([key, value]) => (
-                    <Grid item xs={12} sm={6} md={3} key={key}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }} key={key}>
                       <Box sx={{ 
                         p: 2, 
                         borderRadius: 2, 
@@ -703,7 +700,7 @@ const UltraModernSystemHealth: React.FC = () => {
           transition={{ duration: 0.5 }}
         >
           <Grid container spacing={3}>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <StyledCard>
                 <CardContent>
                   <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -834,7 +831,7 @@ const UltraModernSystemHealth: React.FC = () => {
         >
           <Grid container spacing={3}>
             {alerts.map((alert, index) => (
-              <Grid item xs={12} sm={6} md={4} key={alert.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={alert.id}>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -899,7 +896,7 @@ const UltraModernSystemHealth: React.FC = () => {
           transition={{ duration: 0.5 }}
         >
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <StyledCard>
                 <CardContent>
                   <Typography variant="h6" fontWeight="bold" gutterBottom>
@@ -917,7 +914,7 @@ const UltraModernSystemHealth: React.FC = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }: any) => `${name} ${((percent as number) * 100).toFixed(0)}%`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
@@ -938,7 +935,7 @@ const UltraModernSystemHealth: React.FC = () => {
               </StyledCard>
             </Grid>
             
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <StyledCard>
                 <CardContent>
                   <Typography variant="h6" fontWeight="bold" gutterBottom>

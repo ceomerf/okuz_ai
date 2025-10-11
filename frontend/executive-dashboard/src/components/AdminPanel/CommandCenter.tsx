@@ -106,7 +106,6 @@ import {
   Rocket,
   FlashOn,
   Bolt,
-  Zap,
   Thunderstorm,
   LocalFireDepartment,
   Whatshot,
@@ -177,11 +176,6 @@ import {
   Battery5Bar,
   Battery6Bar,
   BatteryStd,
-  BatteryVeryLow,
-  BatteryLow,
-  BatteryMedium,
-  BatteryHigh,
-  BatteryVeryHigh,
   BatteryChargingFull,
   BatteryCharging20,
   BatteryCharging30,
@@ -192,7 +186,6 @@ import {
   BatterySaver,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import React from 'react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale/tr';
 import { useNotification } from '../../hooks/useNotification';
@@ -629,7 +622,7 @@ const CommandCenter: React.FC = () => {
     };
 
     setExecutionHistory(prev => [execution, ...prev]);
-    logEvent({ type: 'COMMAND_STARTED', commandId: command.id, executionId });
+    logEvent({ type: 'COMMAND_STARTED' });
 
     try {
       await command.action();
@@ -656,7 +649,7 @@ const CommandCenter: React.FC = () => {
                 ...exec, 
                 status: 'failed', 
                 endTime: new Date().toISOString(),
-                error: error instanceof Error ? error.message : 'Bilinmeyen hata'
+                error: (error as Error)?.message || 'Bilinmeyen hata'
               }
             : exec
         )
@@ -757,7 +750,7 @@ const CommandCenter: React.FC = () => {
           <Card sx={{ mb: 3 }}>
             <CardContent>
               <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
                     label="Komut Ara"
@@ -768,7 +761,7 @@ const CommandCenter: React.FC = () => {
                     }}
                   />
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <FormControl fullWidth>
                     <InputLabel>Kategori</InputLabel>
                     <Select
@@ -794,7 +787,7 @@ const CommandCenter: React.FC = () => {
           {/* Komut Listesi */}
           <Grid container spacing={2}>
             {filteredCommands.map((command) => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={command.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={command.id}>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -903,7 +896,7 @@ const CommandCenter: React.FC = () => {
         <Box>
           <Grid container spacing={2}>
             {commandTemplates.map((template) => (
-              <Grid item xs={12} sm={6} md={4} key={template.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={template.id}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -969,7 +962,7 @@ const CommandCenter: React.FC = () => {
                     value={commandParameters[param.name] || param.defaultValue || ''}
                     onChange={(e) => setCommandParameters(prev => ({
                       ...prev,
-                      [param.name]: param.type === 'boolean' ? e.target.checked : e.target.value
+                      [param.name]: param.type === 'boolean' ? (e.target as HTMLInputElement).checked : e.target.value
                     }))}
                     required={param.required}
                     helperText={param.description}

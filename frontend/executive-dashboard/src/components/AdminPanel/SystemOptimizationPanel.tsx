@@ -69,7 +69,6 @@ import {
   Code,
   Build,
   Engineering,
-  Precision,
   Tune,
   AutoFixHigh,
   AutoAwesome,
@@ -80,7 +79,6 @@ import {
   Rocket,
   FlashOn,
   Bolt,
-  Zap,
   Thunderstorm,
   LocalFireDepartment,
   Whatshot,
@@ -153,11 +151,6 @@ import {
   Battery5Bar,
   Battery6Bar,
   BatteryStd,
-  BatteryVeryLow,
-  BatteryLow,
-  BatteryMedium,
-  BatteryHigh,
-  BatteryVeryHigh,
   BatteryChargingFull,
   BatteryCharging20,
   BatteryCharging30,
@@ -387,7 +380,7 @@ const SystemOptimizationPanel: React.FC = () => {
       setPerformanceData(mockPerformanceData);
       
       showSuccess('Optimizasyon verileri yüklendi');
-      logEvent({ type: 'OPTIMIZATION_DATA_LOADED', timestamp: new Date().toISOString() });
+      logEvent({ type: 'OPTIMIZATION_DATA_LOADED' });
     } catch (error) {
       console.error('Optimizasyon veri yükleme hatası:', error);
       showError('Optimizasyon verileri yüklenemedi');
@@ -412,7 +405,7 @@ const SystemOptimizationPanel: React.FC = () => {
       );
       
       showSuccess(`${action.name} başarıyla tamamlandı`);
-      logEvent({ type: 'OPTIMIZATION_ACTION_COMPLETED', actionId: action.id });
+      logEvent({ type: 'OPTIMIZATION_ACTION_COMPLETED' });
       
       // Verileri yenile
       await loadOptimizationData();
@@ -462,7 +455,7 @@ const SystemOptimizationPanel: React.FC = () => {
       case 'critical':
         return 'error';
       default:
-        return 'default';
+        return 'primary';
     }
   };
 
@@ -550,7 +543,7 @@ const SystemOptimizationPanel: React.FC = () => {
         >
           <Grid container spacing={3}>
             {optimizationMetrics.map((metric, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -614,7 +607,7 @@ const SystemOptimizationPanel: React.FC = () => {
         >
           <Grid container spacing={3}>
             {systemResources.map((resource, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -659,7 +652,7 @@ const SystemOptimizationPanel: React.FC = () => {
         >
           <Grid container spacing={3}>
             {optimizationActions.map((action) => (
-              <Grid item xs={12} sm={6} md={4} key={action.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={action.id}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
