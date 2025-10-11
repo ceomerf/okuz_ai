@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { NotificationSettingsService } from './notification-settings.service';
 
 interface AuthenticatedRequest extends Request {
@@ -23,7 +23,7 @@ export class NotificationSettingsController {
   @Get()
   @Roles('STUDENT', 'PARENT', 'TEACHER', 'ADMIN')
   async getUserNotificationSettings(@Request() req: AuthenticatedRequest) {
-    return this.notificationSettingsService.getUserNotificationSettings(req.user.id);
+    return this.notificationSettingsService.getNotificationSettings(req.user.id);
   }
 
   /**

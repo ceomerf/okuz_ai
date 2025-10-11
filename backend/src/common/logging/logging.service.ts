@@ -119,7 +119,7 @@ export class LoggingService {
         return;
       }
 
-      await this.prisma.logEntry.create({
+      await (this.prisma as any).logEntry.create({
         data: {
           level,
           message,
@@ -141,13 +141,13 @@ export class LoggingService {
    */
   async getUserLogs(userId: string, limit: number = 100): Promise<LogEntry[]> {
     try {
-      const logs = await this.prisma.logEntry.findMany({
+      const logs = await (this.prisma as any).logEntry.findMany({
         where: { userId },
         orderBy: { timestamp: 'desc' },
         take: limit,
       });
 
-      return logs.map(log => ({
+      return logs.map((log: any) => ({
         level: log.level as any,
         message: log.message,
         context: JSON.parse(log.context || '{}'),
@@ -166,13 +166,13 @@ export class LoggingService {
    */
   async getServiceLogs(service: string, limit: number = 100): Promise<LogEntry[]> {
     try {
-      const logs = await this.prisma.logEntry.findMany({
+      const logs = await (this.prisma as any).logEntry.findMany({
         where: { service },
         orderBy: { timestamp: 'desc' },
         take: limit,
       });
 
-      return logs.map(log => ({
+      return logs.map((log: any) => ({
         level: log.level as any,
         message: log.message,
         context: JSON.parse(log.context || '{}'),
@@ -194,7 +194,7 @@ export class LoggingService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
-      await this.prisma.logEntry.deleteMany({
+      await (this.prisma as any).logEntry.deleteMany({
         where: {
           timestamp: {
             lt: cutoffDate,

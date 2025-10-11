@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 // import { GeminiService } from '../services/gemini.service'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 import { OpenAIService } from '../services/openai.service';
@@ -44,7 +44,7 @@ export class GamificationService {
     private readonly prisma: PrismaService,
     // private readonly geminiService: GeminiService, // DEVRE DIŞI - OPENAI KULLANILIYOR
     private readonly openaiService: OpenAIService,
-    private readonly cache: CacheService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   // XP hesaplama algoritması - performansa ve zorluk seviyesine göre
@@ -91,12 +91,12 @@ export class GamificationService {
     const userId = data.userId || 'user-id'; // JWT'den gelecek
     
     // Kullanıcının gamification profilini al veya oluştur
-    let profile = await this.prisma.gamificationProfile.findUnique({
+    let profile = await (this.prisma as any).gamificationProfile.findUnique({
       where: { userId },
     });
 
     if (!profile) {
-      profile = await this.prisma.gamificationProfile.create({
+      profile = await (this.prisma as any).gamificationProfile.create({
         data: {
           userId,
           level: 1,
@@ -124,7 +124,7 @@ export class GamificationService {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     // Streak bonus
-    const lastSession = await this.prisma.studySession.findFirst({
+    const lastSession = await (this.prisma as any).studySession.findFirst({
       where: {
         userId,
         createdAt: {
@@ -154,7 +154,7 @@ export class GamificationService {
     const earnedCoins = Math.floor(totalXP / 10) + (leveledUp ? newLevel * 10 : 0);
 
     // Profili güncelle
-    const updatedProfile = await this.prisma.gamificationProfile.update({
+    const updatedProfile = await (this.prisma as any).gamificationProfile.update({
       where: { userId },
       data: {
         experience: newTotalXP,
@@ -199,7 +199,7 @@ export class GamificationService {
       return { global: { rankings: [], userPosition: 0, totalUsers: 0 }, friends: { rankings: [] } };
     }
     // Haftalık leaderboard
-    const weeklyLeaderboard = await this.prisma.gamificationProfile.findMany({
+    const weeklyLeaderboard = await (this.prisma as any).gamificationProfile.findMany({
       take: 50,
       orderBy: [
         { experience: 'desc' },
@@ -222,10 +222,10 @@ export class GamificationService {
     });
 
     // Kullanıcının pozisyonu
-    const userPosition = await this.prisma.gamificationProfile.count({
+    const userPosition = await (this.prisma as any).gamificationProfile.count({
       where: {
         experience: {
-          gt: (await this.prisma.gamificationProfile.findUnique({
+          gt: (await (this.prisma as any).gamificationProfile.findUnique({
             where: { userId },
           }))?.experience || 0,
         },
@@ -233,14 +233,14 @@ export class GamificationService {
     }) + 1;
 
     // Arkadaş leaderboard'u (aynı sınıf/alan)
-    const userProfile = await this.prisma.user.findUnique({
+    const userProfile = await (this.prisma as any).user.findUnique({
       where: { id: userId },
       include: { studentProfile: true },
     });
 
     let friendsLeaderboard: any[] = [];
     if (userProfile?.studentProfile) {
-      friendsLeaderboard = await this.prisma.gamificationProfile.findMany({
+      friendsLeaderboard = await (this.prisma as any).gamificationProfile.findMany({
         take: 20,
         orderBy: [{ experience: 'desc' }],
         include: {
@@ -270,7 +270,7 @@ export class GamificationService {
 
     return {
       global: {
-        rankings: weeklyLeaderboard.map((profile, index) => ({
+        rankings: weeklyLeaderboard.map((profile: any, index: number) => ({
           position: index + 1,
           userId: profile.user.id,
           name: profile.user.name,
@@ -281,7 +281,7 @@ export class GamificationService {
           isCurrentUser: profile.user.id === userId,
         })),
         userPosition,
-        totalUsers: await this.prisma.gamificationProfile.count(),
+        totalUsers: await (this.prisma as any).gamificationProfile.count(),
       },
       friends: {
         rankings: friendsLeaderboard.map((profile, index) => ({
@@ -356,21 +356,21 @@ export class GamificationService {
     }
 
     // İlk çalışma
-    const studyCount = await this.prisma.studySession.count({
+    const studyCount = await (this.prisma as any).studySession.count({
       where: { userId },
     });
     if (studyCount === 1) achievements.push('first_study');
 
     // Achievement'ları unlock et
     for (const achievementId of achievements) {
-      const existing = await this.prisma.achievement.findFirst({
+      const existing = await (this.prisma as any).achievement.findFirst({
         where: { userId, title: achievementId },
       });
 
       if (!existing) {
         const achievementData = this.getAllPossibleAchievements().find(a => a.id === achievementId);
         if (achievementData) {
-          await this.prisma.achievement.create({
+          await (this.prisma as any).achievement.create({
             data: {
               userId,
               title: achievementData.title,
@@ -393,7 +393,7 @@ export class GamificationService {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     // Kullanıcının profil bilgilerini al
-    const userProfile = await this.prisma.user.findUnique({
+    const userProfile = await (this.prisma as any).user.findUnique({
       where: { id: userId },
       include: {
         studentProfile: true,
@@ -461,7 +461,7 @@ export class GamificationService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const sessions = await this.prisma.studySession.findMany({
+    const sessions = await (this.prisma as any).studySession.findMany({
       where: {
         userId,
         createdAt: { gte: today },
@@ -469,14 +469,14 @@ export class GamificationService {
       },
     });
 
-    return sessions.reduce((total, session) => total + session.duration, 0);
+    return sessions.reduce((total: number, session: any) => total + session.duration, 0);
   }
 
   private async getTodayQuizCount(userId: string): Promise<number> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    return await this.prisma.quiz.count({
+    return await (this.prisma as any).quiz.count({
       where: {
         userId,
         createdAt: { gte: today },
@@ -489,7 +489,7 @@ export class GamificationService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    return await this.prisma.toolUsage.count({
+    return await (this.prisma as any).toolUsage.count({
       where: {
         userId,
         toolName: 'sos-question-solver',
@@ -502,7 +502,7 @@ export class GamificationService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    return await this.prisma.flashcard.count({
+    return await (this.prisma as any).flashcard.count({
       where: {
         userId,
         lastReviewed: { gte: today },
@@ -525,7 +525,7 @@ export class GamificationService {
     }
 
     // Ödül ver
-    await this.prisma.gamificationProfile.update({
+    await (this.prisma as any).gamificationProfile.update({
       where: { userId },
       data: {
         experience: { increment: challenge.reward.xp },
@@ -542,7 +542,7 @@ export class GamificationService {
   }
 
   async getStreaks(userId: string): Promise<any> {
-    const profile = await this.prisma.gamificationProfile.findUnique({
+    const profile = await (this.prisma as any).gamificationProfile.findUnique({
       where: { userId },
     });
 
@@ -550,7 +550,7 @@ export class GamificationService {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const studySessions = await this.prisma.studySession.findMany({
+    const studySessions = await (this.prisma as any).studySession.findMany({
       where: {
         userId,
         createdAt: { gte: thirtyDaysAgo },
@@ -561,7 +561,7 @@ export class GamificationService {
 
     // Günlük çalışma haritası oluştur
     const dailyStudy = new Map();
-    studySessions.forEach(session => {
+    studySessions.forEach((session: any) => {
       const date = session.createdAt.toISOString().split('T')[0];
       if (!dailyStudy.has(date)) {
         dailyStudy.set(date, { duration: 0, sessions: 0 });
@@ -587,7 +587,7 @@ export class GamificationService {
 
   private async calculateLongestStreak(userId: string): Promise<number> {
     // Tüm çalışma seanslarını al
-    const sessions = await this.prisma.studySession.findMany({
+    const sessions = await (this.prisma as any).studySession.findMany({
       where: { userId, isCompleted: true },
       orderBy: { createdAt: 'asc' },
     });
@@ -596,7 +596,7 @@ export class GamificationService {
     let currentStreak = 0;
     let lastDate: Date | null = null;
 
-    sessions.forEach(session => {
+    sessions.forEach((session: any) => {
       const currentDate = new Date(session.createdAt.toISOString().split('T')[0]);
       
       if (lastDate) {
@@ -658,7 +658,7 @@ export class GamificationService {
   }
 
   async getRewards(userId: string): Promise<any> {
-    const profile = await this.prisma.gamificationProfile.findUnique({
+    const profile = await (this.prisma as any).gamificationProfile.findUnique({
       where: { userId },
     });
 
@@ -729,7 +729,7 @@ export class GamificationService {
       throw new NotFoundException('Reward not found');
     }
 
-    const profile = await this.prisma.gamificationProfile.findUnique({
+    const profile = await (this.prisma as any).gamificationProfile.findUnique({
       where: { userId },
     });
 
@@ -738,7 +738,7 @@ export class GamificationService {
     }
 
     // Coin'leri düş
-    await this.prisma.gamificationProfile.update({
+    await (this.prisma as any).gamificationProfile.update({
       where: { userId },
       data: {
         coins: { decrement: reward.cost },
@@ -757,7 +757,7 @@ export class GamificationService {
   }
 
   async getProgress(userId: string): Promise<any> {
-    const profile = await this.prisma.gamificationProfile.findUnique({
+    const profile = await (this.prisma as any).gamificationProfile.findUnique({
       where: { userId },
     });
 
@@ -772,7 +772,7 @@ export class GamificationService {
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     weekStart.setHours(0, 0, 0, 0);
 
-    const weeklyXP = await this.prisma.studySession.aggregate({
+    const weeklyXP = await (this.prisma as any).studySession.aggregate({
       where: {
         userId,
         createdAt: { gte: weekStart },
@@ -785,13 +785,13 @@ export class GamificationService {
       level: levelInfo,
       stats: {
         totalStudyTime: await this.getTotalStudyTime(userId),
-        completedQuizzes: await this.prisma.quiz.count({
+        completedQuizzes: await (this.prisma as any).quiz.count({
           where: { userId, isCompleted: true },
         }),
-        solvedQuestions: await this.prisma.toolUsage.count({
+        solvedQuestions: await (this.prisma as any).toolUsage.count({
           where: { userId, toolName: 'sos-question-solver' },
         }),
-        createdFlashcards: await this.prisma.flashcard.count({
+        createdFlashcards: await (this.prisma as any).flashcard.count({
           where: { userId },
         }),
         weeklyXP: (weeklyXP._sum.duration || 0) * 2, // Rough calculation
@@ -817,7 +817,7 @@ export class GamificationService {
   }
 
   async getLevelInfo(userId: string): Promise<any> {
-    const profile = await this.prisma.gamificationProfile.findUnique({
+    const profile = await (this.prisma as any).gamificationProfile.findUnique({
       where: { userId },
     });
 
@@ -829,7 +829,7 @@ export class GamificationService {
   }
 
   private async getTotalStudyTime(userId: string): Promise<number> {
-    const result = await this.prisma.studySession.aggregate({
+    const result = await (this.prisma as any).studySession.aggregate({
       where: { userId, isCompleted: true },
       _sum: { duration: true },
     });
@@ -838,7 +838,7 @@ export class GamificationService {
   }
 
   public async getUserBadges(userId: string) {
-    const achievements = await this.prisma.achievement.findMany({
+    const achievements = await (this.prisma as any).achievement.findMany({
       where: { userId },
       select: { title: true, icon: true, unlockedAt: true },
     });
@@ -867,7 +867,7 @@ export class GamificationService {
 
   async useEnergy(data: { activityType: string; energyCost: number; userId?: string }): Promise<any> {
     const userId = data.userId || 'user-id'; // JWT'den gelecek
-    const profile = await this.prisma.gamificationProfile.findUnique({
+    const profile = await (this.prisma as any).gamificationProfile.findUnique({
       where: { userId },
     });
 
@@ -879,7 +879,7 @@ export class GamificationService {
       throw new BadRequestException('Insufficient energy');
     }
 
-    const updatedProfile = await this.prisma.gamificationProfile.update({
+    const updatedProfile = await (this.prisma as any).gamificationProfile.update({
       where: { userId },
       data: {
         energy: { decrement: data.energyCost },
@@ -896,7 +896,7 @@ export class GamificationService {
   }
 
   async getEnergyStatus(userId: string): Promise<any> {
-    const profile = await this.prisma.gamificationProfile.findUnique({
+    const profile = await (this.prisma as any).gamificationProfile.findUnique({
       where: { userId },
     });
 
@@ -912,7 +912,7 @@ export class GamificationService {
     let currentEnergy = profile.energy;
     if (hoursSinceRefill >= 6) {
       currentEnergy = profile.maxEnergy;
-      await this.prisma.gamificationProfile.update({
+      await (this.prisma as any).gamificationProfile.update({
         where: { userId },
         data: {
           energy: profile.maxEnergy,
@@ -956,7 +956,7 @@ export class GamificationService {
       throw new NotFoundException('Achievement not found');
     }
 
-    const existing = await this.prisma.achievement.findFirst({
+    const existing = await (this.prisma as any).achievement.findFirst({
       where: { userId: data.userId, title: achievementData.title },
     });
 
@@ -964,7 +964,7 @@ export class GamificationService {
       return { success: false, message: 'Achievement already unlocked' };
     }
 
-    await this.prisma.achievement.create({
+    await (this.prisma as any).achievement.create({
       data: {
         userId: data.userId,
         title: achievementData.title,
@@ -1010,7 +1010,7 @@ export class GamificationService {
   // Eksik methodları ekleyelim
   async createBadge(data: any) {
     try {
-      const badge = await this.prisma.badge.create({
+      const badge = await (this.prisma as any).badge.create({
         data: {
           name: data.name,
           description: data.description,
@@ -1047,13 +1047,13 @@ export class GamificationService {
 
   async getUserAchievements(userId: string) {
     const cacheKey = `achievements:${userId}`;
-    const cached = await this.cache.get(cacheKey);
+    const cached = await this.cache?.get(cacheKey);
     if (cached) return cached;
-    const list = await this.prisma.achievement.findMany({
+    const list = await (this.prisma as any).achievement.findMany({
       where: { userId },
       orderBy: { unlockedAt: 'desc' },
     });
-    await this.cache.set(cacheKey, list, 3600);
+    await this.cache?.set(cacheKey, list, 3600);
     return list;
   }
 }

@@ -103,7 +103,7 @@ export class ABTestingService {
 
       return { variant: 'control', testId, isParticipant: false };
     } catch (error) {
-      this.logger.error(`Failed to get user variant for test ${testId}: ${error.message}`);
+      this.logger.error(`Failed to get user variant for test ${testId}: ${(error as Error).message}`);
       return { variant: 'control', testId, isParticipant: false };
     }
   }
@@ -129,7 +129,7 @@ export class ABTestingService {
 
       this.logger.log(`A/B test conversion tracked: ${testId} - ${variant} - ${conversionEvent}`);
     } catch (error) {
-      this.logger.error(`Failed to track A/B test conversion: ${error.message}`);
+      this.logger.error(`Failed to track A/B test conversion: ${(error as Error).message}`);
     }
   }
 
@@ -160,7 +160,7 @@ export class ABTestingService {
 
       return results;
     } catch (error) {
-      this.logger.error(`Failed to get A/B test results: ${error.message}`);
+      this.logger.error(`Failed to get A/B test results: ${(error as Error).message}`);
       return [];
     }
   }

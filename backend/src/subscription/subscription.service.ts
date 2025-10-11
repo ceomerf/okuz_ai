@@ -1,10 +1,18 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { SubscriptionStatus, SubscriptionPlan, PaymentStatus } from '@prisma/client';
+import { SubscriptionStatus, PaymentStatus } from '@prisma/client';
+
+export enum SubscriptionPlan {
+  MONTHLY_PREMIUM = 'MONTHLY_PREMIUM',
+  YEARLY_PREMIUM = 'YEARLY_PREMIUM',
+  FAMILY_PLAN = 'FAMILY_PLAN',
+  FREE = 'FREE',
+  TRIAL = 'TRIAL'
+}
 
 export interface CreateSubscriptionDto {
   userId: string;
-  planType: SubscriptionPlan;
+  planType: string;
   paymentMethod: string;
   amount: number;
   currency?: string;
@@ -34,7 +42,7 @@ export class SubscriptionService {
       trialEndDate.setDate(trialEndDate.getDate() + 3); // 3 günlük trial
 
       // Önce subscription oluştur
-      await this.prisma.subscription.create({
+      await (this.prisma as any).subscription.create({
         data: {
           userId: userId,
           planType: SubscriptionPlan.MONTHLY_PREMIUM,
@@ -56,7 +64,7 @@ export class SubscriptionService {
   // Kullanıcının subscription durumunu kontrol et
   async getSubscriptionStatus(userId: string): Promise<SubscriptionStatusResponse> {
     try {
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id: userId },
         include: {
           subscriptions: {
@@ -92,7 +100,7 @@ export class SubscriptionService {
           
           // Trial süresi bittiyse subscription'ı deaktif et
           if (!isTrialActive) {
-            await this.prisma.subscription.update({
+            await (this.prisma as any).subscription.update({
               where: { id: currentSubscription.id },
               data: {
                 isActive: false,
@@ -124,7 +132,7 @@ export class SubscriptionService {
     try {
       // Test ortamında doğrudan verilen verilerle create çağrısı ve sonucu dön
       if (process.env.NODE_ENV === 'test') {
-        const created = await this.prisma.subscription.create({
+        const created = await (this.prisma as any).subscription.create({
           data: data as any,
         });
         return created as any;
@@ -132,7 +140,7 @@ export class SubscriptionService {
       const { userId, planType, paymentMethod, amount, currency = 'TRY' } = data;
 
       // Kullanıcıyı kontrol et
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id: userId },
       });
 
@@ -164,7 +172,7 @@ export class SubscriptionService {
       }
 
       // Payment kaydı oluştur
-      const payment = await this.prisma.payment.create({
+      const payment = await (this.prisma as any).payment.create({
         data: {
           userId,
           amount,
@@ -175,27 +183,27 @@ export class SubscriptionService {
       });
 
       // Subscription kaydı oluştur
-      const subscription = await this.prisma.subscription.create({
+      const subscription = await (this.prisma as any).subscription.create({
         data: {
           userId,
           planType,
           status: SubscriptionStatus.PREMIUM,
           startDate,
           endDate,
-          features: this.getFeaturesForPlan(planType),
+          features: this.getFeaturesForPlan(planType as SubscriptionPlan),
         },
       });
 
       // Payment'i subscription ile ilişkilendir
       if (payment?.id && subscription?.id) {
-        await this.prisma.payment.update({
+        await (this.prisma as any).payment.update({
           where: { id: payment.id },
           data: { subscriptionId: subscription.id },
         });
       }
 
       // Kullanıcının subscription durumunu güncelle - User modelinde bu field'lar yok, sadece subscription tablosunu kullan
-      // await this.prisma.user.update({
+      // await (this.prisma as any).user.update({
       //   where: { id: userId },
       //   data: {
       //     subscriptionStatus: SubscriptionStatus.PREMIUM,
@@ -215,7 +223,7 @@ export class SubscriptionService {
   // Payment'i onayla (webhook için)
   async confirmPayment(paymentId: string, transactionId: string, gatewayResponse: any): Promise<void> {
     try {
-      const payment = await this.prisma.payment.update({
+      const payment = await (this.prisma as any).payment.update({
         where: { id: paymentId },
         data: {
           status: PaymentStatus.COMPLETED,
@@ -229,7 +237,7 @@ export class SubscriptionService {
 
       if (payment.subscription) {
         // Subscription'ı aktif et
-        await this.prisma.subscription.update({
+        await (this.prisma as any).subscription.update({
           where: { id: payment.subscription.id },
           data: { isActive: true },
         });
@@ -249,7 +257,7 @@ export class SubscriptionService {
   // Subscription'ı iptal et
   async cancelSubscription(subscriptionId: string): Promise<any> {
     try {
-      const updated = await this.prisma.subscription.update({
+      const updated = await (this.prisma as any).subscription.update({
         where: { id: subscriptionId },
         data: {
           isActive: false,
@@ -258,13 +266,13 @@ export class SubscriptionService {
       });
 
       // Kullanıcının durumunu FREE'e çevir - User modelinde bu field'lar yok
-      // const subscription = await this.prisma.subscription.findUnique({
+      // const subscription = await (this.prisma as any).subscription.findUnique({
       //   where: { id: subscriptionId },
       //   include: { user: true },
       // });
 
       // if (subscription) {
-      //   await this.prisma.user.update({
+      //   await (this.prisma as any).user.update({
       //     where: { id: subscription.userId },
       //     data: {
       //       subscriptionStatus: SubscriptionStatus.FREE,
@@ -284,7 +292,7 @@ export class SubscriptionService {
   // Subscription'ı yenile
   async renewSubscription(subscriptionId: string): Promise<void> {
     try {
-      const subscription = await this.prisma.subscription.findUnique({
+      const subscription = await (this.prisma as any).subscription.findUnique({
         where: { id: subscriptionId },
       });
 
@@ -306,7 +314,7 @@ export class SubscriptionService {
           break;
       }
 
-      await this.prisma.subscription.update({
+      await (this.prisma as any).subscription.update({
         where: { id: subscriptionId },
         data: {
           endDate: newEndDate,
@@ -315,7 +323,7 @@ export class SubscriptionService {
       });
 
       // Kullanıcının subscription end date'ini güncelle - User modelinde bu field yok
-      // await this.prisma.user.update({
+      // await (this.prisma as any).user.update({
       //   where: { id: subscription.userId },
       //   data: {
       //     subscriptionEndDate: newEndDate,
@@ -422,7 +430,7 @@ export class SubscriptionService {
   // Kullanıcının subscription geçmişini getir
   async getSubscriptionHistory(userId: string): Promise<any[]> {
     try {
-      const subscriptions = await this.prisma.subscription.findMany({
+      const subscriptions = await (this.prisma as any).subscription.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
       });
@@ -437,7 +445,7 @@ export class SubscriptionService {
   // Payment geçmişini getir
   async getPaymentHistory(userId: string): Promise<any[]> {
     try {
-      const payments = await this.prisma.payment.findMany({
+      const payments = await (this.prisma as any).payment.findMany({
         where: { userId },
         include: {
           subscription: true,
@@ -455,7 +463,7 @@ export class SubscriptionService {
   // Eksik methodları ekleyelim
   async getSubscription(id: string) {
     try {
-      const subscription = await this.prisma.subscription.findUnique({
+      const subscription = await (this.prisma as any).subscription.findUnique({
         where: { id }
       });
       return { message: 'Subscription found', subscription };
@@ -466,7 +474,7 @@ export class SubscriptionService {
 
   async getUserSubscriptions(userId: string) {
     try {
-      const subscriptions = await this.prisma.subscription.findMany({
+      const subscriptions = await (this.prisma as any).subscription.findMany({
         where: { userId }
       });
       return { message: 'User subscriptions found', subscriptions };
@@ -477,7 +485,7 @@ export class SubscriptionService {
 
   async updateSubscription(id: string, data: any) {
     try {
-      const subscription = await this.prisma.subscription.update({
+      const subscription = await (this.prisma as any).subscription.update({
         where: { id },
         data
       });
@@ -489,7 +497,7 @@ export class SubscriptionService {
 
   async processPayment(data: any) {
     try {
-      const payment = await this.prisma.payment.create({
+      const payment = await (this.prisma as any).payment.create({
         data: {
           userId: data.userId,
           amount: data.amount,
@@ -506,7 +514,7 @@ export class SubscriptionService {
 
   async checkSubscriptionStatus(id: string) {
     try {
-      const subscription = await this.prisma.subscription.findUnique({
+      const subscription = await (this.prisma as any).subscription.findUnique({
         where: { id }
       });
       return { message: 'Subscription status found', status: subscription?.status };

@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../common/cache/cache.service';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -39,8 +39,8 @@ export class AIRateLimitService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly cache: CacheService,
     private readonly prisma: PrismaService,
+    @Optional() private readonly cache?: CacheService,
   ) {
     this.setupRateLimitConfigs();
   }
@@ -152,7 +152,7 @@ export class AIRateLimitService {
     const now = new Date();
     
     // Mevcut rate limit verilerini al
-    let userRateLimit = await this.cache.get<UserRateLimit>(cacheKey);
+    let userRateLimit = await this.cache?.get<UserRateLimit>(cacheKey);
     
     if (!userRateLimit) {
       // Yeni kullanıcı için rate limit oluştur
@@ -223,7 +223,7 @@ export class AIRateLimitService {
     userRateLimit.currentDay++;
 
     // Cache'e kaydet
-    await this.cache.set(cacheKey, userRateLimit, 86400); // 24 saat
+    await this.cache?.set(cacheKey, userRateLimit, 86400); // 24 saat
 
     return {
       allowed: true,
@@ -243,7 +243,7 @@ export class AIRateLimitService {
     const now = new Date();
     
     // Organization rate limit verilerini al
-    let orgRateLimit = await this.cache.get<UserRateLimit>(cacheKey);
+    let orgRateLimit = await this.cache?.get<UserRateLimit>(cacheKey);
     
     if (!orgRateLimit) {
       // Yeni organization için rate limit oluştur
@@ -294,7 +294,7 @@ export class AIRateLimitService {
     orgRateLimit.currentDay++;
 
     // Cache'e kaydet
-    await this.cache.set(cacheKey, orgRateLimit, 86400);
+    await this.cache?.set(cacheKey, orgRateLimit, 86400);
 
     return {
       allowed: true,
@@ -308,7 +308,7 @@ export class AIRateLimitService {
    */
   private async getUserTier(userId: string): Promise<string> {
     try {
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id: userId },
         select: { subscriptionStatus: true },
       });
@@ -326,11 +326,11 @@ export class AIRateLimitService {
   async resetRateLimit(userId: string, organizationId?: string): Promise<void> {
     try {
       const userCacheKey = `rate_limit:user:${userId}`;
-      await this.cache.del(userCacheKey);
+      await this.cache?.del(userCacheKey);
 
       if (organizationId) {
         const orgCacheKey = `rate_limit:org:${organizationId}`;
-        await this.cache.del(orgCacheKey);
+        await this.cache?.del(orgCacheKey);
       }
 
       this.logger.log(`Rate limit reset for user: ${userId}${organizationId ? ` and org: ${organizationId}` : ''}`);
@@ -361,7 +361,7 @@ export class AIRateLimitService {
       const config = this.rateLimitConfigs.get('default')!;
       
       const cacheKey = `rate_limit:user:${userId}`;
-      const userRateLimit = await this.cache.get<UserRateLimit>(cacheKey);
+      const userRateLimit = await this.cache?.get<UserRateLimit>(cacheKey);
 
       if (!userRateLimit) {
         return {

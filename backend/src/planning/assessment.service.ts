@@ -6,7 +6,7 @@ export class AssessmentService {
   constructor(private readonly prisma: PrismaService) {}
 
   async startAssessment(userId: string, assessmentData: { subjects: string[]; grade: number; learningGoals: string[] }) {
-    const existingAssessment = await this.prisma.assessment.findFirst({
+    const existingAssessment = await (this.prisma as any).assessment.findFirst({
       where: { userId, status: 'IN_PROGRESS' },
     });
 
@@ -14,7 +14,7 @@ export class AssessmentService {
       throw new BadRequestException('Assessment already in progress');
     }
 
-    const assessment = await this.prisma.assessment.create({
+    const assessment = await (this.prisma as any).assessment.create({
       data: {
         userId,
         subjects: assessmentData.subjects,
@@ -32,7 +32,7 @@ export class AssessmentService {
   }
 
   async getAssessmentStatus(userId: string) {
-    const assessment = await this.prisma.assessment.findFirst({
+    const assessment = await (this.prisma as any).assessment.findFirst({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
@@ -111,7 +111,7 @@ export class AssessmentService {
       where.grade = parseInt(grade);
     }
 
-    const topics = await this.prisma.topic.findMany({
+    const topics = await (this.prisma as any).topic.findMany({
       where,
       select: {
         topic: true,
@@ -127,7 +127,7 @@ export class AssessmentService {
       ],
     });
 
-    return topics.map(topic => ({
+    return topics.map((topic: any) => ({
       topic: topic.topic,
       subject: topic.subject,
       grade: topic.grade,

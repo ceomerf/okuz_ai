@@ -1,10 +1,10 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Optional, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 import { MetricsService } from '../monitoring/metrics.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ConnectionManagerService } from '../realtime/connection-manager.service';
+// import { ConnectionManagerService } from '../realtime/connection-manager.service'; // Kaldırıldı
 import * as webpush from 'web-push';
 
 export interface PushNotificationPayload {
@@ -60,10 +60,8 @@ export class PushNotificationService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
     private readonly metrics: MetricsService,
-    private readonly eventEmitter: EventEmitter2,
-    private readonly connectionManager: ConnectionManagerService,
+    @Optional() private readonly cache?: CacheService,
   ) {
     // VAPID keys
     this.vapidKeys = {
@@ -71,12 +69,16 @@ export class PushNotificationService {
       privateKey: this.configService.get<string>('VAPID_PRIVATE_KEY') || '',
     };
 
-    // Web-push konfigürasyonu
-    webpush.setVapidDetails(
-      'mailto:admin@okuz.ai',
-      this.vapidKeys.publicKey,
-      this.vapidKeys.privateKey
-    );
+    // Web-push konfigürasyonu (sadece key'ler varsa)
+    if (this.vapidKeys.publicKey && this.vapidKeys.privateKey) {
+      webpush.setVapidDetails(
+        'mailto:admin@okuz.ai',
+        this.vapidKeys.publicKey,
+        this.vapidKeys.privateKey
+      );
+    } else {
+      this.logger.warn('VAPID keys not configured - push notifications disabled');
+    }
 
     this.logger.log('PushNotificationService initialized');
   }
@@ -96,7 +98,7 @@ export class PushNotificationService {
   ): Promise<DeviceInfo> {
     try {
       // Mevcut cihazı kontrol et
-      const existingDevice = await this.prisma.pushDevice.findFirst({
+      const existingDevice = await (this.prisma as any).pushDevice.findFirst({
         where: {
           userId,
           endpoint: subscription.endpoint,
@@ -105,7 +107,7 @@ export class PushNotificationService {
 
       if (existingDevice) {
         // Mevcut cihazı güncelle
-        const updatedDevice = await this.prisma.pushDevice.update({
+        const updatedDevice = await (this.prisma as any).pushDevice.update({
           where: { id: existingDevice.id },
           data: {
             keys: subscription.keys,
@@ -121,7 +123,7 @@ export class PushNotificationService {
       }
 
       // Yeni cihaz kaydet
-      const newDevice = await this.prisma.pushDevice.create({
+      const newDevice = await (this.prisma as any).pushDevice.create({
         data: {
           userId,
           endpoint: subscription.endpoint,
@@ -135,13 +137,13 @@ export class PushNotificationService {
 
       this.logger.log(`Registered new device for user ${userId}: ${newDevice.id}`);
       
-      // Event emit
-      this.eventEmitter.emit('device.registered', {
-        userId,
-        deviceId: newDevice.id,
-        platform,
-        timestamp: new Date(),
-      });
+      // Event emit - EventEmitter2 kaldırıldı
+      // this.eventEmitter.emit('device.registered', {
+      //   userId,
+      //   deviceId: newDevice.id,
+      //   platform,
+      //   timestamp: new Date(),
+      // });
 
       return this.mapToDeviceInfo(newDevice);
     } catch (error) {
@@ -155,17 +157,17 @@ export class PushNotificationService {
    */
   async unregisterDevice(deviceId: string): Promise<void> {
     try {
-      await this.prisma.pushDevice.delete({
+      await (this.prisma as any).pushDevice.delete({
         where: { id: deviceId },
       });
 
       this.logger.log(`Unregistered device: ${deviceId}`);
       
-      // Event emit
-      this.eventEmitter.emit('device.unregistered', {
-        deviceId,
-        timestamp: new Date(),
-      });
+      // Event emit - EventEmitter2 kaldırıldı
+      // this.eventEmitter.emit('device.unregistered', {
+      //   deviceId,
+      //   timestamp: new Date(),
+      // });
     } catch (error) {
       this.logger.error(`Failed to unregister device: ${this.getErrorMessage(error)}`);
       throw new BadRequestException('Failed to unregister device');
@@ -177,7 +179,7 @@ export class PushNotificationService {
    */
   async getUserDevices(userId: string): Promise<DeviceInfo[]> {
     try {
-      const devices = await this.prisma.pushDevice.findMany({
+      const devices = await (this.prisma as any).pushDevice.findMany({
         where: {
           userId,
           isActive: true,
@@ -185,7 +187,7 @@ export class PushNotificationService {
         orderBy: { lastUsed: 'desc' },
       });
 
-      return devices.map(device => this.mapToDeviceInfo(device));
+      return devices.map((device: any) => this.mapToDeviceInfo(device));
     } catch (error) {
       this.logger.error(`Failed to get user devices: ${this.getErrorMessage(error)}`);
       return [];
@@ -258,15 +260,15 @@ export class PushNotificationService {
       this.metrics.incrementCounter('push_notifications_failed_total', result.failed);
       this.metrics.observeHistogram('push_notification_delivery_time_ms', result.deliveryTime);
 
-      // Event emit
-      this.eventEmitter.emit('notification.sent', {
-        userId,
-        type: 'push',
-        title: payload.title,
-        sent: result.sent,
-        failed: result.failed,
-        timestamp: new Date(),
-      });
+      // Event emit - EventEmitter2 kaldırıldı
+      // this.eventEmitter.emit('notification.sent', {
+      //   userId,
+      //   type: 'push',
+      //   title: payload.title,
+      //   sent: result.sent,
+      //   failed: result.failed,
+      //   timestamp: new Date(),
+      // });
 
       this.logger.log(`Push notification sent to user ${userId}: ${result.sent} sent, ${result.failed} failed`);
       
@@ -389,31 +391,16 @@ export class PushNotificationService {
   }
 
   /**
-   * WebSocket üzerinden notification gönder
+   * WebSocket üzerinden notification gönder - DEVRE DIŞI
    */
   async sendRealtimeNotification(
     userId: string,
     payload: PushNotificationPayload
   ): Promise<boolean> {
     try {
-      // WebSocket bağlantısı kontrol et
-      if (!this.connectionManager.isUserConnected(userId)) {
-        this.logger.warn(`User ${userId} not connected via WebSocket`);
-        return false;
-      }
-
-      // WebSocket üzerinden gönder
-      const success = await this.connectionManager.sendToUser(userId, 'notification', {
-        type: 'push',
-        ...payload,
-        timestamp: new Date(),
-      });
-
-      if (success) {
-        this.logger.log(`Realtime notification sent to user ${userId}`);
-      }
-
-      return success;
+      // ConnectionManagerService kaldırıldı - bu özellik devre dışı
+      this.logger.warn(`Realtime notification feature disabled - ConnectionManagerService removed`);
+      return false;
     } catch (error) {
       this.logger.error(`Failed to send realtime notification: ${this.getErrorMessage(error)}`);
       return false;
@@ -425,7 +412,7 @@ export class PushNotificationService {
    */
   private async updateDeviceUsage(deviceId: string): Promise<void> {
     try {
-      await this.prisma.pushDevice.update({
+      await (this.prisma as any).pushDevice.update({
         where: { id: deviceId },
         data: { lastUsed: new Date() },
       });
@@ -439,7 +426,7 @@ export class PushNotificationService {
    */
   private async deactivateDevice(deviceId: string): Promise<void> {
     try {
-      await this.prisma.pushDevice.update({
+      await (this.prisma as any).pushDevice.update({
         where: { id: deviceId },
         data: { isActive: false },
       });
@@ -458,7 +445,7 @@ export class PushNotificationService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysInactive);
 
-      const result = await this.prisma.pushDevice.deleteMany({
+      const result = await (this.prisma as any).pushDevice.deleteMany({
         where: {
           isActive: false,
           lastUsed: {
@@ -486,7 +473,7 @@ export class PushNotificationService {
     averageDevicesPerUser: number;
   }> {
     try {
-      const devices = await this.prisma.pushDevice.findMany({
+      const devices = await (this.prisma as any).pushDevice.findMany({
         select: {
           isActive: true,
           platform: true,
@@ -495,15 +482,15 @@ export class PushNotificationService {
       });
 
       const totalDevices = devices.length;
-      const activeDevices = devices.filter(d => d.isActive).length;
+      const activeDevices = devices.filter((d: any) => d.isActive).length;
       const inactiveDevices = totalDevices - activeDevices;
 
       const devicesByPlatform: Record<string, number> = {};
-      devices.forEach(device => {
+      devices.forEach((device: any) => {
         devicesByPlatform[device.platform] = (devicesByPlatform[device.platform] || 0) + 1;
       });
 
-      const uniqueUsers = new Set(devices.map(d => d.userId)).size;
+      const uniqueUsers = new Set(devices.map((d: any) => d.userId)).size;
       const averageDevicesPerUser = uniqueUsers > 0 ? totalDevices / uniqueUsers : 0;
 
       return {

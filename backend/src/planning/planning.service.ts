@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { PlanType } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PlanningFacade } from './planning-facade.service';
@@ -8,7 +8,7 @@ import { PlanOptimizationService } from './services/plan-optimization.service';
 import { PlanPersistenceService } from './services/plan-persistence.service';
 import { ScheduleAdjustmentService } from './schedule-adjustment.service';
 import { AiAnalysisService } from './ai-analysis.service';
-import { TopicManagementService } from './topic-management.service';
+import { TopicManagementService } from './services/topic-management.service';
 import { ProgressTrackingService } from './progress-tracking.service';
 import { AssessmentService } from './assessment.service';
 import { CoachingService } from './coaching.service';
@@ -18,9 +18,9 @@ import { AdaptiveStrategyService } from './adaptive-strategy.service';
 import { CacheService } from '../common/cache/cache.service';
 import { QueueService } from '../services/queue.service';
 import { PrometheusService } from '../common/metrics/prometheus.service';
-import { CurriculumEngineService } from './curriculum-engine.service';
-import { PerformanceAnalyzerService } from './performance-analyzer.service';
-import { TopicPrioritizerService } from './topic-prioritizer.service';
+import { CurriculumEngineService } from './services/curriculum-engine.service';
+import { PerformanceAnalyzerService } from './services/performance-analyzer.service';
+import { TopicPrioritizerService } from './services/topic-prioritizer.service';
 import { AIService } from '../ai/ai.service';
 import { LoggingService } from '../common/logging/logging.service';
 import { ExceptionService } from '../common/exceptions/exception.service';
@@ -70,15 +70,15 @@ export class PlanningService {
     private readonly dossier: DigitalDossierService,
     private readonly adaptiveInsights: AdaptiveInsightsService,
     private readonly adaptiveStrategy: AdaptiveStrategyService,
-    private readonly cache: CacheService,
     private readonly queue: QueueService,
-    private readonly prometheus: PrometheusService,
     private readonly curriculumEngine: CurriculumEngineService,
     private readonly performanceAnalyzer: PerformanceAnalyzerService,
     private readonly topicPrioritizer: TopicPrioritizerService,
     private readonly aiService: AIService,
     private readonly loggingService: LoggingService,
     private readonly exceptionService: ExceptionService,
+    @Optional() private readonly cache?: CacheService,
+    @Optional() private readonly prometheus?: PrometheusService,
   ) {}
 
   /**
@@ -86,13 +86,15 @@ export class PlanningService {
    */
   async rescheduleSingle(data: { sessionId: string; newStartTime: string; userId: string; reason?: string }) {
     try {
-      this.loggingService.log('Rescheduling single session', { 
-        sessionId: data.sessionId, 
-        userId: data.userId 
-      });
+      if (this.loggingService) {
+        this.loggingService.log('Rescheduling single session', { 
+          sessionId: data.sessionId, 
+          userId: data.userId 
+        });
+      }
 
       // Oturumu bul ve güncelle
-      const session = await this.prisma.studySession.update({
+      const session = await (this.prisma as any).studySession.update({
         where: { id: data.sessionId },
         data: { 
           startTime: new Date(data.newStartTime),
@@ -106,12 +108,17 @@ export class PlanningService {
         message: 'Session rescheduled successfully'
       };
     } catch (error) {
-      this.loggingService.error('Failed to reschedule session', { 
-        sessionId: data.sessionId, 
-        userId: data.userId,
-        error: error instanceof Error ? error instanceof Error ? error.message : "Unknown error" : 'Unknown error'
-      });
-      throw this.exceptionService.handlePlanningError(error, 'Failed to reschedule session');
+      if (this.loggingService) {
+        this.loggingService.error('Failed to reschedule session', { 
+          sessionId: data.sessionId, 
+          userId: data.userId,
+          error: error instanceof Error ? error instanceof Error ? error.message : "Unknown error" : 'Unknown error'
+        });
+      }
+      if (this.exceptionService) {
+        throw this.exceptionService.handlePlanningError(error, 'Failed to reschedule session');
+      }
+      throw error;
     }
   }
 
@@ -296,7 +303,7 @@ export class PlanningService {
   async optimizePlan(planId: string, userId: string): Promise<any> {
     try {
       // Önce planı getir
-      const plan = await this.prisma.plan.findFirst({
+      const plan = await (this.prisma as any).plan.findFirst({
         where: { id: planId, userId },
         include: { studySessions: true } as any,
       });
@@ -477,7 +484,9 @@ export class PlanningService {
       }
       const data = await (this.topicManagement as any).getMebTopics(subject, grade);
       await (this.cache as any).set?.(cacheKey, data, { ttl: 60 * 60 });
-      this.prometheus.incrementPlanGenerationSuccess('MEB_TOPICS', 'system');
+      if (this.prometheus) {
+        this.prometheus.incrementPlanGenerationSuccess('MEB_TOPICS', 'system');
+      }
       return data;
     } catch (error) {
       this.loggingService.error('Failed to get MEB topics', { subject, grade, error: error instanceof Error ? error instanceof Error ? error.message : "Unknown error" : String(error) });

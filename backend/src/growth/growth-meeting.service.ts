@@ -47,8 +47,8 @@ export interface GrowthMeetingReport {
   }[];
   recommendations: {
     action: string;
-    impact: 'high' | 'medium' | 'low';
-    effort: 'high' | 'medium' | 'low';
+    impact: 'medium' | 'low' | 'high';
+    effort: 'medium' | 'low' | 'high';
     timeline: string;
     owner: string;
   }[];
@@ -121,7 +121,7 @@ export class GrowthMeetingService {
       return report;
 
     } catch (error) {
-      this.logger.error(`❌ Haftalık büyüme raporu oluşturma hatası: ${error.message}`);
+      this.logger.error(`❌ Haftalık büyüme raporu oluşturma hatası: ${(error as Error).message}`);
       throw error;
     }
   }
@@ -209,7 +209,7 @@ export class GrowthMeetingService {
         },
       ];
     } catch (error) {
-      this.logger.error(`A/B test analizi hatası: ${error.message}`);
+      this.logger.error(`A/B test analizi hatası: ${(error as Error).message}`);
       return [];
     }
   }
@@ -229,7 +229,7 @@ export class GrowthMeetingService {
         impact: this.assessFeatureFlagImpact(flag),
       }));
     } catch (error) {
-      this.logger.error(`Feature flag analizi hatası: ${error.message}`);
+      this.logger.error(`Feature flag analizi hatası: ${(error as Error).message}`);
       return [];
     }
   }
@@ -299,8 +299,20 @@ export class GrowthMeetingService {
     insights: any[],
     kpis: any[],
     abTests: any[]
-  ): any[] {
-    const recommendations = [];
+  ): Array<{
+    action: string;
+    impact: 'medium' | 'low' | 'high';
+    effort: 'medium' | 'low' | 'high';
+    timeline: string;
+    owner: string;
+  }> {
+    const recommendations: Array<{
+      action: string;
+      impact: 'medium' | 'low' | 'high';
+      effort: 'medium' | 'low' | 'high';
+      timeline: string;
+      owner: string;
+    }> = [];
 
     // Yüksek öncelikli öneriler
     const highPriorityInsights = insights.filter(i => i.priority === 'high');
@@ -308,8 +320,8 @@ export class GrowthMeetingService {
     highPriorityInsights.forEach(insight => {
       recommendations.push({
         action: insight.action,
-        impact: 'high',
-        effort: this.assessEffort(insight.action),
+        impact: 'high' as 'medium' | 'low' | 'high',
+        effort: this.assessEffort(insight.action) as 'medium' | 'low' | 'high',
         timeline: this.assessTimeline(insight.action),
         owner: this.assignOwner(insight.type),
       });
@@ -320,8 +332,8 @@ export class GrowthMeetingService {
       if (test.recommendation?.includes('rollout')) {
         recommendations.push({
           action: `"${test.name}" testini tam rollout yapın`,
-          impact: 'high',
-          effort: 'low',
+          impact: 'high' as 'medium' | 'low' | 'high',
+          effort: 'low' as 'medium' | 'low' | 'high',
           timeline: '1 hafta',
           owner: 'Product Manager',
         });
@@ -333,8 +345,8 @@ export class GrowthMeetingService {
     underperformingKPIs.forEach(kpi => {
       recommendations.push({
         action: `${kpi.name} performansını iyileştirin`,
-        impact: 'high',
-        effort: 'medium',
+        impact: 'high' as 'medium' | 'low' | 'high',
+        effort: 'medium' as 'medium' | 'low' | 'high',
         timeline: '2-4 hafta',
         owner: 'Growth Team',
       });

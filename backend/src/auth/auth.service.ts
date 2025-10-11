@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, ConflictException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { SubscriptionService } from '../subscription/subscription.service';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../common/cache/cache.service';
 import { Optional } from '@nestjs/common';
@@ -16,6 +16,49 @@ export class AuthService {
     private readonly configService: ConfigService,
     @Optional() private readonly cacheService?: CacheService,
   ) {}
+
+  private getUserPermissions(role: string): string[] {
+    const rolePermissions: { [key: string]: string[] } = {
+      ADMIN: [
+        'admin:read',
+        'admin:write',
+        'users:read',
+        'users:write',
+        'system:read',
+        'system:write',
+        'students:read',
+        'students:write',
+        'parents:read',
+        'parents:write',
+        'coaches:read',
+        'coaches:write',
+        'rbac:manage',
+        'audit:read',
+        'flags:manage',
+        'notifications:manage'
+      ],
+      TEACHER: [
+        'students:read',
+        'assignments:read',
+        'assignments:write',
+        'grades:read',
+        'grades:write'
+      ],
+      STUDENT: [
+        'assignments:read',
+        'grades:read',
+        'profile:read',
+        'profile:write'
+      ],
+      PARENT: [
+        'children:read',
+        'reports:read',
+        'notifications:read'
+      ]
+    };
+
+    return rolePermissions[role] || [];
+  }
 
   private async issueTokens(user: { id: string; email: string; role?: string }) {
     const now = Math.floor(Date.now() / 1000);
@@ -73,7 +116,7 @@ export class AuthService {
 
     try {
       // Email kontrolü
-      const existingUser = await this.prisma.user.findUnique({
+      const existingUser = await (this.prisma as any).user.findUnique({
         where: { email },
       });
 
@@ -105,7 +148,7 @@ export class AuthService {
       }
 
       // Kullanıcı oluşturma
-      const user = await this.prisma.user.create({
+      const user = await (this.prisma as any).user.create({
         data: {
           email,
           password: hashedPassword,
@@ -165,7 +208,7 @@ export class AuthService {
     const { email, password } = loginDto;
 
     // Kullanıcı kontrolü
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).user.findUnique({
       where: { email },
     });
 
@@ -195,6 +238,8 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
+        roles: [user.role], // Frontend için roles array
+        permissions: this.getUserPermissions(user.role), // Role bazlı permissions
       },
       tokens: {
         accessToken,
@@ -219,7 +264,7 @@ export class AuthService {
       if (!storedToken || storedToken.isRevoked || storedToken.expiresAt < new Date()) {
         // Token geçersiz, kullanıcının tüm refresh token'larını iptal et
         if (storedToken?.userId) {
-          await this.prisma.refreshToken.updateMany({
+          await (this.prisma as any).refreshToken.updateMany({
             where: { userId: storedToken.userId },
             data: { isRevoked: true },
           });
@@ -231,7 +276,7 @@ export class AuthService {
       if (!(storedToken as any).user) {
         throw new UnauthorizedException('Kullanıcı bulunamadı');
       }
-      const user = await this.prisma.user.findUnique({ where: { id: storedToken.userId } });
+      const user = await (this.prisma as any).user.findUnique({ where: { id: storedToken.userId } });
       if (!user) {
         throw new UnauthorizedException('Kullanıcı bulunamadı');
       }
@@ -268,7 +313,7 @@ export class AuthService {
   }
 
   async validateUser(userId: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).user.findUnique({
       where: { id: userId },
     });
     return user;
@@ -290,7 +335,7 @@ export class AuthService {
   }
 
   async changePassword(userId: string, passwordData: { currentPassword: string; newPassword: string }) {
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).user.findUnique({
       where: { id: userId },
     });
 
@@ -306,7 +351,7 @@ export class AuthService {
     const saltRounds = parseInt(this.configService.get<string>('BCRYPT_SALT_ROUNDS') || '12');
     const hashedNewPassword = await bcrypt.hash(passwordData.newPassword, saltRounds);
 
-    await this.prisma.user.update({
+    await (this.prisma as any).user.update({
       where: { id: userId },
       data: { password: hashedNewPassword },
     });

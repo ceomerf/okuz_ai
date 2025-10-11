@@ -16,6 +16,15 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // Backward-compatible admin prefix mapping: /api/v1/admin/* -> /api/*
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    if (req.url.startsWith('/api/v1/admin/')) {
+      req.url = req.url.replace('/api/v1/admin/', '/api/');
+    }
+    next();
+  });
+  // Not setting global prefix here to avoid double prefix with existing controllers using 'api/*'
+
   // Enable API versioning
   app.enableVersioning({
     type: VersioningType.URI,
@@ -161,7 +170,7 @@ async function bootstrap() {
   });
 
   // Health check endpoint
-  app.getHttpAdapter().get('/health', (req: Request, res: Response) => {
+  app.getHttpAdapter().get('/health', (req: any, res: any) => {
     res.status(200).json({
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -172,7 +181,7 @@ async function bootstrap() {
   });
 
   // API version info endpoint
-  app.getHttpAdapter().get('/api/versions', (req: Request, res: Response) => {
+  app.getHttpAdapter().get('/api/versions', (req: any, res: any) => {
     res.status(200).json({
       versions: [
         {

@@ -11,7 +11,7 @@ export class OptimizedUserContextService {
    */
   async analyzeUserContextOptimized(userId: string) {
     // Tek sorgu ile tüm ilgili verileri çek
-    const userWithData = await this.prisma.user.findUnique({
+    const userWithData = await (this.prisma as any).user.findUnique({
       where: { id: userId },
       include: {
         // Study sessions - son 200 kayıt

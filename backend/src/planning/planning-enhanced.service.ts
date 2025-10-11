@@ -58,7 +58,7 @@ export class PlanningEnhancedService {
       };
 
     } catch (error) {
-      this.logger.error(`Failed to complete session ${sessionId}: ${error.message}`);
+      this.logger.error(`Failed to complete session ${sessionId}: ${(error as Error).message}`);
       throw error;
     }
   }
@@ -106,7 +106,7 @@ export class PlanningEnhancedService {
       };
 
     } catch (error) {
-      this.logger.error(`Failed to create plan for user ${userId}: ${error.message}`);
+      this.logger.error(`Failed to create plan for user ${userId}: ${(error as Error).message}`);
       throw error;
     }
   }
@@ -131,7 +131,7 @@ export class PlanningEnhancedService {
         readClient.plan.findMany({
           where: whereClause,
           include: {
-            studySessions: {
+            sessions: {
               select: {
                 id: true,
                 status: true,
@@ -167,7 +167,7 @@ export class PlanningEnhancedService {
       const plan = await readClient.plan.findUnique({
         where: { id: planId },
         include: {
-          studySessions: {
+          sessions: {
             select: {
               id: true,
               status: true,
@@ -190,10 +190,10 @@ export class PlanningEnhancedService {
         throw new Error('Plan not found');
       }
 
-      const completedSessions = plan.studySessions.filter(s => s.status === 'COMPLETED');
-      const totalSessions = plan.studySessions.length;
+      const completedSessions = plan.sessions.filter((s: any) => s.status === 'COMPLETED');
+      const totalSessions = plan.sessions.length;
       const averagePerformance = completedSessions.length > 0 
-        ? completedSessions.reduce((sum, s) => sum + (s.performance || 0), 0) / completedSessions.length
+        ? completedSessions.reduce((sum: number, s: any) => sum + (s.performance || 0), 0) / completedSessions.length
         : 0;
 
       return {

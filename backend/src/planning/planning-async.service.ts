@@ -80,7 +80,7 @@ export class PlanningAsyncService {
 
       this.logger.log(`Gamification processed for user ${userId}`);
     } catch (error) {
-      this.logger.error(`Gamification processing failed: ${error.message}`);
+      this.logger.error(`Gamification processing failed: ${(error as Error).message}`);
       throw error;
     }
   }
@@ -113,7 +113,7 @@ export class PlanningAsyncService {
 
       this.logger.log(`Analytics processed for user ${userId}`);
     } catch (error) {
-      this.logger.error(`Analytics processing failed: ${error.message}`);
+      this.logger.error(`Analytics processing failed: ${(error as Error).message}`);
       throw error;
     }
   }
@@ -135,7 +135,7 @@ export class PlanningAsyncService {
       this.logger.log(`Notification sent to user ${userId}: ${title} - ${message}`);
       
     } catch (error) {
-      this.logger.error(`Notification processing failed: ${error.message}`);
+      this.logger.error(`Notification processing failed: ${(error as Error).message}`);
       throw error;
     }
   }
@@ -157,7 +157,7 @@ export class PlanningAsyncService {
       this.logger.log(`Email sent to ${email} for user ${userId}`);
       
     } catch (error) {
-      this.logger.error(`Email processing failed: ${error.message}`);
+      this.logger.error(`Email processing failed: ${(error as Error).message}`);
       throw error;
     }
   }

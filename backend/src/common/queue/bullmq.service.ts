@@ -16,7 +16,6 @@ export class BullMQService {
       port: this.configService.get<number>('REDIS_PORT', 6379),
       password: this.configService.get<string>('REDIS_PASSWORD'),
       maxRetriesPerRequest: 3,
-      retryDelayOnFailover: 100,
     });
   }
 
@@ -67,8 +66,8 @@ export class BullMQService {
     const worker = new Worker(queueName, processor, {
       connection: this.redis,
       concurrency: 5,
-      removeOnComplete: 100,
-      removeOnFail: 50,
+      removeOnComplete: { count: 100 },
+      removeOnFail: { count: 50 },
     });
 
     worker.on('completed', (job) => {

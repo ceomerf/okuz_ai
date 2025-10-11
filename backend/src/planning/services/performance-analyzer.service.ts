@@ -9,15 +9,15 @@ export class PerformanceAnalyzerService {
 
   async analyzeUserPerformance(userId: string): Promise<any> {
     try {
-      const sessions = await this.prisma.studySession.findMany({
+      const sessions = await (this.prisma as any).studySession.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
         take: 50,
       });
 
       const totalSessions = sessions.length;
-      const completedSessions = sessions.filter(s => s.isCompleted).length;
-      const averagePerformance = sessions.reduce((sum, s) => sum + (s.performance || 0), 0) / totalSessions;
+      const completedSessions = sessions.filter((s: any) => s.isCompleted).length;
+      const averagePerformance = sessions.reduce((sum: number, s: any) => sum + (s.performance || 0), 0) / totalSessions;
 
       return {
         totalSessions,

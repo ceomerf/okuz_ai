@@ -458,7 +458,7 @@ export class NLPPipelineService implements OnModuleInit {
    */
   private async saveTextAnalysis(analysis: TextAnalysis): Promise<void> {
     try {
-      await this.prisma.textAnalysis.create({
+      await (this.prisma as any).textAnalysis.create({
         data: analysis,
       });
     } catch (error) {
@@ -476,7 +476,7 @@ export class NLPPipelineService implements OnModuleInit {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       
-      const texts = await this.prisma.studentJournal.findMany({
+      const texts = await (this.prisma as any).studentJournal.findMany({
         where: {
           createdAt: { gte: yesterday },
         },

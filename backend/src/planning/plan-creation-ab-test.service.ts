@@ -64,7 +64,7 @@ export class PlanCreationABTestService {
       this.logger.log('  - Beklenen Sonuç: %30 drop-off → %15 drop-off');
 
     } catch (error) {
-      this.logger.error(`❌ Plan oluşturma A/B testi başlatma hatası: ${error.message}`);
+      this.logger.error(`❌ Plan oluşturma A/B testi başlatma hatası: ${(error as Error).message}`);
       throw error;
     }
   }
@@ -144,7 +144,7 @@ export class PlanCreationABTestService {
       this.logger.log(`📊 Plan oluşturma dönüşümü kaydedildi: ${userId} - ${variant} - ${success ? 'Başarılı' : 'Başarısız'}`);
 
     } catch (error) {
-      this.logger.error(`❌ Plan oluşturma dönüşümü kaydetme hatası: ${error.message}`);
+      this.logger.error(`❌ Plan oluşturma dönüşümü kaydetme hatası: ${(error as Error).message}`);
     }
   }
 
@@ -204,7 +204,7 @@ export class PlanCreationABTestService {
       };
 
     } catch (error) {
-      this.logger.error(`❌ A/B test sonuçları analiz hatası: ${error.message}`);
+      this.logger.error(`❌ A/B test sonuçları analiz hatası: ${(error as Error).message}`);
       throw error;
     }
   }
@@ -252,7 +252,7 @@ export class PlanCreationABTestService {
       };
 
     } catch (error) {
-      this.logger.error(`❌ Kazanan varyant belirleme hatası: ${error.message}`);
+      this.logger.error(`❌ Kazanan varyant belirleme hatası: ${(error as Error).message}`);
       throw error;
     }
   }

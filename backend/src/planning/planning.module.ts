@@ -17,41 +17,45 @@ import { AdaptiveInsightsService } from './adaptive-insights.service';
 import { AdaptiveStrategyService } from './adaptive-strategy.service';
 import { DigitalDossierService } from './digital-dossier.service';
 import { AiAnalysisService } from './ai-analysis.service';
-import { TopicManagementService } from './topic-management.service';
+import { TopicManagementService } from './services/topic-management.service';
 import { ProgressTrackingService } from './progress-tracking.service';
 import { AssessmentService } from './assessment.service';
 import { CoachingService } from './coaching.service';
 import { SolverService } from '../services/solver.service';
 import { MetricsService } from '../monitoring/metrics.service';
-import { CacheModule } from '../common/cache/cache.module';
+// import { CacheModule } from '../common/cache/cache.module';
 import { CacheService } from '../common/cache/cache.service';
 import { OpenAIService } from '../services/openai.service';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { MonitoringModule } from '../monitoring/monitoring.module';
-import { CurriculumEngineService } from './curriculum-engine.service';
-import { PerformanceAnalyzerService } from './performance-analyzer.service';
-import { TopicPrioritizerService } from './topic-prioritizer.service';
+import { CurriculumEngineService } from './services/curriculum-engine.service';
+import { PerformanceAnalyzerService } from './services/performance-analyzer.service';
+import { TopicPrioritizerService } from './services/topic-prioritizer.service';
 import { OutboxService } from '../services/outbox.service';
 import { OutboxWorker } from '../services/outbox.worker';
 import { OutboxCronService } from '../services/outbox.cron.service';
 import { ScheduleModule } from '@nestjs/schedule';
 import { QueueModule } from '../services/queue.module';
+import { AIModule } from '../ai/ai.module';
 import { AIService } from '../ai/ai.service';
 import { LoggingService } from '../common/logging/logging.service';
 import { ExceptionService } from '../common/exceptions/exception.service';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
   imports: [
     PrismaModule, 
-    CacheModule, 
+    // CacheModule, 
     ConfigModule, 
     AuthModule, 
     RealtimeModule, 
     MonitoringModule, 
     ScheduleModule.forRoot(),
-    QueueModule
+    QueueModule,
+    AIModule,
+    SubscriptionModule
   ],
   controllers: [PlanningController],
   providers: [

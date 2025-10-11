@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 import { AIOrchestrator } from './ai-orchestrator.service';
@@ -63,9 +63,9 @@ export class PromptTestingService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
     private readonly aiOrchestrator: AIOrchestrator,
     private readonly promptVersioning: PromptVersioningService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   /**
@@ -80,7 +80,7 @@ export class PromptTestingService {
     try {
       this.logger.log(`Creating test suite: ${data.name}`);
 
-      const testSuite = await this.prisma.aiTestSuite.create({
+      const testSuite = await (this.prisma as any).aiTestSuite.create({
         data: {
           name: data.name,
           description: data.description,
@@ -107,18 +107,18 @@ export class PromptTestingService {
       const cacheKey = `test_suite:${testSuiteId}`;
       
       // Cache kontrolü
-      const cached = await this.cache.get<TestSuite>(cacheKey);
+      const cached = await this.cache?.get<TestSuite>(cacheKey);
       if (cached) {
         return cached;
       }
 
-      const testSuite = await this.prisma.aiTestSuite.findUnique({
+      const testSuite = await (this.prisma as any).aiTestSuite.findUnique({
         where: { id: testSuiteId },
       });
 
       if (testSuite) {
         // Cache'e kaydet
-        await this.cache.set(cacheKey, testSuite, 3600); // 1 saat
+        await this.cache?.set(cacheKey, testSuite, 3600); // 1 saat
       }
 
       return testSuite as any;
@@ -140,7 +140,7 @@ export class PromptTestingService {
     try {
       const { templateId, isActive, limit = 50, offset = 0 } = options;
 
-      const testSuites = await this.prisma.aiTestSuite.findMany({
+      const testSuites = await (this.prisma as any).aiTestSuite.findMany({
         where: {
           ...(templateId && { templateId }),
           ...(isActive !== undefined && { isActive }),
@@ -387,7 +387,7 @@ export class PromptTestingService {
    */
   private async saveTestReport(report: TestReport): Promise<void> {
     try {
-      await this.prisma.aiTestReport.create({
+      await (this.prisma as any).aiTestReport.create({
         data: {
           testSuiteId: report.testSuiteId,
           templateId: report.templateId,
@@ -421,7 +421,7 @@ export class PromptTestingService {
     try {
       const { testSuiteId, templateId, limit = 50, offset = 0 } = options;
 
-      const reports = await this.prisma.aiTestReport.findMany({
+      const reports = await (this.prisma as any).aiTestReport.findMany({
         where: {
           ...(testSuiteId && { testSuiteId }),
           ...(templateId && { templateId }),
@@ -443,13 +443,13 @@ export class PromptTestingService {
    */
   async deactivateTestSuite(testSuiteId: string): Promise<void> {
     try {
-      await this.prisma.aiTestSuite.update({
+      await (this.prisma as any).aiTestSuite.update({
         where: { id: testSuiteId },
         data: { isActive: false },
       });
 
       // Cache'i temizle
-      await this.cache.del(`test_suite:${testSuiteId}`);
+      await this.cache?.del(`test_suite:${testSuiteId}`);
 
       this.logger.log(`Test suite deactivated: ${testSuiteId}`);
     } catch (error) {
@@ -463,12 +463,12 @@ export class PromptTestingService {
    */
   async deleteTestSuite(testSuiteId: string): Promise<void> {
     try {
-      await this.prisma.aiTestSuite.delete({
+      await (this.prisma as any).aiTestSuite.delete({
         where: { id: testSuiteId },
       });
 
       // Cache'i temizle
-      await this.cache.del(`test_suite:${testSuiteId}`);
+      await this.cache?.del(`test_suite:${testSuiteId}`);
 
       this.logger.log(`Test suite deleted: ${testSuiteId}`);
     } catch (error) {
@@ -488,21 +488,21 @@ export class PromptTestingService {
     lastTestRun: Date;
   }> {
     try {
-      const testSuites = await this.prisma.aiTestSuite.findMany({
+      const testSuites = await (this.prisma as any).aiTestSuite.findMany({
         where: { templateId },
       });
 
-      const reports = await this.prisma.aiTestReport.findMany({
+      const reports = await (this.prisma as any).aiTestReport.findMany({
         where: { templateId },
         orderBy: { timestamp: 'desc' },
         take: 100,
       });
 
       const totalTestSuites = testSuites.length;
-      const activeTestSuites = testSuites.filter(ts => ts.isActive).length;
-      const totalTests = testSuites.reduce((sum, ts: any) => sum + ((ts.testCases as any[] | null)?.length || 0), 0);
+      const activeTestSuites = testSuites.filter((ts: any) => ts.isActive).length;
+      const totalTests = testSuites.reduce((sum: number, ts: any) => sum + ((ts.testCases as any[] | null)?.length || 0), 0);
       const averageSuccessRate = reports.length > 0 
-        ? reports.reduce((sum, r) => sum + r.successRate, 0) / reports.length 
+        ? reports.reduce((sum: number, r: any) => sum + r.successRate, 0) / reports.length 
         : 0;
       const lastTestRun = reports.length > 0 ? reports[0].timestamp : new Date(0);
 

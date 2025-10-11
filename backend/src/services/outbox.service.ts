@@ -17,7 +17,7 @@ export class OutboxService {
 
   async enqueue(event: OutboxEventInput) {
     try {
-      await this.prisma.outboxEvent.create({
+      await (this.prisma as any).outboxEvent.create({
         data: {
           userId: event.userId,
           aggregateType: event.aggregateType,

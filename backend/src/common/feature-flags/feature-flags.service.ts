@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../cache/cache.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 export interface FeatureFlag {
   key: string;
@@ -30,7 +31,8 @@ export class FeatureFlagsService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly cacheService: CacheService,
+    private readonly prisma: PrismaService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   /**
@@ -43,11 +45,11 @@ export class FeatureFlagsService {
       updatedAt: new Date(),
     };
 
-    await this.cacheService.set(
-      `${this.cacheKey}:${flag.key}`,
-      JSON.stringify(newFlag),
-      3600 // 1 hour cache
-    );
+    await (this.prisma as any).featureFlagEntity.upsert({
+      where: { key: flag.key },
+      update: { ...newFlag },
+      create: { ...newFlag },
+    });
 
     this.logger.log(`Feature flag created: ${flag.key}`);
     return newFlag;
@@ -68,11 +70,7 @@ export class FeatureFlagsService {
       updatedAt: new Date(),
     };
 
-    await this.cacheService.set(
-      `${this.cacheKey}:${key}`,
-      JSON.stringify(updatedFlag),
-      3600
-    );
+    await (this.prisma as any).featureFlagEntity.update({ where: { key }, data: updatedFlag });
 
     this.logger.log(`Feature flag updated: ${key}`);
     return updatedFlag;
@@ -83,13 +81,10 @@ export class FeatureFlagsService {
    */
   async getFeatureFlag(key: string): Promise<FeatureFlag | null> {
     try {
-      const cached = await this.cacheService.get(`${this.cacheKey}:${key}`);
-      if (cached) {
-        return JSON.parse(cached);
-      }
-      return null;
+      const flag = await (this.prisma as any).featureFlagEntity.findUnique({ where: { key } });
+      return flag ? (flag as any) : null;
     } catch (error) {
-      this.logger.error(`Failed to get feature flag ${key}: ${error.message}`);
+      this.logger.error(`Failed to get feature flag ${key}: ${(error as Error).message}`);
       return null;
     }
   }
@@ -99,19 +94,10 @@ export class FeatureFlagsService {
    */
   async getAllFeatureFlags(): Promise<FeatureFlag[]> {
     try {
-      const keys = await this.cacheService.keys(`${this.cacheKey}:*`);
-      const flags: FeatureFlag[] = [];
-
-      for (const key of keys) {
-        const cached = await this.cacheService.get(key);
-        if (cached) {
-          flags.push(JSON.parse(cached));
-        }
-      }
-
-      return flags;
+      const flags = await (this.prisma as any).featureFlagEntity.findMany({ orderBy: { key: 'asc' } });
+      return flags as any;
     } catch (error) {
-      this.logger.error(`Failed to get all feature flags: ${error.message}`);
+      this.logger.error(`Failed to get all feature flags: ${(error as Error).message}`);
       return [];
     }
   }
@@ -205,7 +191,7 @@ export class FeatureFlagsService {
       };
 
     } catch (error) {
-      this.logger.error(`Failed to evaluate feature flag ${flagKey}: ${error.message}`);
+      this.logger.error(`Failed to evaluate feature flag ${flagKey}: ${(error as Error).message}`);
       return {
         enabled: false,
         reason: 'Evaluation error',
@@ -239,10 +225,10 @@ export class FeatureFlagsService {
   }> {
     try {
       const statsKey = `feature_flag_stats:${flagKey}`;
-      const cached = await this.cacheService.get(statsKey);
+      const cached = await this.cacheService?.get(statsKey);
       
       if (cached) {
-        return JSON.parse(cached);
+        return JSON.parse(cached as string);
       }
 
       return {
@@ -253,7 +239,7 @@ export class FeatureFlagsService {
         topReasons: {},
       };
     } catch (error) {
-      this.logger.error(`Failed to get feature flag stats: ${error.message}`);
+      this.logger.error(`Failed to get feature flag stats: ${(error as Error).message}`);
       return {
         totalEvaluations: 0,
         enabledCount: 0,
@@ -292,9 +278,9 @@ export class FeatureFlagsService {
         ? (updatedStats.enabledCount / updatedStats.totalEvaluations) * 100 
         : 0;
 
-      await this.cacheService.set(statsKey, JSON.stringify(updatedStats), 3600);
+      await this.cacheService?.set(statsKey, JSON.stringify(updatedStats), 3600);
     } catch (error) {
-      this.logger.error(`Failed to record feature flag evaluation: ${error.message}`);
+      this.logger.error(`Failed to record feature flag evaluation: ${(error as Error).message}`);
     }
   }
 
@@ -330,7 +316,7 @@ export class FeatureFlagsService {
    * Delete a feature flag
    */
   async deleteFeatureFlag(key: string): Promise<void> {
-    await this.cacheService.del(`${this.cacheKey}:${key}`);
+    await (this.prisma as any).featureFlagEntity.delete({ where: { key } });
     this.logger.log(`Feature flag deleted: ${key}`);
   }
 }

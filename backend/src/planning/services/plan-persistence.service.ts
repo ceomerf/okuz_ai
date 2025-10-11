@@ -57,7 +57,7 @@ export class PlanPersistenceService {
    */
   async verifyPlanOwnership(userId: string, planId: string): Promise<boolean> {
     try {
-      const plan = await this.prisma.plan.findFirst({
+      const plan = await (this.prisma as any).plan.findFirst({
         where: {
           id: planId,
           userId: userId
@@ -75,7 +75,7 @@ export class PlanPersistenceService {
    */
   async getSessionsInRange(userId: string, start: Date, end: Date) {
     try {
-      const sessions = await this.prisma.studySession.findMany({
+      const sessions = await (this.prisma as any).studySession.findMany({
         where: {
           userId,
           startTime: {
@@ -103,7 +103,7 @@ export class PlanPersistenceService {
       this.logger.log(`Scheduling weekly quiz for user: ${userId}`);
       
       // Quiz oturumu oluştur
-      const quizSession = await this.prisma.studySession.create({
+      const quizSession = await (this.prisma as any).studySession.create({
         data: {
           userId,
           subject: 'Quiz',
@@ -169,7 +169,7 @@ export class PlanPersistenceService {
       this.logger.log(`Creating plan for user: ${data.userId}`);
 
       // Kullanıcı kontrolü
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id: data.userId },
         include: { studentProfile: true },
       });
@@ -343,7 +343,7 @@ export class PlanPersistenceService {
       this.logger.log(`Updating plan: ${planId} for user: ${userId}`);
 
       // Plan var mı kontrol et
-      const existingPlan = await this.prisma.plan.findFirst({
+      const existingPlan = await (this.prisma as any).plan.findFirst({
         where: { id: planId, userId },
       });
 
@@ -352,7 +352,7 @@ export class PlanPersistenceService {
       }
 
       // Plan güncelle
-      const updatedPlan = await this.prisma.plan.update({
+      const updatedPlan = await (this.prisma as any).plan.update({
         where: { id: planId },
         data: {
           title: data.title,
@@ -398,7 +398,7 @@ export class PlanPersistenceService {
       this.logger.log(`Deleting plan: ${planId} for user: ${userId}`);
 
       // Plan var mı kontrol et
-      const existingPlan = await this.prisma.plan.findFirst({
+      const existingPlan = await (this.prisma as any).plan.findFirst({
         where: { id: planId, userId },
       });
 
@@ -407,12 +407,12 @@ export class PlanPersistenceService {
       }
 
       // İlişkili seansları sil
-      await this.prisma.studySession.deleteMany({
+      await (this.prisma as any).studySession.deleteMany({
         where: { planId },
       });
 
       // Planı sil
-      await this.prisma.plan.delete({
+      await (this.prisma as any).plan.delete({
         where: { id: planId },
       });
 
@@ -464,14 +464,14 @@ export class PlanPersistenceService {
         },
       }));
 
-      const createdSessions = await this.prisma.studySession.createMany({
+      const createdSessions = await (this.prisma as any).studySession.createMany({
         data: studySessions,
       });
 
       this.logger.log(`Created ${createdSessions.count} study sessions for plan: ${planId}`);
 
       // Oluşturulan seansları getir
-      const sessionsWithIds = await this.prisma.studySession.findMany({
+      const sessionsWithIds = await (this.prisma as any).studySession.findMany({
         where: { planId },
         orderBy: { createdAt: 'asc' }, // order property kaldırıldı
       });
@@ -525,7 +525,7 @@ export class PlanPersistenceService {
    */
   async getPlanStatistics(planId: string, userId: string): Promise<any> {
     try {
-      const plan = await this.prisma.plan.findFirst({
+      const plan = await (this.prisma as any).plan.findFirst({
         where: { id: planId, userId },
         include: {
           // studySessions: true, // Bu property kaldırıldı
@@ -580,7 +580,7 @@ export class PlanPersistenceService {
    */
   async archivePlan(userId: string, planId: string): Promise<void> {
     try {
-      const plan = await this.prisma.plan.findFirst({
+      const plan = await (this.prisma as any).plan.findFirst({
         where: { id: planId, userId },
       });
 
@@ -588,7 +588,7 @@ export class PlanPersistenceService {
         throw new NotFoundException('Plan not found');
       }
 
-      await this.prisma.plan.update({
+      await (this.prisma as any).plan.update({
         where: { id: planId },
         data: { isActive: false },
       });
@@ -613,7 +613,7 @@ export class PlanPersistenceService {
    */
   async activatePlan(userId: string, planId: string): Promise<void> {
     try {
-      const plan = await this.prisma.plan.findFirst({
+      const plan = await (this.prisma as any).plan.findFirst({
         where: { id: planId, userId },
       });
 
@@ -622,13 +622,13 @@ export class PlanPersistenceService {
       }
 
       // Diğer aktif planları deaktif et
-      await this.prisma.plan.updateMany({
+      await (this.prisma as any).plan.updateMany({
         where: { userId, isActive: true },
         data: { isActive: false },
       });
 
       // Bu planı aktif et
-      await this.prisma.plan.update({
+      await (this.prisma as any).plan.update({
         where: { id: planId },
         data: { isActive: true },
       });

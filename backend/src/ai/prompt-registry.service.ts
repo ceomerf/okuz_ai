@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { CacheService } from '../common/cache/cache.service';
 
 export interface PromptTemplate {
@@ -31,7 +31,7 @@ export class PromptRegistry {
   private readonly templates: Map<string, PromptTemplate> = new Map();
   private readonly typeIndex: Map<string, Set<string>> = new Map();
 
-  constructor(private readonly cache: CacheService) {
+  constructor(@Optional() private readonly cache?: CacheService) {
     this.initializeDefaultPrompts();
   }
 
@@ -342,7 +342,7 @@ Keep the response concise but informative.`,
     try {
       // Cache kontrolü
       const cacheKey = `prompt:${promptType}:${JSON.stringify(context)}`;
-      const cached = await this.cache.get<string>(cacheKey);
+      const cached = await this.cache?.get<string>(cacheKey);
       if (cached) {
         return cached;
       }
@@ -357,7 +357,7 @@ Keep the response concise but informative.`,
       const result = this.renderPrompt(template, context);
       
       // Cache'e kaydet
-      await this.cache.set(cacheKey, result.prompt, 3600); // 1 saat
+      await this.cache?.set(cacheKey, result.prompt, 3600); // 1 saat
 
       return result.prompt;
     } catch (error) {

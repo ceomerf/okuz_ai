@@ -9,7 +9,7 @@ export class TopicManagementService {
 
   async getTopicsBySubject(subject: string, grade: number): Promise<any[]> {
     try {
-      return await this.prisma.mebTopic.findMany({
+      return await (this.prisma as any).mebTopic.findMany({
         where: {
           subject,
           grade,
@@ -23,7 +23,7 @@ export class TopicManagementService {
 
   async getTopicById(topicId: string): Promise<any> {
     try {
-      return await this.prisma.mebTopic.findUnique({
+      return await (this.prisma as any).mebTopic.findUnique({
         where: { id: topicId },
       });
     } catch (error) {
@@ -34,7 +34,7 @@ export class TopicManagementService {
 
   async getTopicPrerequisites(topicId: string): Promise<any[]> {
     try {
-      return await this.prisma.topicPrerequisite.findMany({
+      return await (this.prisma as any).topicPrerequisite.findMany({
         where: { topicId },
         include: { prerequisite: true },
       });
@@ -53,7 +53,7 @@ export class TopicManagementService {
       if (subject) where.subject = subject;
       if (grade) where.grade = parseInt(grade);
 
-      return await this.prisma.mebTopic.findMany({
+      return await (this.prisma as any).mebTopic.findMany({
         where,
         orderBy: { grade: 'asc' }
       });
@@ -71,7 +71,7 @@ export class TopicManagementService {
       const where: any = {};
       if (track) where.track = track;
 
-      return await this.prisma.yksTopic.findMany({
+      return await (this.prisma as any).yksTopic.findMany({
         where,
         orderBy: { weight: 'desc' }
       });
@@ -87,7 +87,7 @@ export class TopicManagementService {
   async assignYksSubjects(userId: string, data: { subjects: string[] }): Promise<any> {
     try {
       // Kullanıcının YKS derslerini güncelle
-      const user = await this.prisma.user.update({
+      const user = await (this.prisma as any).user.update({
         where: { id: userId },
         data: {
           yksSubjects: data.subjects
@@ -111,7 +111,7 @@ export class TopicManagementService {
   async getAdaptiveSequence(data: { userId: string; subjects: string[]; weeks: number }): Promise<any> {
     try {
       // Kullanıcının performans verilerini al
-      const userPerformance = await this.prisma.studySession.findMany({
+      const userPerformance = await (this.prisma as any).studySession.findMany({
         where: {
           userId: data.userId,
           subject: { in: data.subjects }
@@ -125,9 +125,9 @@ export class TopicManagementService {
 
       // Performansa göre konu sırası oluştur
       const subjectPerformance = data.subjects.map(subject => {
-        const sessions = userPerformance.filter(s => s.subject === subject);
+        const sessions = userPerformance.filter((s: any) => s.subject === subject);
         const avgPerformance = sessions.length > 0 
-          ? sessions.reduce((sum, s) => sum + (s.performance || 0), 0) / sessions.length 
+          ? sessions.reduce((sum: number, s: any) => sum + (s.performance || 0), 0) / sessions.length 
           : 0;
         
         return {
@@ -151,5 +151,88 @@ export class TopicManagementService {
       this.logger.error(`Failed to get adaptive sequence: ${error instanceof Error ? error.message : String(error)}`);
       throw new Error('Failed to get adaptive sequence');
     }
+  }
+
+  // Legacy methods for backward compatibility
+  async buildCurriculumTopicPool(
+    subjects: string[],
+    grade: number,
+    overrideTopics?: Record<string, string[]>,
+    dateWindow?: { startDate?: Date; endDate?: Date }
+  ): Promise<Record<string, string[]>> {
+    const pool: Record<string, string[]> = {};
+    
+    for (const subject of subjects) {
+      if (overrideTopics?.[subject]) {
+        pool[subject] = overrideTopics[subject];
+        continue;
+      }
+
+      const monthFilter: Record<string, unknown> = {};
+      if (dateWindow?.startDate) {
+        const startMonth = dateWindow.startDate.getMonth() + 1;
+        const endMonth = (dateWindow.endDate?.getMonth() ?? -1) + 1 || startMonth;
+        monthFilter.month = { gte: startMonth, lte: endMonth };
+      }
+
+      const where: Record<string, unknown> = {
+        subject,
+        grade,
+        ...monthFilter,
+      };
+
+      const topics = await (this.prisma as any).topic.findMany({
+        where,
+        select: { topic: true },
+        orderBy: { month: 'asc' },
+      });
+
+      if (topics.length > 0) {
+        pool[subject] = topics.map((t: any) => t.topic);
+      } else {
+        // Fallback: tüm konuları al
+        const relaxedWhere1 = { subject, grade };
+        const relaxedWhere2 = { subject };
+        
+        const fallbackTopics = await (this.prisma as any).topic.findMany({
+          where: relaxedWhere1,
+          select: { topic: true },
+        });
+
+        if (fallbackTopics.length === 0) {
+          const allTopics = await (this.prisma as any).topic.findMany({
+            where: relaxedWhere2,
+            select: { topic: true },
+          });
+          pool[subject] = allTopics.map((t: any) => t.topic);
+        } else {
+          pool[subject] = fallbackTopics.map((t: any) => t.topic);
+        }
+      }
+    }
+
+    return pool;
+  }
+
+  generateSyntheticTopics(
+    subject: string,
+    grade: number,
+    dateWindow?: { startDate?: Date; endDate?: Date }
+  ): string[] {
+    const baseTopics = [
+      `${subject} Temel Kavramlar`,
+      `${subject} Problem Çözme`,
+      `${subject} Uygulamalar`,
+      `${subject} Analiz`,
+      `${subject} Sentez`
+    ];
+
+    if (dateWindow?.startDate && dateWindow?.endDate) {
+      const startMonth = dateWindow.startDate.getMonth() + 1;
+      const endMonth = dateWindow.endDate.getMonth() + 1;
+      return baseTopics.slice(0, Math.min(endMonth - startMonth + 1, baseTopics.length));
+    }
+
+    return baseTopics;
   }
 }

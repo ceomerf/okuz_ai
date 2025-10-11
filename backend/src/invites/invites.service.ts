@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -18,7 +18,7 @@ export interface AcceptInviteDto {
 export class InvitesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cacheService: CacheService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   async createInvite(inviteData: CreateInviteDto) {
@@ -26,7 +26,7 @@ export class InvitesService {
       const token = uuidv4();
       const expiresAt = inviteData.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-      const invite = await this.prisma.invite.create({
+      const invite = await (this.prisma as any).invite.create({
         data: {
           id: uuidv4(),
           inviterId: inviteData.inviterId,
@@ -41,7 +41,7 @@ export class InvitesService {
       });
 
       // Cache the invite
-      await this.cacheService.set(`invite:${invite.id}`, invite, 7 * 24 * 60 * 60); // 7 days
+      await this.cacheService?.set(`invite:${invite.id}`, invite, 7 * 24 * 60 * 60); // 7 days
 
       return invite;
     } catch (error) {
@@ -52,13 +52,13 @@ export class InvitesService {
   async getInvite(id: string) {
     try {
       // Try cache first
-      const cached = await this.cacheService.get(`invite:${id}`);
+      const cached = await this.cacheService?.get(`invite:${id}`);
       if (cached) {
         return cached;
       }
 
       // Get from database
-      const invite = await this.prisma.invite.findUnique({
+      const invite = await (this.prisma as any).invite.findUnique({
         where: { id },
       });
 
@@ -67,7 +67,7 @@ export class InvitesService {
       }
 
       // Cache the result
-      await this.cacheService.set(`invite:${id}`, invite, 7 * 24 * 60 * 60);
+      await this.cacheService?.set(`invite:${id}`, invite, 7 * 24 * 60 * 60);
 
       return invite;
     } catch (error) {
@@ -80,7 +80,7 @@ export class InvitesService {
 
   async getInviteByToken(token: string) {
     try {
-      const invite = await this.prisma.invite.findUnique({
+      const invite = await (this.prisma as any).invite.findUnique({
         where: { token },
       });
 
@@ -99,7 +99,7 @@ export class InvitesService {
 
   async acceptInvite(inviteId: string, userId: string) {
     try {
-      const invite = await this.prisma.invite.findUnique({
+      const invite = await (this.prisma as any).invite.findUnique({
         where: { id: inviteId },
       });
 
@@ -115,7 +115,7 @@ export class InvitesService {
         throw new BadRequestException('Invite has expired');
       }
 
-      const updatedInvite = await this.prisma.invite.update({
+      const updatedInvite = await (this.prisma as any).invite.update({
         where: { id: inviteId },
         data: {
           status: 'ACCEPTED',
@@ -124,7 +124,7 @@ export class InvitesService {
       });
 
       // Remove from cache
-      await this.cacheService.del(`invite:${inviteId}`);
+      await this.cacheService?.del(`invite:${inviteId}`);
 
       return updatedInvite;
     } catch (error) {
@@ -137,7 +137,7 @@ export class InvitesService {
 
   async declineInvite(inviteId: string) {
     try {
-      const updatedInvite = await this.prisma.invite.update({
+      const updatedInvite = await (this.prisma as any).invite.update({
         where: { id: inviteId },
         data: {
           status: 'DECLINED',
@@ -146,7 +146,7 @@ export class InvitesService {
       });
 
       // Remove from cache
-      await this.cacheService.del(`invite:${inviteId}`);
+      await this.cacheService?.del(`invite:${inviteId}`);
 
       return updatedInvite;
     } catch (error) {
@@ -156,7 +156,7 @@ export class InvitesService {
 
   async getUserInvites(userId: string) {
     try {
-      const invites = await this.prisma.invite.findMany({
+      const invites = await (this.prisma as any).invite.findMany({
         where: { inviterId: userId },
         orderBy: { createdAt: 'desc' },
       });
@@ -170,7 +170,7 @@ export class InvitesService {
   async resendInvite(inviteId: string) {
     try {
       const newToken = uuidv4();
-      const updatedInvite = await this.prisma.invite.update({
+      const updatedInvite = await (this.prisma as any).invite.update({
         where: { id: inviteId },
         data: {
           token: newToken,
@@ -187,12 +187,12 @@ export class InvitesService {
 
   async deleteInvite(inviteId: string) {
     try {
-      await this.prisma.invite.delete({
+      await (this.prisma as any).invite.delete({
         where: { id: inviteId },
       });
 
       // Remove from cache
-      await this.cacheService.del(`invite:${inviteId}`);
+      await this.cacheService?.del(`invite:${inviteId}`);
       
       return { message: 'Invite deleted successfully', id: inviteId };
     } catch (error) {
@@ -210,13 +210,13 @@ export class InvitesService {
 
   async getInviteStats(userId: string) {
     try {
-      const stats = await this.prisma.invite.groupBy({
+      const stats = await (this.prisma as any).invite.groupBy({
         by: ['status'],
         where: { inviterId: userId },
         _count: true,
       });
 
-      return stats.reduce((acc, stat) => {
+      return stats.reduce((acc: any, stat: any) => {
         acc[stat.status.toLowerCase()] = stat._count;
         return acc;
       }, {} as Record<string, number>);

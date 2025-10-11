@@ -32,7 +32,7 @@ export class AnalysisService {
     }
 
     // Tek sorgu ile tüm performans verilerini al
-    const userData = await this.prisma.user.findUnique({
+    const userData = await (this.prisma as any).user.findUnique({
       where: { id: userId },
       include: {
         examResults: {
@@ -41,7 +41,6 @@ export class AnalysisService {
           select: {
             score: true,
             totalScore: true,
-            subject: true,
             createdAt: true,
           }
         },
@@ -52,7 +51,6 @@ export class AnalysisService {
           select: {
             score: true,
             totalScore: true,
-            subject: true,
             createdAt: true,
           }
         },
@@ -62,7 +60,6 @@ export class AnalysisService {
           take: 100,
           select: {
             performance: true,
-            subject: true,
             createdAt: true,
           }
         }
@@ -84,12 +81,12 @@ export class AnalysisService {
     // Konu bazlı skorları hesapla
     const subjectScores: Record<string, number[]> = {};
     
-    examResults.forEach(exam => {
+    examResults.forEach((exam: any) => {
       if (!subjectScores[exam.subject]) subjectScores[exam.subject] = [];
       subjectScores[exam.subject].push((exam.score / exam.totalScore) * 100);
     });
 
-    quizzes.forEach(quiz => {
+    quizzes.forEach((quiz: any) => {
       if (!subjectScores[quiz.subject]) subjectScores[quiz.subject] = [];
       subjectScores[quiz.subject].push(((quiz.score || 0) / quiz.totalScore) * 100);
     });
@@ -128,35 +125,32 @@ export class AnalysisService {
 
     // Paralel sorgular - N+1 problemi yok
     const [examResults, quizResults, studySessions] = await Promise.all([
-      this.prisma.examResult.findMany({
+      (this.prisma as any).examResult.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
         take: 20,
         select: {
           score: true,
           totalScore: true,
-          subject: true,
           createdAt: true,
         }
       }),
-      this.prisma.quiz.findMany({
+      (this.prisma as any).quiz.findMany({
         where: { userId, isCompleted: true },
         orderBy: { createdAt: 'desc' },
         take: 50,
         select: {
           score: true,
           totalScore: true,
-          subject: true,
           createdAt: true,
         }
       }),
-      this.prisma.studySession.findMany({
+      (this.prisma as any).studySession.findMany({
         where: { userId, isCompleted: true },
         orderBy: { createdAt: 'desc' },
         take: 100,
         select: {
           performance: true,
-          subject: true,
           createdAt: true,
         }
       })

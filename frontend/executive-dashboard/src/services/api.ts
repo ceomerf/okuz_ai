@@ -20,7 +20,7 @@ class ApiService {
     // Request interceptor - JWT token ekle
     this.api.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem('admin_token');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -37,7 +37,8 @@ class ApiService {
       (error) => {
         if (error.response?.status === 401) {
           // Token süresi dolmuş, login sayfasına yönlendir
-          localStorage.removeItem('authToken');
+          localStorage.removeItem('admin_token');
+          localStorage.removeItem('admin_user');
           window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -147,6 +148,96 @@ class ApiService {
     } catch (error) {
       console.error('KPI dashboard alınamadı:', error);
       throw error;
+    }
+  }
+
+  // Authentication metodları
+  async login(email: string, password: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.api.post('/api/auth/login', {
+        email,
+        password,
+      });
+      return {
+        success: true,
+        data: response.data,
+        message: 'Giriş başarılı'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        data: null,
+        message: error.response?.data?.message || 'Giriş başarısız'
+      };
+    }
+  }
+
+  async register(name: string, email: string, password: string, role?: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.api.post('/api/auth/register', {
+        name,
+        email,
+        password,
+        role,
+      });
+      return {
+        success: true,
+        data: response.data,
+        message: 'Kayıt başarılı'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        data: null,
+        message: error.response?.data?.message || 'Kayıt başarısız'
+      };
+    }
+  }
+
+  async getProfile(): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.api.get('/api/auth/profile');
+      return {
+        success: true,
+        data: response.data,
+        message: 'Profil bilgileri alındı'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        data: null,
+        message: error.response?.data?.message || 'Profil bilgileri alınamadı'
+      };
+    }
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.api.post('/api/auth/logout');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+    }
+  }
+
+  async refreshToken(refreshToken: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.api.post('/api/auth/refresh', {
+        refreshToken,
+      });
+      return {
+        success: true,
+        data: response.data,
+        message: 'Token yenilendi'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        data: null,
+        message: error.response?.data?.message || 'Token yenilenemedi'
+      };
     }
   }
 }

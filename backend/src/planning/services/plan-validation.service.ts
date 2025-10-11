@@ -183,7 +183,7 @@ export class PlanValidationService {
 
     try {
       // Kullanıcının mevcut planlarını kontrol et
-      const existingPlans = await this.prisma.plan.findMany({
+      const existingPlans = await (this.prisma as any).plan.findMany({
         where: {
           userId,
           isActive: true

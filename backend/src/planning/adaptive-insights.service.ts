@@ -18,13 +18,13 @@ export class AdaptiveInsightsService {
 
   async computeUserInsights(userId: string): Promise<UserInsights> {
     const [sessions, exams] = await Promise.all([
-      this.prisma.studySession.findMany({
+      (this.prisma as any).studySession.findMany({
         where: { userId },
         select: { subject: true, duration: true, startTime: true, endTime: true, isCompleted: true, metadata: true },
         orderBy: { startTime: 'desc' },
         take: 500,
       }),
-      this.prisma.examResult.findMany({
+      (this.prisma as any).examResult.findMany({
         where: { userId },
         select: { subject: true, score: true, totalScore: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
@@ -32,7 +32,7 @@ export class AdaptiveInsightsService {
       }),
     ]);
 
-    const totalDuration = sessions.reduce((s, x) => s + (x.duration || 0), 0);
+    const totalDuration = sessions.reduce((s: number, x: any) => s + (x.duration || 0), 0);
     const avgSessionDurationMin = sessions.length ? Math.round(totalDuration / sessions.length) : 40;
 
     const hourBuckets: Record<string, number> = {};
@@ -65,8 +65,8 @@ export class AdaptiveInsightsService {
     // Basit sevgi/kaçınma skoru: süre payı (+), tamamlanmayan seans oranı (-)
     const subjectAffinity: Record<string, number> = {};
     for (const [subj, share] of Object.entries(subjectTimeShare)) {
-      const subjSessions = sessions.filter((s) => s.subject === subj);
-      const notCompleted = subjSessions.filter((s) => !s.isCompleted).length;
+      const subjSessions = sessions.filter((s: any) => s.subject === subj);
+      const notCompleted = subjSessions.filter((s: any) => !s.isCompleted).length;
       const fatigue = subjSessions.length ? notCompleted / subjSessions.length : 0;
       const score = (Number(share) / 100) - fatigue * 0.5;
       subjectAffinity[subj] = Math.max(-1, Math.min(1, Number(score.toFixed(2))));

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { QueueService } from '../queue/queue.service';
 
@@ -30,7 +30,7 @@ export class AnalyticsService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly queueService: QueueService,
+    @Optional() private readonly queueService?: QueueService,
   ) {
     this.isEnabled = this.configService.get<string>('ANALYTICS_ENABLED', 'true') === 'true';
   }
@@ -60,11 +60,11 @@ export class AnalyticsService {
       };
 
       // Send to analytics queue for processing
-      await this.queueService.add('analytics', 'track-event', analyticsEvent);
+      await this.queueService?.add('analytics', 'track-event', analyticsEvent);
 
       this.logger.log(`Event tracked: ${event} for user ${userId}`);
     } catch (error) {
-      this.logger.error(`Failed to track event ${event}: ${error.message}`);
+      this.logger.error(`Failed to track event ${event}: ${(error as Error).message}`);
     }
   }
 
@@ -230,7 +230,7 @@ export class AnalyticsService {
     }
 
     try {
-      await this.queueService.add('analytics', 'identify-user', {
+      await this.queueService?.add('analytics', 'identify-user', {
         userId,
         properties,
         timestamp: new Date(),
@@ -238,7 +238,7 @@ export class AnalyticsService {
 
       this.logger.log(`User identified: ${userId}`);
     } catch (error) {
-      this.logger.error(`Failed to identify user ${userId}: ${error.message}`);
+      this.logger.error(`Failed to identify user ${userId}: ${(error as Error).message}`);
     }
   }
 

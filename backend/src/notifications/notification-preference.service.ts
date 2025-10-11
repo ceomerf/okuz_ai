@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 import { MetricsService } from '../monitoring/metrics.service';
@@ -63,9 +63,9 @@ export class NotificationPreferenceService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
-    private readonly metrics: MetricsService,
-    private readonly eventEmitter: EventEmitter2,
+    @Optional() private readonly cache?: CacheService,
+    @Optional() private readonly metrics?: MetricsService,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
   ) {
     this.initializeDefaultPreferences();
   }
@@ -155,22 +155,27 @@ export class NotificationPreferenceService {
   async getUserPreferences(userId: string): Promise<NotificationPreference[]> {
     try {
       // Cache'den al
-      const cacheKey = `notification_preferences:${userId}`;
-      const cached = await this.cache.get(cacheKey);
-      if (cached) {
-        return JSON.parse(cached as string);
+      if (this.cache) {
+        const cacheKey = `notification_preferences:${userId}`;
+        const cached = await this.cache.get(cacheKey);
+        if (cached) {
+          return JSON.parse(cached as string);
+        }
       }
 
       // Veritabanından al
-      const preferences = await this.prisma.notificationPreference.findMany({
+      const preferences = await (this.prisma as any).notificationPreference.findMany({
         where: { userId },
         orderBy: { type: 'asc' },
       });
 
-      const result = preferences.map(pref => this.mapToPreference(pref));
+      const result = preferences.map((pref: any) => this.mapToPreference(pref));
 
       // Cache'e kaydet
-      await this.cache.set(cacheKey, JSON.stringify(result), 300); // 5 dakika
+      if (this.cache) {
+        const cacheKey = `notification_preferences:${userId}`;
+        await this.cache.set(cacheKey, JSON.stringify(result), 300); // 5 dakika
+      }
 
       return result;
     } catch (error) {
@@ -187,7 +192,7 @@ export class NotificationPreferenceService {
     type: string
   ): Promise<NotificationPreference | null> {
     try {
-      const preference = await this.prisma.notificationPreference.findFirst({
+      const preference = await (this.prisma as any).notificationPreference.findFirst({
         where: { userId, type },
       });
 
@@ -207,14 +212,14 @@ export class NotificationPreferenceService {
     preference: NotificationPreferenceUpdate
   ): Promise<NotificationPreference> {
     try {
-      const existing = await this.prisma.notificationPreference.findFirst({
+      const existing = await (this.prisma as any).notificationPreference.findFirst({
         where: { userId, type },
       });
 
       let result;
       if (existing) {
         // Güncelle
-        result = await this.prisma.notificationPreference.update({
+        result = await (this.prisma as any).notificationPreference.update({
           where: { id: existing.id },
           data: {
             ...(preference as any),
@@ -223,7 +228,7 @@ export class NotificationPreferenceService {
         });
       } else {
         // Oluştur
-        result = await this.prisma.notificationPreference.create({
+        result = await (this.prisma as any).notificationPreference.create({
           data: {
             userId,
             type,
@@ -239,15 +244,19 @@ export class NotificationPreferenceService {
       }
 
       // Cache'i temizle
-      await this.cache.del(`notification_preferences:${userId}`);
+      if (this.cache) {
+        await this.cache.del(`notification_preferences:${userId}`);
+      }
 
       // Event emit
-      this.eventEmitter.emit('notification.preference.updated', {
-        userId,
-        type,
-        preference: this.mapToPreference(result),
-        timestamp: new Date(),
-      });
+      if (this.eventEmitter) {
+        this.eventEmitter.emit('notification.preference.updated', {
+          userId,
+          type,
+          preference: this.mapToPreference(result),
+          timestamp: new Date(),
+        });
+      }
 
       this.logger.log(`Preference updated for user ${userId}: ${type}`);
       
@@ -263,19 +272,23 @@ export class NotificationPreferenceService {
    */
   async deletePreference(userId: string, type: string): Promise<void> {
     try {
-      await this.prisma.notificationPreference.deleteMany({
+      await (this.prisma as any).notificationPreference.deleteMany({
         where: { userId, type },
       });
 
       // Cache'i temizle
-      await this.cache.del(`notification_preferences:${userId}`);
+      if (this.cache) {
+        await this.cache.del(`notification_preferences:${userId}`);
+      }
 
       // Event emit
-      this.eventEmitter.emit('notification.preference.deleted', {
-        userId,
-        type,
-        timestamp: new Date(),
-      });
+      if (this.eventEmitter) {
+        this.eventEmitter.emit('notification.preference.deleted', {
+          userId,
+          type,
+          timestamp: new Date(),
+        });
+      }
 
       this.logger.log(`Preference deleted for user ${userId}: ${type}`);
     } catch (error) {
@@ -292,7 +305,7 @@ export class NotificationPreferenceService {
       const preferences: NotificationPreference[] = [];
 
       for (const [type, defaultPref] of Object.entries(this.defaultPreferences)) {
-        const preference = await this.prisma.notificationPreference.create({
+        const preference = await (this.prisma as any).notificationPreference.create({
           data: {
             userId,
             type,
@@ -311,7 +324,9 @@ export class NotificationPreferenceService {
       }
 
       // Cache'i temizle
-      await this.cache.del(`notification_preferences:${userId}`);
+      if (this.cache) {
+        await this.cache.del(`notification_preferences:${userId}`);
+      }
 
       this.logger.log(`Created default preferences for user ${userId}`);
       
@@ -410,12 +425,14 @@ export class NotificationPreferenceService {
   async getPreferenceStats(): Promise<NotificationPreferenceStats> {
     try {
       // Cache'den al
-      const cached = await this.cache.get('notification_preference_stats');
-      if (cached) {
-        return JSON.parse(cached as string);
+      if (this.cache) {
+        const cached = await this.cache.get('notification_preference_stats');
+        if (cached) {
+          return JSON.parse(cached as string);
+        }
       }
 
-      const preferences = await this.prisma.notificationPreference.findMany({
+      const preferences = await (this.prisma as any).notificationPreference.findMany({
         select: {
           type: true,
           channel: true,
@@ -431,7 +448,7 @@ export class NotificationPreferenceService {
       const preferencesByType: Record<string, number> = {};
       const preferencesByChannel: Record<string, number> = {};
       
-      preferences.forEach(pref => {
+      preferences.forEach((pref: any) => {
         preferencesByType[pref.type] = (preferencesByType[pref.type] || 0) + 1;
         preferencesByChannel[pref.channel] = (preferencesByChannel[pref.channel] || 0) + 1;
       });
@@ -441,7 +458,7 @@ export class NotificationPreferenceService {
       const quietHoursCounts = { enabled: 0, disabled: 0 };
       const categoryCounts: Record<string, number> = {};
 
-      preferences.forEach(pref => {
+      preferences.forEach((pref: any) => {
         frequencyCounts[pref.frequency] = (frequencyCounts[pref.frequency] || 0) + 1;
         
         if ((pref.quietHours as any)?.enabled) {
@@ -478,7 +495,9 @@ export class NotificationPreferenceService {
       };
 
       // Cache'e kaydet
-      await this.cache.set('notification_preference_stats', JSON.stringify(result), 600); // 10 dakika
+      if (this.cache) {
+        await this.cache.set('notification_preference_stats', JSON.stringify(result), 600); // 10 dakika
+      }
 
       return result;
     } catch (error) {
@@ -529,7 +548,7 @@ export class NotificationPreferenceService {
     template: Omit<NotificationPreference, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ): Promise<void> {
     try {
-      await this.prisma.notificationPreferenceTemplate.create({
+      await (this.prisma as any).notificationPreferenceTemplate.create({
         data: {
           name,
           type: template.type,
@@ -557,7 +576,7 @@ export class NotificationPreferenceService {
     templateName: string
   ): Promise<NotificationPreference> {
     try {
-      const template = await this.prisma.notificationPreferenceTemplate.findFirst({
+      const template = await (this.prisma as any).notificationPreferenceTemplate.findFirst({
         where: { name: templateName },
       });
 
@@ -565,7 +584,7 @@ export class NotificationPreferenceService {
         throw new NotFoundException(`Preference template not found: ${templateName}`);
       }
 
-      const preference = await this.prisma.notificationPreference.create({
+      const preference = await (this.prisma as any).notificationPreference.create({
         data: {
           userId,
           type: template.type,
@@ -581,7 +600,9 @@ export class NotificationPreferenceService {
       });
 
       // Cache'i temizle
-      await this.cache.del(`notification_preferences:${userId}`);
+      if (this.cache) {
+        await this.cache.del(`notification_preferences:${userId}`);
+      }
 
       this.logger.log(`Created preference from template ${templateName} for user ${userId}`);
       

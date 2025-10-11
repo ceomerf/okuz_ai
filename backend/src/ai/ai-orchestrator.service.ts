@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, InternalServerErrorException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { CacheService } from '../common/cache/cache.service';
@@ -69,10 +69,10 @@ export class AIOrchestrator {
     private readonly configService: ConfigService,
     private readonly aiConfig: AIConfigService,
     private readonly promptRegistry: PromptRegistry,
-    private readonly cache: CacheService,
     private readonly prisma: PrismaService,
-    private readonly metrics: MetricsService,
-    private readonly aiLogger: AILoggerService,
+    @Optional() private readonly metrics?: MetricsService,
+    @Optional() private readonly aiLogger?: AILoggerService,
+    @Optional() private readonly cache?: CacheService,
   ) {
     this.initializeOpenAI();
     this.setupFallbackStrategies();
@@ -174,7 +174,7 @@ export class AIOrchestrator {
       // Cache kontrolü
       if (options.cache !== false) {
         const cacheKey = this.generateCacheKey(request);
-        const cached = await this.cache.get<AIResponse>(cacheKey);
+        const cached = await this.cache?.get<AIResponse>(cacheKey);
         if (cached) {
           this.logger.log(`Cache hit for request: ${requestId}`);
           return cached;
@@ -187,7 +187,7 @@ export class AIOrchestrator {
       // Cache'e kaydet
       if (options.cache !== false) {
         const cacheTTL = options.cacheTTL || this.aiConfig.getDefaultCacheTTL();
-        await this.cache.set(this.generateCacheKey(request), response, cacheTTL);
+        await this.cache?.set(this.generateCacheKey(request), response, cacheTTL);
       }
 
       // Logging
@@ -364,14 +364,14 @@ export class AIOrchestrator {
 
     // Redis ile rate limiting kontrolü
     const key = `rate_limit:${userId}:${promptType || 'default'}`;
-    const current = await this.cache.get<number>(key) || 0;
+    const current = await this.cache?.get<number>(key) || 0;
 
     if (current >= config.requestsPerMinute) {
       throw new BadRequestException('Rate limit exceeded. Please try again later.');
     }
 
     // Counter'ı artır
-    await this.cache.set(key, current + 1, 60); // 1 dakika TTL
+    await this.cache?.set(key, current + 1, 60); // 1 dakika TTL
   }
 
   /**
@@ -379,7 +379,7 @@ export class AIOrchestrator {
    */
   private async getUserTier(userId: string): Promise<string> {
     try {
-      const user = await this.prisma.user.findUnique({
+      const user = await (this.prisma as any).user.findUnique({
         where: { id: userId },
         select: { subscriptionStatus: true },
       });
@@ -427,27 +427,31 @@ export class AIOrchestrator {
   ): Promise<void> {
     try {
       // AI Logger'a kaydet
-      await this.aiLogger.logAIRequest({
-        // DÜZELTME: AILogEntry şemasına uygun veri gönderimi
-        requestId: response.requestId,
-        userId: request.userId,
-        promptType: request.promptType || 'default',
-        model: response.model,
-        prompt: request.prompt,
-        response: response.content,
-        usage: {
-          promptTokens: response.usage.promptTokens,
-          completionTokens: response.usage.completionTokens,
-          totalTokens: response.usage.totalTokens,
-        },
-        duration,
-        success: true,
-        timestamp: new Date(),
-      });
+      if (this.aiLogger) {
+        await this.aiLogger.logAIRequest({
+          // DÜZELTME: AILogEntry şemasına uygun veri gönderimi
+          requestId: response.requestId,
+          userId: request.userId,
+          promptType: request.promptType || 'default',
+          model: response.model,
+          prompt: request.prompt,
+          response: response.content,
+          usage: {
+            promptTokens: response.usage.promptTokens,
+            completionTokens: response.usage.completionTokens,
+            totalTokens: response.usage.totalTokens,
+          },
+          duration,
+          success: true,
+          timestamp: new Date(),
+        });
+      }
 
       // Metrics service'e kaydet
-      this.metrics.recordGeminiUsage(request.userId, request.promptType, response.model, 'chat.completions', response.usage.totalTokens);
-      this.metrics.recordGeminiCallDuration(request.userId, request.promptType, response.model, 'chat.completions', duration, true);
+      if (this.metrics) {
+        this.metrics.recordGeminiUsage(request.userId, request.promptType, response.model, 'chat.completions', response.usage.totalTokens);
+        this.metrics.recordGeminiCallDuration(request.userId, request.promptType, response.model, 'chat.completions', duration, true);
+      }
     } catch (error) {
       this.logger.error(`Failed to record metrics`, { error: (error instanceof Error ? error.message : String(error)) });
     }
@@ -514,11 +518,11 @@ export class AIOrchestrator {
         const days = parseInt(timeRange.replace('days', ''));
         where.timestamp = { gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) }; // DÜZELTME: createdAt -> timestamp
       }
-      const logs = await this.prisma.aiRequestLog.findMany({ where, select: { model: true, totalTokens: true, duration: true } });
+      const logs = await (this.prisma as any).aiRequestLog.findMany({ where, select: { model: true, totalTokens: true, duration: true } });
       const totalRequests = logs.length;
-      const totalTokens = logs.reduce((sum, l) => sum + (l.totalTokens || 0), 0);
-      const totalCost = logs.reduce((sum, l) => sum + this.aiConfig.calculateCost(l.model, l.totalTokens || 0), 0);
-      const averageDuration = totalRequests > 0 ? logs.reduce((s, l) => s + (l.duration || 0), 0) / totalRequests : 0;
+      const totalTokens = logs.reduce((sum: number, l: any) => sum + (l.totalTokens || 0), 0);
+      const totalCost = logs.reduce((sum: number, l: any) => sum + this.aiConfig.calculateCost(l.model, l.totalTokens || 0), 0);
+      const averageDuration = totalRequests > 0 ? logs.reduce((s: number, l: any) => s + (l.duration || 0), 0) / totalRequests : 0;
 
       return {
         totalRequests,

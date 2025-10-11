@@ -10,20 +10,20 @@ export class TopicPrioritizerService {
   async prioritizeTopics(userId: string, subject: string, grade: number): Promise<any[]> {
     try {
       // Get user's performance data
-      const userSessions = await this.prisma.studySession.findMany({
+      const userSessions = await (this.prisma as any).studySession.findMany({
         where: { userId, subject },
         orderBy: { createdAt: 'desc' },
         take: 20,
       });
 
       // Get curriculum topics
-      const topics = await this.prisma.mebTopic.findMany({
+      const topics = await (this.prisma as any).mebTopic.findMany({
         where: { subject, grade },
         include: { weights: true },
       });
 
       // Calculate priority scores
-      const prioritizedTopics = topics.map(topic => {
+      const prioritizedTopics = topics.map((topic: any) => {
         const userPerformance = this.getUserPerformanceForTopic(userSessions, topic.topic);
         const examWeight = this.getExamWeight(topic.weights);
         const priority = this.calculatePriority(userPerformance, examWeight);
@@ -36,7 +36,7 @@ export class TopicPrioritizerService {
         };
       });
 
-      return prioritizedTopics.sort((a, b) => b.priority - a.priority);
+      return prioritizedTopics.sort((a: any, b: any) => b.priority - a.priority);
     } catch (error) {
       this.logger.error(`Failed to prioritize topics for user ${userId}: ${error instanceof Error ? error.message : String(error)}`);
       return [];
@@ -61,5 +61,30 @@ export class TopicPrioritizerService {
   private calculatePriority(userPerformance: number, examWeight: number): number {
     // Lower performance + higher exam weight = higher priority
     return (1 - userPerformance) * 0.6 + examWeight * 0.4;
+  }
+
+  // Legacy method for backward compatibility
+  async prioritizeTopicsLegacy(topicOrder: string[], examFocus: 'TYT' | 'AYT' | 'GENEL' = 'GENEL', topicMastery?: Record<string, number>): Promise<string[]> {
+    const list = [...topicOrder];
+    const mastery = topicMastery || {};
+    const items = await (this.prisma as any).mebTopic.findMany({
+      where: {
+        OR: list.map(t => {
+          const [subject, topic] = t.split('::');
+          return { subject, topic };
+        })
+      },
+      select: { subject: true, topic: true, tytWeight: true, aytWeight: true },
+    });
+    const weightMap = new Map(items.map((i: any) => [`${i.subject}::${i.topic}`, i] as const));
+
+    const score = (key: string) => {
+      const data = weightMap.get(key as any);
+      const base = examFocus === 'TYT' ? ((data as any)?.tytWeight || 0) : examFocus === 'AYT' ? ((data as any)?.aytWeight || 0) : (((data as any)?.tytWeight || 0) + ((data as any)?.aytWeight || 0));
+      const masteryScore = mastery[key] != null ? (100 - mastery[key]) : 10; // düşük ustalık daha yüksek öncelik
+      return base * 2 + masteryScore;
+    };
+
+    return list.sort((a,b) => score(b) - score(a));
   }
 }

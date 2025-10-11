@@ -15,7 +15,7 @@ export class ProgressTrackingService {
   constructor(private readonly prisma: PrismaService) {}
 
   async trackProgress(userId: string, sessionId: string, performance: { score: number; timeSpent: number; notes?: string }) {
-    const session = await this.prisma.studySession.findFirst({
+    const session = await (this.prisma as any).studySession.findFirst({
       where: { id: sessionId, userId },
     });
 
@@ -23,7 +23,7 @@ export class ProgressTrackingService {
       throw new Error('Session not found');
     }
 
-    await this.prisma.studySession.update({
+    await (this.prisma as any).studySession.update({
       where: { id: sessionId },
       data: {
         performance: performance.score,
@@ -47,7 +47,7 @@ export class ProgressTrackingService {
   }
 
   private async updateUserPerformanceMetrics(userId: string, score: number, timeSpent: number) {
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).user.findUnique({
       where: { id: userId },
       include: { studentProfile: true },
     });
@@ -59,7 +59,7 @@ export class ProgressTrackingService {
     const averageScore = ((currentMetrics.averageScore || 0) * (totalSessions - 1) + score) / totalSessions;
     const totalTimeSpent = (currentMetrics.totalTimeSpent || 0) + timeSpent;
 
-    await this.prisma.studentProfile.update({
+    await (this.prisma as any).studentProfile.update({
       where: { userId },
       data: {
         performanceMetrics: {
@@ -120,15 +120,15 @@ export class ProgressTrackingService {
   }
 
   async getProgressOverview(userId: string) {
-    const sessions = await this.prisma.studySession.findMany({
+    const sessions = await (this.prisma as any).studySession.findMany({
       where: { userId, isCompleted: true },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
 
-    const completionRate = sessions.length > 0 ? (sessions.filter(s => s.isCompleted).length / sessions.length) * 100 : 0;
+    const completionRate = sessions.length > 0 ? (sessions.filter((s: any) => s.isCompleted).length / sessions.length) * 100 : 0;
     const averageScore = sessions.length > 0 ? 
-      sessions.reduce((sum, s) => sum + (s.performance || 0), 0) / sessions.length : 0;
+      sessions.reduce((sum: number, s: any) => sum + (s.performance || 0), 0) / sessions.length : 0;
 
     const subjectPerformance = this.analyzeSubjectPerformance(sessions);
     const trends = this.calculateTrends(sessions);
@@ -141,7 +141,7 @@ export class ProgressTrackingService {
       trends,
       recommendations,
       totalSessions: sessions.length,
-      totalStudyTime: sessions.reduce((sum, s) => sum + s.duration, 0),
+      totalStudyTime: sessions.reduce((sum: number, s: any) => sum + s.duration, 0),
     };
   }
 
@@ -214,7 +214,7 @@ export class ProgressTrackingService {
   async updateTaskProgress(data: { userId: string; taskId: string; progress: number; notes?: string }): Promise<any> {
     try {
       // Task progress'i güncelle
-      const updatedTask = await this.prisma.studySession.update({
+      const updatedTask = await (this.prisma as any).studySession.update({
         where: { id: data.taskId },
         data: {
           performance: data.progress,
@@ -239,7 +239,7 @@ export class ProgressTrackingService {
   async updateTaskProgressWithMinutes(data: { userId: string; taskId: string; minutes: number; notes?: string }): Promise<any> {
     try {
       // Task progress'i güncelle
-      const updatedTask = await this.prisma.studySession.update({
+      const updatedTask = await (this.prisma as any).studySession.update({
         where: { id: data.taskId },
         data: {
           duration: data.minutes,

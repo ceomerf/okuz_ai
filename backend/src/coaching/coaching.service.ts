@@ -11,7 +11,7 @@ export class CoachingService {
    * Koçun öğrenci listesini getir (uyum skorları ile)
    */
   async getCoachStudents(coachId: string) {
-    const students = await this.prisma.coachStudent.findMany({
+    const students = await (this.prisma as any).coachStudent.findMany({
       where: { 
         coachId,
         isActive: true 
@@ -33,7 +33,7 @@ export class CoachingService {
       },
     });
 
-    return students.map(cs => ({
+    return students.map((cs: any) => ({
       id: cs.student.id,
       name: cs.student.name,
       email: cs.student.email,
@@ -45,7 +45,7 @@ export class CoachingService {
       compliance: this.calculateComplianceMetrics(cs.student.studentCompliance),
       
       // Son notlar
-      recentNotes: cs.notes.map(note => ({
+      recentNotes: cs.notes.map((note: any) => ({
         id: note.id,
         title: note.title,
         type: note.type,
@@ -59,7 +59,7 @@ export class CoachingService {
    * Öğrenci detayını getir (haftalık ilerleme)
    */
   async getStudentDetails(coachId: string, studentId: string) {
-    const coachStudent = await this.prisma.coachStudent.findFirst({
+    const coachStudent = await (this.prisma as any).coachStudent.findFirst({
       where: { 
         coachId,
         studentId,
@@ -119,7 +119,7 @@ export class CoachingService {
       planPerformance: this.calculatePlanPerformance(student.plans),
       
       // Son çalışma seansları
-      recentSessions: student.studySessions.slice(0, 10).map(session => ({
+      recentSessions: student.studySessions.slice(0, 10).map((session: any) => ({
         id: session.id,
         subject: session.subject,
         topic: session.topic,
@@ -130,7 +130,7 @@ export class CoachingService {
       })),
       
       // Koç notları
-      notes: coachStudent.notes.map(note => ({
+      notes: coachStudent.notes.map((note: any) => ({
         id: note.id,
         title: note.title,
         content: note.content,
@@ -151,7 +151,7 @@ export class CoachingService {
     type?: string;
     priority?: string;
   }) {
-    const coachStudent = await this.prisma.coachStudent.findFirst({
+    const coachStudent = await (this.prisma as any).coachStudent.findFirst({
       where: { 
         coachId,
         studentId,
@@ -163,7 +163,7 @@ export class CoachingService {
       throw new NotFoundException('Öğrenci bulunamadı veya bu koça atanmamış');
     }
 
-    return this.prisma.coachNote.create({
+    return (this.prisma as any).coachNote.create({
       data: {
         coachStudentId: coachStudent.id,
         title: noteData.title,
@@ -185,7 +185,7 @@ export class CoachingService {
     coachRating?: number;
     coachComment?: string;
   }) {
-    const coachStudent = await this.prisma.coachStudent.findFirst({
+    const coachStudent = await (this.prisma as any).coachStudent.findFirst({
       where: { 
         coachId,
         studentId,
@@ -199,7 +199,7 @@ export class CoachingService {
 
     const weekStart = this.getWeekStart(complianceData.date);
 
-    return this.prisma.studentCompliance.upsert({
+    return (this.prisma as any).studentCompliance.upsert({
       where: {
         studentId_date: {
           studentId,
@@ -231,7 +231,7 @@ export class CoachingService {
    * Koç performans özeti
    */
   async getCoachPerformance(coachId: string) {
-    const students = await this.prisma.coachStudent.findMany({
+    const students = await (this.prisma as any).coachStudent.findMany({
       where: { 
         coachId,
         isActive: true 

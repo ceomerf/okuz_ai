@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Query, Param, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { ParentReportsService } from './parent-reports.service';
 
 interface AuthenticatedRequest extends Request {

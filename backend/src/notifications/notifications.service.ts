@@ -28,7 +28,7 @@ export class NotificationsService {
   async sessionReminders() {
     const now = new Date();
     const inTen = new Date(now.getTime() + 10 * 60 * 1000);
-    const sessions = await this.prisma.studySession.findMany({
+    const sessions = await (this.prisma as any).studySession.findMany({
       where: {
         startTime: { gte: now, lte: inTen },
         isCompleted: false,
@@ -52,7 +52,7 @@ export class NotificationsService {
     today.setHours(0,0,0,0);
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    const sessions = await this.prisma.studySession.groupBy({
+    const sessions = await (this.prisma as any).studySession.groupBy({
       by: ['userId'],
       where: { startTime: { gte: today, lt: tomorrow } },
       _count: { _all: true },
@@ -72,7 +72,7 @@ export class NotificationsService {
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - 7);
-    const users = await this.prisma.user.findMany({ select: { id: true } });
+    const users = await (this.prisma as any).user.findMany({ select: { id: true } });
     for (const u of users) {
       try {
         this.logger.log(`Weekly report -> user:${u.id}`);

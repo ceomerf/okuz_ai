@@ -74,7 +74,7 @@ export class ReplanService {
 
   // Kuyruğa ekleme: kullanıcı başına job oluştur
   async enqueueReevaluationJobs(scope: 'daily' | 'weekly' = 'weekly') {
-    const activePlans = await this.prisma.plan.findMany({
+    const activePlans = await (this.prisma as any).plan.findMany({
       where: { isActive: true },
       select: { id: true, userId: true },
     });
@@ -124,7 +124,7 @@ export class ReplanService {
         endOfNextWeek.setDate(endOfNextWeek.getDate() + 7);
 
         // Bu planın gelecek haftaya ait seanslarını çek
-        const sessions = await this.prisma.studySession.findMany({
+        const sessions = await (this.prisma as any).studySession.findMany({
           where: {
             userId,
             planId,
@@ -134,9 +134,9 @@ export class ReplanService {
 
         // Uyum yüzdesi: planlanan vs. tamamlanan süre/oturum
         const totalSessions = sessions.length;
-        const completedSessions = sessions.filter(s => (s as any).isCompleted).length;
-        const plannedMinutes = sessions.reduce((sum, s) => sum + ((s as any).duration || 0), 0);
-        const actualMinutes = sessions.filter(s => (s as any).isCompleted).reduce((sum, s) => sum + ((s as any).duration || 0), 0);
+        const completedSessions = sessions.filter((s: any) => s.isCompleted).length;
+        const plannedMinutes = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+        const actualMinutes = sessions.filter((s: any) => s.isCompleted).reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
         const compliance = {
           sessionCompletionRate: totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0,
           timeCompletionRate: plannedMinutes > 0 ? Math.round((actualMinutes / plannedMinutes) * 100) : 0,
@@ -161,7 +161,7 @@ export class ReplanService {
             adjustmentReason: 'periodic_replan',
           };
 
-          await this.prisma.studySession.update({
+          await (this.prisma as any).studySession.update({
             where: { id: sess.id },
             data: { duration: newDuration, metadata: { ...(newMeta as any), compliance } as any },
           });
@@ -170,7 +170,7 @@ export class ReplanService {
           if (adj.addReview) {
             const extraStart = new Date(sess.startTime);
             extraStart.setDate(extraStart.getDate() + 1);
-            await this.prisma.studySession.create({
+            await (this.prisma as any).studySession.create({
               data: {
                 planId,
                 userId,

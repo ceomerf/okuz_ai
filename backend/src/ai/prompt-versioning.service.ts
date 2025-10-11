@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CacheService } from '../common/cache/cache.service';
 
@@ -50,7 +50,7 @@ export class PromptVersioningService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   /**
@@ -67,7 +67,7 @@ export class PromptVersioningService {
     try {
       this.logger.log(`Creating prompt template: ${data.name}`);
 
-      const template = await this.prisma.aiPromptTemplate.create({
+      const template = await (this.prisma as any).aiPromptTemplate.create({
         data: {
           name: data.name,
           template: data.content,
@@ -80,7 +80,7 @@ export class PromptVersioningService {
       });
 
       // Cache'i temizle
-      await this.cache.del(`prompt:template:${template.id}`);
+      await this.cache?.del(`prompt:template:${template.id}`);
 
       this.logger.log(`Prompt template created: ${template.id}`);
       return template;
@@ -107,7 +107,7 @@ export class PromptVersioningService {
       this.logger.log(`Updating prompt template: ${templateId}`);
 
       // Mevcut template'i al
-      const existingTemplate = await this.prisma.aiPromptTemplate.findUnique({
+      const existingTemplate = await (this.prisma as any).aiPromptTemplate.findUnique({
         where: { id: templateId },
       });
 
@@ -118,7 +118,7 @@ export class PromptVersioningService {
       // Yeni version oluştur
       const newVersion = this.incrementVersion(existingTemplate.version);
 
-      const updatedTemplate = await this.prisma.aiPromptTemplate.update({
+      const updatedTemplate = await (this.prisma as any).aiPromptTemplate.update({
         where: { id: templateId },
         data: {
           ...(data.content !== undefined ? { template: data.content } : {}),
@@ -130,7 +130,7 @@ export class PromptVersioningService {
       });
 
       // Cache'i temizle
-      await this.cache.del(`prompt:template:${templateId}`);
+      await this.cache?.del(`prompt:template:${templateId}`);
 
       this.logger.log(`Prompt template updated: ${templateId} to version ${newVersion}`);
       return updatedTemplate;
@@ -148,7 +148,7 @@ export class PromptVersioningService {
       const cacheKey = `prompt:template:${templateId}:${version || 'latest'}`;
       
       // Cache kontrolü
-      const cached = await this.cache.get<PromptTemplate>(cacheKey);
+      const cached = await this.cache?.get<PromptTemplate>(cacheKey);
       if (cached) {
         return cached;
       }
@@ -158,14 +158,14 @@ export class PromptVersioningService {
         where.version = version;
       }
 
-      const template = await this.prisma.aiPromptTemplate.findFirst({
+      const template = await (this.prisma as any).aiPromptTemplate.findFirst({
         where,
         orderBy: version ? undefined : { updatedAt: 'desc' },
       });
 
       if (template) {
         // Cache'e kaydet
-        await this.cache.set(cacheKey, template, 3600); // 1 saat
+        await this.cache?.set(cacheKey, template, 3600); // 1 saat
       }
 
       return template;
@@ -183,7 +183,7 @@ export class PromptVersioningService {
       const cacheKey = `prompt:template:name:${name}:${version || 'latest'}`;
       
       // Cache kontrolü
-      const cached = await this.cache.get<PromptTemplate>(cacheKey);
+      const cached = await this.cache?.get<PromptTemplate>(cacheKey);
       if (cached) {
         return cached;
       }
@@ -193,14 +193,14 @@ export class PromptVersioningService {
         where.version = version;
       }
 
-      const template = await this.prisma.aiPromptTemplate.findFirst({
+      const template = await (this.prisma as any).aiPromptTemplate.findFirst({
         where,
         orderBy: version ? undefined : { updatedAt: 'desc' },
       });
 
       if (template) {
         // Cache'e kaydet
-        await this.cache.set(cacheKey, template, 3600); // 1 saat
+        await this.cache?.set(cacheKey, template, 3600); // 1 saat
       }
 
       return template;
@@ -221,7 +221,7 @@ export class PromptVersioningService {
     try {
       const { limit = 50, offset = 0, isActive } = options;
 
-      const templates = await this.prisma.aiPromptTemplate.findMany({
+      const templates = await (this.prisma as any).aiPromptTemplate.findMany({
         where: isActive !== undefined ? { isActive } : undefined,
         orderBy: { updatedAt: 'desc' },
         take: limit,
@@ -361,13 +361,13 @@ export class PromptVersioningService {
    */
   async deactivateTemplate(templateId: string): Promise<void> {
     try {
-      await this.prisma.aiPromptTemplate.update({
+      await (this.prisma as any).aiPromptTemplate.update({
         where: { id: templateId },
         data: { isActive: false },
       });
 
       // Cache'i temizle
-      await this.cache.del(`prompt:template:${templateId}`);
+      await this.cache?.del(`prompt:template:${templateId}`);
 
       this.logger.log(`Prompt template deactivated: ${templateId}`);
     } catch (error) {
@@ -381,12 +381,12 @@ export class PromptVersioningService {
    */
   async deleteTemplate(templateId: string): Promise<void> {
     try {
-      await this.prisma.aiPromptTemplate.delete({
+      await (this.prisma as any).aiPromptTemplate.delete({
         where: { id: templateId },
       });
 
       // Cache'i temizle
-      await this.cache.del(`prompt:template:${templateId}`);
+      await this.cache?.del(`prompt:template:${templateId}`);
 
       this.logger.log(`Prompt template deleted: ${templateId}`);
     } catch (error) {
@@ -414,7 +414,7 @@ export class PromptVersioningService {
     usageCount: number;
   }> {
     try {
-      const template = await this.prisma.aiPromptTemplate.findUnique({
+      const template = await (this.prisma as any).aiPromptTemplate.findUnique({
         where: { id: templateId },
       });
 
@@ -423,7 +423,7 @@ export class PromptVersioningService {
       }
 
       // Usage count (AI request logs'dan)
-      const usageCount = await this.prisma.aiRequestLog.count({
+      const usageCount = await (this.prisma as any).aiRequestLog.count({
         where: { promptType: template.name },
       });
 

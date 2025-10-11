@@ -2,13 +2,13 @@ import { Controller, Get, Post, Query, UseGuards, Request } from '@nestjs/common
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { GrowthMeetingService } from './growth-meeting.service';
 
 @ApiTags('Growth Meeting')
 @Controller('growth-meeting')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'PRODUCT_MANAGER', 'GROWTH_MANAGER')
+@Roles('ADMIN')
 @ApiBearerAuth()
 export class GrowthMeetingController {
   constructor(

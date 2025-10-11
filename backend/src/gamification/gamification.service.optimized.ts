@@ -12,7 +12,7 @@ export class GamificationService {
    * Tek sorgu ile tüm istatistikleri alır
    */
   async getProgressOptimized(userId: string): Promise<any> {
-    const profile = await this.prisma.gamificationProfile.findUnique({
+    const profile = await (this.prisma as any).gamificationProfile.findUnique({
       where: { userId },
     });
 
@@ -37,7 +37,7 @@ export class GamificationService {
       badges
     ] = await Promise.all([
       // Bu hafta çalışma süresi
-      this.prisma.studySession.aggregate({
+      (this.prisma as any).studySession.aggregate({
         where: {
           userId,
           createdAt: { gte: weekStart },
@@ -46,7 +46,7 @@ export class GamificationService {
         _sum: { duration: true },
       }),
       // Toplam çalışma süresi
-      this.prisma.studySession.aggregate({
+      (this.prisma as any).studySession.aggregate({
         where: {
           userId,
           isCompleted: true,
@@ -54,15 +54,15 @@ export class GamificationService {
         _sum: { duration: true },
       }),
       // Tamamlanan quiz sayısı
-      this.prisma.quiz.count({
+      (this.prisma as any).quiz.count({
         where: { userId, isCompleted: true },
       }),
       // Çözülen soru sayısı
-      this.prisma.toolUsage.count({
+      (this.prisma as any).toolUsage.count({
         where: { userId, toolName: 'sos-question-solver' },
       }),
       // Oluşturulan flashcard sayısı
-      this.prisma.flashcard.count({
+      (this.prisma as any).flashcard.count({
         where: { userId },
       }),
       // Kullanıcı rozetleri
@@ -87,7 +87,7 @@ export class GamificationService {
    * Daha da optimize edilmiş versiyon - tek sorgu ile tüm veriler
    */
   async getProgressUltraOptimized(userId: string): Promise<any> {
-    const profile = await this.prisma.gamificationProfile.findUnique({
+    const profile = await (this.prisma as any).gamificationProfile.findUnique({
       where: { userId },
       include: {
         user: {
@@ -186,7 +186,7 @@ export class GamificationService {
 
   private async getUserBadges(userId: string): Promise<any[]> {
     // Bu metod da optimize edilebilir
-    return this.prisma.achievement.findMany({
+    return (this.prisma as any).achievement.findMany({
       where: { userId },
       include: {
         // Prisma modelinde yoksa tip hatasını önlemek için comment edildi

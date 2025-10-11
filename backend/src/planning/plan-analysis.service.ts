@@ -30,18 +30,18 @@ export class PlanAnalysisService {
    * Plan analitiklerini hesaplar
    */
   async getPlanAnalytics(planId: string) {
-    const sessions = await this.prisma.studySession.findMany({
+    const sessions = await (this.prisma as any).studySession.findMany({
       where: { planId },
     });
 
-    const completed = sessions.filter(s => s.isCompleted);
+    const completed = sessions.filter((s: any) => s.isCompleted);
     const avgPerformance = completed.length > 0 ? 
-      completed.reduce((sum, s) => sum + (s.performance || 0), 0) / completed.length : 0;
+      completed.reduce((sum: number, s: any) => sum + (s.performance || 0), 0) / completed.length : 0;
 
     return {
       completionRate: sessions.length > 0 ? (completed.length / sessions.length) * 100 : 0,
       averagePerformance: Math.round(avgPerformance),
-      totalStudyTime: completed.reduce((sum, s) => sum + s.duration, 0),
+      totalStudyTime: completed.reduce((sum: number, s: any) => sum + s.duration, 0),
       streakDays: this.calculateStreakDays(completed),
       subjectBreakdown: this.getSubjectBreakdown(sessions),
     };
@@ -173,7 +173,7 @@ export class PlanAnalysisService {
    */
   async analyzeUserContext(userId: string) {
     // Tek sorgu ile tüm ilgili verileri çek
-    const userWithData = await this.prisma.user.findUnique({
+    const userWithData = await (this.prisma as any).user.findUnique({
       where: { id: userId },
       include: {
         studySessions: {

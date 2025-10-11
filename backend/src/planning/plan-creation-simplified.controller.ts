@@ -130,7 +130,7 @@ export class PlanCreationSimplifiedController {
       // Hata analytics'i kaydet
       await this.analyticsService.trackError(req.user.id, {
         error: 'PlanCreationError',
-        message: error.message,
+        message: (error as Error).message,
         context: {
           flow_type: 'simplified',
           completion_time: completionTime,
@@ -156,7 +156,7 @@ export class PlanCreationSimplifiedController {
         recommendations: this.generateRecommendations(results, winningVariant),
       };
     } catch (error) {
-      throw new Error(`A/B test sonuçları alınamadı: ${error.message}`);
+      throw new Error(`A/B test sonuçları alınamadı: ${(error as Error).message}`);
     }
   }
 

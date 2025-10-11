@@ -1,27 +1,31 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { CacheModule } from '@nestjs/cache-manager';
+import { APP_GUARD } from '@nestjs/core';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './common/prisma/prisma.module';
 // import { GeminiModule } from './services/gemini.module'; // DEVRE DIŞI - OPENAI KULLANILIYOR
 import { QueueModule } from './services/queue.module';
-import { CacheModule as CommonCacheModule } from './common/cache/cache.module';
+// import { CacheModule as CommonCacheModule } from './common/cache/cache.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { StudentsModule } from './students/students.module';
-import { ParentsModule } from './parents/parents.module';
+import { SystemHealthModule } from './system/system-health.module';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
+import { TeachersModule } from './teachers/teachers.module';
+import { ExecutiveModule } from './executive/executive.module';
 import { SmartToolsModule } from './smart-tools/smart-tools.module';
-import { GamificationModule } from './gamification/gamification.module';
 import { PlanningModule } from './planning/planning.module';
 import { AnalysisModule } from './analysis/analysis.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { InvitesModule } from './invites/invites.module';
 import { InteractionModule } from './interaction/interaction.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { SubscriptionModule } from './subscription/subscription.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SolverModule } from './services/solver.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
@@ -30,9 +34,15 @@ import { ParentReportsModule } from './parent-reports/parent-reports.module';
 import { AICoachModule } from './ai-coach/ai-coach.module';
 import { NotificationSettingsModule } from './notification-settings/notification-settings.module';
 import { ReferralModule } from './referral/referral.module';
-import { SystemModule } from './system/system.module';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { RbacModule } from './rbac/rbac.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { AuditModule } from './audit/audit.module';
+import { ExecutiveDashboardModule } from './executive/executive-dashboard.module';
+import { AuditLoggingModule } from './audit/audit-logging.module';
+import { BackupRestoreModule } from './backup/backup-restore.module';
+import { AIManagementModule } from './ai/ai-management.module';
+import { AdvancedAnalyticsModule } from './analytics/advanced-analytics.module';
 
 @Module({
   imports: [
@@ -82,25 +92,28 @@ import { APP_GUARD } from '@nestjs/core';
         },
       ],
     }),
+    EventEmitterModule.forRoot(),
+    CacheModule.register({ isGlobal: true, ttl: 300, max: 100 }),
     PrismaModule,
     ScheduleModule.forRoot(),
     // GeminiModule, // DEVRE DIŞI - OPENAI KULLANILIYOR
     // OpenAIModule, // OpenAI modülü eklenebilir
     QueueModule,
-    CommonCacheModule,
+    // CommonCacheModule,
     AuthModule,
     UsersModule,
     StudentsModule,
-    ParentsModule,
+    SystemHealthModule,
+    FeatureFlagsModule,
+    TeachersModule,
+    ExecutiveModule,
     SmartToolsModule,
-    GamificationModule,
     PlanningModule,
     AnalysisModule,
     AnalyticsModule,
     InvitesModule,
     InteractionModule,
     NotificationsModule,
-    SubscriptionModule,
     RealtimeModule,
     SolverModule,
     MonitoringModule,
@@ -110,12 +123,19 @@ import { APP_GUARD } from '@nestjs/core';
     AICoachModule,
     NotificationSettingsModule,
     ReferralModule,
-    SystemModule,
+    RbacModule,
+    AuditModule,
+    ExecutiveDashboardModule,
+    AuditLoggingModule,
+    BackupRestoreModule,
+    AIManagementModule,
+    AdvancedAnalyticsModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
   ],
 })
 export class AppModule {}

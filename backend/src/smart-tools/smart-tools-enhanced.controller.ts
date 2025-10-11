@@ -11,6 +11,7 @@ import { QuickChatDto } from './dto/quick-chat.dto';
 import { SosQuestionDto } from './dto/sos-question.dto';
 import { SummaryGeneratorDto } from './dto/summary-generator.dto';
 import { AnalyzeExamResultDto } from '../analysis/dto/analyze-exam-result.dto';
+import { Response } from 'express';
 
 @ApiTags('Smart Tools Enhanced')
 @Controller('smart-tools')
@@ -43,7 +44,7 @@ export class SmartToolsEnhancedController {
     await this.analyticsService.trackSmartToolUsage(req.user.id, {
       tool: 'quick_chat',
       subject: data.subject,
-      grade: data.grade,
+      grade: data.grade?.toString(),
       success: true,
     });
 
@@ -63,7 +64,7 @@ export class SmartToolsEnhancedController {
     await this.analyticsService.trackSmartToolUsage(req.user.id, {
       tool: 'sos_question_solver',
       subject: data.subject,
-      grade: data.grade,
+      grade: data.grade?.toString(),
       success: true,
     });
 
@@ -85,7 +86,11 @@ export class SmartToolsEnhancedController {
       success: true,
     });
 
-    return this.smartToolsService.generateSummary(data);
+    return this.smartToolsService.generateSummary({
+      text: data.content,
+      message: data.title,
+      userId: req.user.id
+    });
   }
 
   @Throttle({ medium: { limit: 10, ttl: 60000 } })

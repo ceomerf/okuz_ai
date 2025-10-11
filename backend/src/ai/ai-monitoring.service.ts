@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AIConfigService } from './ai-config.service'; // DÜZELTME: cost hesaplamak için eklendi
 import { CacheService } from '../common/cache/cache.service';
@@ -64,9 +64,9 @@ export class AIMonitoringService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
     private readonly metrics: MetricsService,
     private readonly aiConfig: AIConfigService, // DÜZELTME
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   /**
@@ -78,7 +78,7 @@ export class AIMonitoringService {
       const startTime = this.getStartTime(timeRange, endTime);
 
       // AI request logs'dan metrikleri al
-      const logs = await this.prisma.aiRequestLog.findMany({
+      const logs = await (this.prisma as any).aiRequestLog.findMany({
         where: {
           timestamp: { // DÜZELTME: createdAt -> timestamp
             gte: startTime,
@@ -89,18 +89,18 @@ export class AIMonitoringService {
       });
 
       const totalRequests = logs.length;
-      const successfulRequests = logs.filter(log => log.success).length;
+      const successfulRequests = logs.filter((log: any) => log.success).length;
       const failedRequests = totalRequests - successfulRequests;
-      const averageResponseTime = logs.reduce((sum, log) => sum + log.duration, 0) / totalRequests;
-      const totalTokens = logs.reduce((sum, log) => sum + log.totalTokens, 0);
-      const totalCost = logs.reduce((sum, log) => sum + this.aiConfig.calculateCost(log.model, log.totalTokens), 0); // DÜZELTME
+      const averageResponseTime = logs.reduce((sum: number, log: any) => sum + log.duration, 0) / totalRequests;
+      const totalTokens = logs.reduce((sum: number, log: any) => sum + log.totalTokens, 0);
+      const totalCost = logs.reduce((sum: number, log: any) => sum + this.aiConfig.calculateCost(log.model, log.totalTokens), 0); // DÜZELTME
 
       // Model bazlı istatistikler
       const requestsByModel: Record<string, number> = {};
       const requestsByPromptType: Record<string, number> = {};
       const requestsByUser: Record<string, number> = {};
 
-      logs.forEach(log => {
+      logs.forEach((log: any) => {
         requestsByModel[log.model] = (requestsByModel[log.model] || 0) + 1;
         requestsByPromptType[log.promptType] = (requestsByPromptType[log.promptType] || 0) + 1;
         if (log.userId) {
@@ -188,7 +188,7 @@ export class AIMonitoringService {
       const endTime = new Date();
       const startTime = this.getStartTime(timeRange, endTime);
 
-      const logs = await this.prisma.aiRequestLog.findMany({
+      const logs = await (this.prisma as any).aiRequestLog.findMany({
         where: {
           timestamp: { // DÜZELTME
             gte: startTime,
@@ -206,14 +206,14 @@ export class AIMonitoringService {
         },
       });
 
-      const totalCost = logs.reduce((sum, log) => sum + this.aiConfig.calculateCost(log.model, log.totalTokens), 0); // DÜZELTME
+      const totalCost = logs.reduce((sum: number, log: any) => sum + this.aiConfig.calculateCost(log.model, log.totalTokens), 0); // DÜZELTME
       
       // Model bazlı cost
       const costByModel: Record<string, number> = {};
       const costByPromptType: Record<string, number> = {};
       const costByUser: Record<string, number> = {};
 
-      logs.forEach(log => {
+      logs.forEach((log: any) => {
         const cost = this.aiConfig.calculateCost(log.model, log.totalTokens);
         costByModel[log.model] = (costByModel[log.model] || 0) + cost;
         costByPromptType[log.promptType] = (costByPromptType[log.promptType] || 0) + cost;
@@ -252,7 +252,7 @@ export class AIMonitoringService {
       const endTime = new Date();
       const startTime = this.getStartTime(timeRange, endTime);
 
-      const logs = await this.prisma.aiRequestLog.findMany({
+      const logs = await (this.prisma as any).aiRequestLog.findMany({
         where: {
           timestamp: { // DÜZELTME
             gte: startTime,
@@ -269,12 +269,12 @@ export class AIMonitoringService {
         },
       });
 
-      const durations = logs.map(log => log.duration).sort((a, b) => a - b);
-      const averageResponseTime = durations.reduce((sum, d) => sum + d, 0) / durations.length;
+      const durations = logs.map((log: any) => log.duration).sort((a: number, b: number) => a - b);
+      const averageResponseTime = durations.reduce((sum: number, d: number) => sum + d, 0) / durations.length;
       const p95ResponseTime = durations[Math.floor(durations.length * 0.95)];
       const p99ResponseTime = durations[Math.floor(durations.length * 0.99)];
 
-      const successfulRequests = logs.filter(log => log.success).length;
+      const successfulRequests = logs.filter((log: any) => log.success).length;
       const errorRate = logs.length > 0 ? (logs.length - successfulRequests) / logs.length : 0;
       const successRate = 1 - errorRate;
       const throughput = logs.length / (endTime.getTime() - startTime.getTime()) * 1000; // requests per second
@@ -352,7 +352,7 @@ export class AIMonitoringService {
     try {
       const midTime = new Date((startTime.getTime() + endTime.getTime()) / 2);
       
-      const firstLogs = await this.prisma.aiRequestLog.findMany({
+      const firstLogs = await (this.prisma as any).aiRequestLog.findMany({
         where: {
           timestamp: {
             gte: startTime,
@@ -362,7 +362,7 @@ export class AIMonitoringService {
         select: { model: true, totalTokens: true },
       });
 
-      const secondLogs = await this.prisma.aiRequestLog.findMany({
+      const secondLogs = await (this.prisma as any).aiRequestLog.findMany({
         where: {
           timestamp: {
             gte: midTime,
@@ -371,8 +371,8 @@ export class AIMonitoringService {
         },
         select: { model: true, totalTokens: true },
       });
-      const firstHalfCost = firstLogs.reduce((s, l) => s + this.aiConfig.calculateCost(l.model, l.totalTokens), 0);
-      const secondHalfCost = secondLogs.reduce((s, l) => s + this.aiConfig.calculateCost(l.model, l.totalTokens), 0);
+      const firstHalfCost = firstLogs.reduce((s: number, l: any) => s + this.aiConfig.calculateCost(l.model, l.totalTokens), 0);
+      const secondHalfCost = secondLogs.reduce((s: number, l: any) => s + this.aiConfig.calculateCost(l.model, l.totalTokens), 0);
 
       if (secondHalfCost > firstHalfCost * 1.1) return 'increasing';
       if (secondHalfCost < firstHalfCost * 0.9) return 'decreasing';
@@ -404,7 +404,7 @@ export class AIMonitoringService {
     const modelPerformance = new Map<string, number>();
     const promptTypePerformance = new Map<string, number>();
 
-    logs.forEach(log => {
+    logs.forEach((log: any) => {
       const modelAvg = modelPerformance.get(log.model) || 0;
       const promptAvg = promptTypePerformance.get(log.promptType) || 0;
       
@@ -442,12 +442,12 @@ export class AIMonitoringService {
       recommendations.push('Optimize prompt templates for better performance');
     }
 
-    const errorRate = logs.filter(log => !log.success).length / logs.length;
+    const errorRate = logs.filter((log: any) => !log.success).length / logs.length;
     if (errorRate > 0.1) {
       recommendations.push('High error rate detected. Review prompt quality and model selection');
     }
 
-    const avgCost = logs.reduce((sum, log) => sum + log.cost, 0) / logs.length;
+    const avgCost = logs.reduce((sum: number, log: any) => sum + (log.cost || 0), 0) / logs.length;
     if (avgCost > 0.1) {
       recommendations.push('High cost per request. Consider using cheaper models for simple tasks');
     }

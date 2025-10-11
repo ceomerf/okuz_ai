@@ -26,9 +26,9 @@ export class UsageResetService {
 
   async resetDailyUsage() {
     try {
-      const users = await this.prisma.user.findMany();
+      const users = await (this.prisma as any).user.findMany();
       for (const user of users) {
-        await this.prisma.user.update({
+        await (this.prisma as any).user.update({
           where: { id: user.id },
           data: { 
             dailyUsage: 0,
@@ -45,9 +45,9 @@ export class UsageResetService {
 
   async resetWeeklyUsage() {
     try {
-      const users = await this.prisma.user.findMany();
+      const users = await (this.prisma as any).user.findMany();
       for (const user of users) {
-        await this.prisma.user.update({
+        await (this.prisma as any).user.update({
           where: { id: user.id },
           data: { 
             dailyUsage: 0,
@@ -64,9 +64,9 @@ export class UsageResetService {
 
   async resetMonthlyUsage() {
     try {
-      const users = await this.prisma.user.findMany();
+      const users = await (this.prisma as any).user.findMany();
       for (const user of users) {
-        await this.prisma.user.update({
+        await (this.prisma as any).user.update({
           where: { id: user.id },
           data: { 
             dailyUsage: 0,
@@ -83,7 +83,7 @@ export class UsageResetService {
 
   async resetUserUsage(userId: string) {
     try {
-      await this.prisma.user.update({
+      await (this.prisma as any).user.update({
         where: { id: userId },
         data: { 
           dailyUsage: 0,
@@ -99,7 +99,7 @@ export class UsageResetService {
 
   async getUsageStats() {
     try {
-      const stats = await this.prisma.user.findMany({
+      const stats = await (this.prisma as any).user.findMany({
         select: {
           id: true
         }
@@ -121,7 +121,7 @@ export class UsageResetService {
 
   async cleanupOldUsageData() {
     try {
-      const oldUsage = await this.prisma.usage.findMany({
+      const oldUsage = await (this.prisma as any).usage.findMany({
         where: {
           createdAt: {
             lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // 30 days ago
@@ -130,7 +130,7 @@ export class UsageResetService {
       });
       
       for (const usage of oldUsage) {
-        await this.prisma.usage.delete({
+        await (this.prisma as any).usage.delete({
           where: { id: (usage as any).id }
         });
       }
@@ -143,7 +143,7 @@ export class UsageResetService {
 
   async getUserUsageHistory(userId: string) {
     try {
-      const history = await this.prisma.usage.findMany({
+      const history = await (this.prisma as any).usage.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' }
       });
@@ -155,7 +155,7 @@ export class UsageResetService {
 
   async updateUsageLimits(userId: string, limits: any) {
     try {
-      const updatedUser = await this.prisma.user.update({
+      const updatedUser = await (this.prisma as any).user.update({
         where: { id: userId },
         data: {
           dailyLimit: limits.dailyLimit,

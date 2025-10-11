@@ -14,7 +14,7 @@ export class UsersController {
     if (Number.isNaN(l) || Number.isNaN(o)) {
       throw new BadRequestException('Invalid pagination params');
     }
-    return this.usersService.getAllUsers({ limit: l, offset: o, select: { id: true, email: true, name: true, role: true, createdAt: true } });
+    return this.usersService.getAllUsers();
   }
 
   @Post()
@@ -50,7 +50,7 @@ export class UsersController {
     if (Number.isNaN(l) || Number.isNaN(o)) {
       throw new BadRequestException('Invalid pagination params');
     }
-    return this.usersService.getAllUsers({ limit: l, offset: o, select: { id: true, email: true, name: true, role: true, createdAt: true } });
+    return this.usersService.getAllUsers();
   }
 
   @Post('student-profile')
