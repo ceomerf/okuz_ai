@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query, HttpException, HttpStatus } from '@nestjs/common';
 import { AIManagementService, AIDashboardData, AIServiceStatus, AIModelInfo, AILogEntry } from './ai-management.service';
 
-@Controller('ai')
+@Controller('api/ai-management')
 export class AIManagementController {
   constructor(private readonly aiManagementService: AIManagementService) {}
 

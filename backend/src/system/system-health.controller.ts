@@ -5,7 +5,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '@prisma/client';
 
-@Controller('system/health')
+@Controller('api/system/health')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class SystemHealthController {
   constructor(private readonly systemHealthService: SystemHealthService) {}
