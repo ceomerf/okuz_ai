@@ -197,124 +197,7 @@ const AIManagementPanel: React.FC = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
   const searchDebounceRef = useRef<number | undefined>(undefined);
 
-  // Mock fallback (geçici)
-  const mockAIStats: AIStats = {
-    overview: {
-      totalRequests: 15420,
-      successfulRequests: 14850,
-      failedRequests: 570,
-      successRate: 96.3,
-      failureRate: 3.7,
-      averageResponseTime: 1.2,
-      totalTokens: 2450000,
-      totalCost: 12.45,
-    },
-    serviceBreakdown: [
-      {
-        service: 'GPT-4',
-        _count: { id: 8500 },
-        _sum: { cost: 8.5, tokensUsed: 1200000 },
-        _avg: { responseTime: 1.5 },
-      },
-      {
-        service: 'GPT-3.5-turbo',
-        _count: { id: 5200 },
-        _sum: { cost: 2.6, tokensUsed: 800000 },
-        _avg: { responseTime: 0.8 },
-      },
-      {
-        service: 'Claude-3',
-        _count: { id: 1720 },
-        _sum: { cost: 1.35, tokensUsed: 450000 },
-        _avg: { responseTime: 1.8 },
-      },
-    ],
-    dailyUsage: [
-      { date: '2024-01-20', requests: 450, cost: 0.45 },
-      { date: '2024-01-19', requests: 380, cost: 0.38 },
-      { date: '2024-01-18', requests: 520, cost: 0.52 },
-    ],
-    hourlyUsage: [
-      { hour: '00:00', requests: 15, cost: 0.015 },
-      { hour: '01:00', requests: 8, cost: 0.008 },
-      { hour: '02:00', requests: 5, cost: 0.005 },
-    ],
-  };
-
-  const mockAILogs: AILog[] = [
-    {
-      id: '1',
-      service: 'GPT-4',
-      prompt: 'Öğrenci performansını analiz et',
-      response: 'Öğrenci performansı iyi durumda...',
-      status: 'SUCCESS',
-      level: 'INFO',
-      responseTime: 1200,
-      tokensUsed: 150,
-      cost: 0.0015,
-      userId: 'user1',
-      createdAt: '2024-01-20T14:30:00Z',
-    },
-    {
-      id: '2',
-      service: 'GPT-3.5-turbo',
-      prompt: 'Matematik problemi çöz',
-      response: '',
-      status: 'ERROR',
-      level: 'ERROR',
-      errorMessage: 'Rate limit exceeded',
-      responseTime: 0,
-      tokensUsed: 0,
-      cost: 0,
-      userId: 'user2',
-      createdAt: '2024-01-20T14:25:00Z',
-    },
-  ];
-
-  const mockAIServices: AIService[] = [
-    {
-      name: 'GPT-4',
-      totalRequests: 8500,
-      totalCost: 8.5,
-      averageResponseTime: 1.5,
-    },
-    {
-      name: 'GPT-3.5-turbo',
-      totalRequests: 5200,
-      totalCost: 2.6,
-      averageResponseTime: 0.8,
-    },
-    {
-      name: 'Claude-3',
-      totalRequests: 1720,
-      totalCost: 1.35,
-      averageResponseTime: 1.8,
-    },
-  ];
-
-  const mockAIModels: AIModel[] = [
-    {
-      name: 'GPT-4',
-      status: 'ACTIVE',
-      lastUsed: '2024-01-20T14:30:00Z',
-      successRate: 98.5,
-      averageResponseTime: 1200,
-    },
-    {
-      name: 'GPT-3.5-turbo',
-      status: 'ACTIVE',
-      lastUsed: '2024-01-20T14:25:00Z',
-      successRate: 99.2,
-      averageResponseTime: 800,
-    },
-    {
-      name: 'Claude-3',
-      status: 'MAINTENANCE',
-      lastUsed: '2024-01-20T10:00:00Z',
-      successRate: 95.5,
-      averageResponseTime: 2000,
-    },
-  ];
+  // Mock data kaldırıldı - sadece gerçek API kullanılacak
 
   useEffect(() => {
     loadAIStats();
@@ -358,11 +241,12 @@ const AIManagementPanel: React.FC = () => {
           hourlyUsage: (res.data as any).hourlyUsage ?? [],
         });
       } else {
-        setAiStats(mockAIStats);
+        console.warn('AI stats API failed, using empty state');
+        setAiStats(null);
       }
     } catch (error) {
       console.error('AI istatistikleri yüklenemedi:', error);
-      setAiStats(mockAIStats);
+      setAiStats(null);
       setSnackbarSeverity('error');
       setSnackbarMessage('AI istatistikleri yüklenemedi');
       setSnackbarOpen(true);
@@ -398,13 +282,14 @@ const AIManagementPanel: React.FC = () => {
         setAiLogs(mappedLogs);
         setTotalLogs(payload.pagination?.total ?? mappedLogs.length);
       } else {
-        setAiLogs(mockAILogs);
-        setTotalLogs(150);
+        console.warn('AI logs API failed, using empty state');
+        setAiLogs([]);
+        setTotalLogs(0);
       }
     } catch (error) {
       console.error('AI logları yüklenemedi:', error);
-      setAiLogs(mockAILogs);
-      setTotalLogs(150);
+      setAiLogs([]);
+      setTotalLogs(0);
       setSnackbarSeverity('error');
       setSnackbarMessage('AI logları yüklenemedi');
       setSnackbarOpen(true);
@@ -420,11 +305,12 @@ const AIManagementPanel: React.FC = () => {
       if (res?.success && res.data) {
         setAiServices(res.data as any);
       } else {
-        setAiServices(mockAIServices);
+        console.warn('AI services API failed, using empty state');
+        setAiServices([]);
       }
     } catch (error) {
       console.error('AI servisleri yüklenemedi:', error);
-      setAiServices(mockAIServices);
+      setAiServices([]);
       setSnackbarSeverity('error');
       setSnackbarMessage('AI servisleri yüklenemedi');
       setSnackbarOpen(true);
@@ -440,11 +326,12 @@ const AIManagementPanel: React.FC = () => {
       if (res?.success && res.data) {
         setAiModels(res.data as any);
       } else {
-        setAiModels(mockAIModels);
+        console.warn('AI models API failed, using empty state');
+        setAiModels([]);
       }
     } catch (error) {
       console.error('AI modelleri yüklenemedi:', error);
-      setAiModels(mockAIModels);
+      setAiModels([]);
       setSnackbarSeverity('error');
       setSnackbarMessage('AI modelleri yüklenemedi');
       setSnackbarOpen(true);

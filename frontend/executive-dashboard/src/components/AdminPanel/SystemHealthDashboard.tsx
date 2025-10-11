@@ -97,31 +97,7 @@ const SystemHealthDashboard: React.FC = () => {
   const [alerts, setAlerts] = useState<Array<{ id: string; severity: string; title: string; description: string }>>([]);
   const { showError } = useNotification();
 
-  // Mock data (development fallback only)
-  const mockSystemHealth: SystemHealth = {
-    database: 'OK',
-    redis: 'OK',
-    api: 'OK',
-    overall: 'HEALTHY',
-    timestamp: new Date().toISOString(),
-  };
-
-  const mockSystemMetrics: SystemMetrics = {
-    activeUsers: 150,
-    requestsLastHour: 12500,
-    errorRate: 0.5,
-    responseTime: 250,
-    uptime: 99.8,
-    timestamp: new Date().toISOString(),
-  };
-
-  const mockServiceStatus: ServiceStatus[] = [
-    { name: 'Database', status: 'OK' },
-    { name: 'Redis Cache', status: 'OK' },
-    { name: 'API Gateway', status: 'OK' },
-    { name: 'Authentication', status: 'OK' },
-    { name: 'File Storage', status: 'OK' },
-  ];
+  // Mock data kaldırıldı - sadece gerçek API kullanılacak
 
   const errorColors = ['#f44336', '#ff9800', '#ffc107', '#9e9e9e'];
 
