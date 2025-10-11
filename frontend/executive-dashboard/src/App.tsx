@@ -11,11 +11,11 @@ import LoginPage from './components/Auth/LoginPage';
 import RegisterPage from './components/Auth/RegisterPage';
 import SimpleDashboard from './components/Dashboard/SimpleDashboard';
 import AdvancedDashboard from './components/Dashboard/AdvancedDashboard';
-import ComprehensiveAdminPanel from './components/AdminPanel/ComprehensiveAdminPanel';
-import RealDataAdminPanel from './components/AdminPanel/RealDataAdminPanel';
-import EnhancedAdminPanel from './components/AdminPanel/EnhancedAdminPanel';
-import UserManagementPanel from './components/AdminPanel/UserManagementPanel';
-import SystemHealthDashboard from './components/AdminPanel/SystemHealthDashboard';
+// import ComprehensiveAdminPanel from './components/AdminPanel/ComprehensiveAdminPanel';
+// import RealDataAdminPanel from './components/AdminPanel/RealDataAdminPanel';
+// import EnhancedAdminPanel from './components/AdminPanel/EnhancedAdminPanel';
+// import UserManagementPanel from './components/AdminPanel/UserManagementPanel';
+// import SystemHealthDashboard from './components/AdminPanel/SystemHealthDashboard';
 import StudentManagementPanel from './components/AdminPanel/StudentManagementPanel';
 import ParentManagementPanel from './components/AdminPanel/ParentManagementPanel';
 import CoachManagementPanel from './components/AdminPanel/CoachManagementPanel';
@@ -23,6 +23,11 @@ import RbacManagementPanel from './components/AdminPanel/RbacManagementPanel';
 import AuditLogPanel from './components/AdminPanel/AuditLogPanel';
 import FeatureFlagsPanel from './components/AdminPanel/FeatureFlagsPanel';
 import NotificationsPanel from './components/AdminPanel/NotificationsPanel';
+// import ModernAdminDashboard from './components/AdminPanel/ModernAdminDashboard';
+import CommandCenter from './components/AdminPanel/CommandCenter';
+import SystemOptimizationPanel from './components/AdminPanel/SystemOptimizationPanel';
+import UltraModernSystemHealth from './components/AdminPanel/UltraModernSystemHealth';
+import UltraModernUserManagement from './components/AdminPanel/UltraModernUserManagement';
 import TeacherDashboard from './components/TeacherPanel/TeacherDashboard';
 import StudentDashboard from './components/StudentPanel/StudentDashboard';
 import ParentDashboard from './components/ParentPanel/ParentDashboard';
@@ -138,11 +143,10 @@ const MainDashboard: React.FC = () => {
     { label: 'Veli Paneli', render: <ParentDashboard />, visible: hasRole('parent') || hasRole('admin') },
     
     // Admin içerikleri - Sadece admin görebilir
-    { label: 'Admin Panel (Mock)', render: <ComprehensiveAdminPanel />, visible: hasRole('admin') },
-    { label: 'Admin Panel (Gerçek Veri)', render: <RealDataAdminPanel />, visible: hasRole('admin') },
-    { label: 'Gelişmiş Admin Panel', render: <EnhancedAdminPanel />, visible: hasRole('admin') },
-    { label: 'Kullanıcı Yönetimi', render: <UserManagementPanel />, visible: hasRole('admin') },
-    { label: 'Sistem Sağlığı', render: <SystemHealthDashboard />, visible: hasRole('admin') },
+    { label: '🚀 Ultra Modern Sistem Sağlığı', render: <UltraModernSystemHealth />, visible: hasRole('admin') },
+    { label: '👥 Ultra Modern Kullanıcı Yönetimi', render: <UltraModernUserManagement />, visible: hasRole('admin') },
+    { label: '🎯 Komut Merkezi', render: <CommandCenter />, visible: hasRole('admin') },
+    { label: '⚡ Sistem Optimizasyonu', render: <SystemOptimizationPanel />, visible: hasRole('admin') },
     { label: 'Öğrenci Yönetimi', render: <StudentManagementPanel />, visible: hasRole('admin') },
     { label: 'Veli Yönetimi', render: <ParentManagementPanel />, visible: hasRole('admin') },
     { label: 'Koç Yönetimi', render: <CoachManagementPanel />, visible: hasRole('admin') },
